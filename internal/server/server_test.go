@@ -1,46 +1,118 @@
 package server_test
 
 import (
+	"github.com/clambin/ledswitcher/internal/controller"
+	"github.com/clambin/ledswitcher/internal/endpoint"
 	"github.com/clambin/ledswitcher/internal/server"
 	"github.com/stretchr/testify/assert"
+	"sync"
 	"testing"
 	"time"
 )
 
-func TestRotation(t *testing.T) {
-	s := server.Server{Expiry: 5 * time.Hour}
+func TestServer(t *testing.T) {
+	// log.SetLevel(log.DebugLevel)
+	servers := make([]*server.Server, 0)
 
-	s.HandleClient("client1")
-	s.HandleClient("client2")
-	s.HandleClient("client3")
+	servers = append(servers, &server.Server{
+		Port:      10000,
+		IsMaster:  true,
+		MasterURL: "http://localhost:10000/",
+		Controller: controller.Controller{
+			Rotation: 250 * time.Millisecond,
+			Expiry:   24 * time.Hour,
+		},
+		Endpoint: endpoint.Endpoint{
+			Name:      "client1",
+			Hostname:  "localhost",
+			Port:      10000,
+			LEDSetter: &MockLEDSetter{},
+		},
+	})
+	servers = append(servers, &server.Server{
+		Port:      10001,
+		MasterURL: "http://localhost:10000/",
+		Endpoint: endpoint.Endpoint{
+			Name:      "client2",
+			Hostname:  "localhost",
+			Port:      10001,
+			LEDSetter: &MockLEDSetter{},
+		},
+	})
+	servers = append(servers, &server.Server{
+		Port:      10002,
+		MasterURL: "http://localhost:10000/",
+		Endpoint: endpoint.Endpoint{
+			Name:      "client3",
+			Hostname:  "localhost",
+			Port:      10002,
+			LEDSetter: &MockLEDSetter{},
+		},
+	})
 
-	assert.Equal(t, "client1", s.NextClient())
-	assert.Equal(t, "client2", s.NextClient())
-	assert.Equal(t, "client3", s.NextClient())
-	assert.Equal(t, "client3", s.HandleClient("client4"))
-	assert.Equal(t, "client4", s.NextClient())
-	assert.Equal(t, "client4", s.HandleClient("client5"))
-	assert.Equal(t, "client5", s.NextClient())
-	assert.Equal(t, "client1", s.NextClient())
-	assert.Equal(t, "client2", s.NextClient())
-	assert.Equal(t, "client3", s.NextClient())
-	assert.Equal(t, "client4", s.NextClient())
-	assert.Equal(t, "client5", s.NextClient())
-	assert.Equal(t, "client1", s.NextClient())
+	for _, s := range servers {
+		go func(serv *server.Server) {
+			serv.Run()
+		}(s)
+	}
+
+	if assert.Eventually(t, func() bool {
+		for _, s := range servers {
+			if s.Endpoint.GetRegistered() == false {
+				return false
+			}
+		}
+		return true
+	}, 5*time.Second, 100*time.Millisecond) {
+
+		servers[0].Controller.Advance()
+		assert.Eventually(t, func() bool {
+			return servers[0].Endpoint.LEDSetter.GetLED() == true &&
+				servers[1].Endpoint.LEDSetter.GetLED() == false &&
+				servers[2].Endpoint.LEDSetter.GetLED() == false
+		}, 1*time.Second, 100*time.Millisecond)
+
+		servers[0].Controller.Advance()
+		assert.Eventually(t, func() bool {
+			return servers[0].Endpoint.LEDSetter.GetLED() == false &&
+				servers[1].Endpoint.LEDSetter.GetLED() == true &&
+				servers[2].Endpoint.LEDSetter.GetLED() == false
+		}, 1*time.Second, 100*time.Millisecond)
+
+		servers[0].Controller.Advance()
+		assert.Eventually(t, func() bool {
+			return servers[0].Endpoint.LEDSetter.GetLED() == false &&
+				servers[1].Endpoint.LEDSetter.GetLED() == false &&
+				servers[2].Endpoint.LEDSetter.GetLED() == true
+		}, 1*time.Second, 100*time.Millisecond)
+
+		servers[0].Controller.Advance()
+		assert.Eventually(t, func() bool {
+			return servers[0].Endpoint.LEDSetter.GetLED() == true &&
+				servers[1].Endpoint.LEDSetter.GetLED() == false &&
+				servers[2].Endpoint.LEDSetter.GetLED() == false
+		}, 1*time.Second, 100*time.Millisecond)
+	}
 }
 
-func TestExpiry(t *testing.T) {
-	s := server.Server{
-		Expiry:   250 * time.Millisecond,
-		Rotation: 100 * time.Millisecond,
-	}
-	s.HandleClient("client1")
-	assert.NotEmpty(t, s.NextClient())
+// Unittest mock of LEDSetter
 
-	go func() { s.Rotate() }()
+type MockLEDSetter struct {
+	lock  sync.Mutex
+	state bool
+}
 
-	assert.Eventually(t, func() bool {
-		client := s.NextClient()
-		return client == ""
-	}, 500*time.Millisecond, 100*time.Millisecond)
+func (setter *MockLEDSetter) SetLED(state bool) error {
+	setter.lock.Lock()
+	defer setter.lock.Unlock()
+
+	setter.state = state
+	return nil
+}
+
+func (setter *MockLEDSetter) GetLED() bool {
+	setter.lock.Lock()
+	defer setter.lock.Unlock()
+
+	return setter.state
 }

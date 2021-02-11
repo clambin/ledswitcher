@@ -1,92 +1,99 @@
 package server
 
 import (
+	"encoding/json"
+	"fmt"
+	"github.com/clambin/ledswitcher/internal/controller"
+	"github.com/clambin/ledswitcher/internal/endpoint"
+	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
-	"sort"
-	"sync"
-	"time"
+	"io/ioutil"
+	"net/http"
 )
 
-// Server structure
+// Server runs the REST API Server and dispatches requests to the led or controller
 type Server struct {
-	Rotation time.Duration
-	Expiry   time.Duration
-	Port     int
-
-	mutex        sync.Mutex
-	clients      map[string]time.Time
-	activeClient string
+	Port       int
+	IsMaster   bool
+	MasterURL  string
+	Controller controller.Controller
+	Endpoint   endpoint.Endpoint
 }
 
-// HandleClient registers the client and returns the current active client
-func (server *Server) HandleClient(client string) string {
-	server.mutex.Lock()
-	defer server.mutex.Unlock()
-
-	server.register(client)
-
-	return server.activeClient
-}
-
-// register adds a new client
-func (server *Server) register(client string) {
-	if server.clients == nil {
-		server.clients = make(map[string]time.Time)
+// Run the Server instance. Dispatch requests to the controller or led
+func (server *Server) Run() {
+	server.Endpoint.Register(server.MasterURL)
+	r := mux.NewRouter()
+	if server.IsMaster {
+		r.HandleFunc("/register", server.HandleRegisterClient)
 	}
-	server.clients[client] = time.Now().Add(server.Expiry)
+	r.HandleFunc("/led", server.HandleLED)
+
+	address := ":8080"
+	if server.Port > 0 {
+		address = fmt.Sprintf(":%d", server.Port)
+	}
+
+	log.Fatal(http.ListenAndServe(address, r))
 }
 
-// NextClient sets the next active Client
-func (server *Server) NextClient() string {
-	server.mutex.Lock()
-	defer server.mutex.Unlock()
+type registerBody struct {
+	ClientName string `json:"name"`
+	ClientURL  string `json:"url"`
+}
 
-	// clean up expired clients
-	server.cleanup()
+func (server *Server) HandleRegisterClient(w http.ResponseWriter, req *http.Request) {
+	var (
+		err     error
+		body    []byte
+		request registerBody
+	)
+	defer req.Body.Close()
 
-	// find the current active client and move to the next one
-	// if no active clients exist, next client is empty
-	if len(server.clients) > 0 {
-		// list of all clients
-		clients := make([]string, 0)
-		for client := range server.clients {
-			clients = append(clients, client)
-		}
-		sort.Strings(clients)
+	log.Debug("/register")
 
-		var index int
-		for i, client := range clients {
-			if client == server.activeClient {
-				index = (i + 1) % len(clients)
-				break
-			}
-		}
-		server.activeClient = clients[index]
+	if body, err = ioutil.ReadAll(req.Body); err == nil {
+		err = json.Unmarshal(body, &request)
+	}
+
+	if err == nil {
+		server.Controller.RegisterClient(request.ClientName, request.ClientURL)
+	}
+
+	if err == nil {
+		w.WriteHeader(http.StatusOK)
 	} else {
-		server.activeClient = ""
-	}
-
-	return server.activeClient
-}
-
-// cleanup removes any clients that haven't been seen for "expiry" time
-func (server *Server) cleanup() {
-	for client, expiry := range server.clients {
-		if time.Now().After(expiry) {
-			delete(server.clients, client)
-		}
+		log.WithField("err", err).Warning("failed to register led")
+		w.WriteHeader(http.StatusBadRequest)
 	}
 }
 
-// Rotate moves through the list of clients and sets each periodically
-func (server *Server) Rotate() {
-	ticker := time.NewTicker(server.Rotation)
+type ledBody struct {
+	State bool `json:"state"`
+}
 
-	for {
-		select {
-		case <-ticker.C:
-			client := server.NextClient()
-			log.WithField("client", client).Debug("next client set")
-		}
+func (server *Server) HandleLED(w http.ResponseWriter, req *http.Request) {
+	var (
+		err     error
+		body    []byte
+		request ledBody
+	)
+	defer req.Body.Close()
+
+	log.Debug("/led")
+
+	if body, err = ioutil.ReadAll(req.Body); err == nil {
+		err = json.Unmarshal(body, &request)
+	}
+
+	if err == nil {
+		err = server.Endpoint.LEDSetter.SetLED(request.State)
+	}
+
+	if err == nil {
+		w.WriteHeader(http.StatusOK)
+	} else {
+		log.WithField("err", err).Warning("failed to set LED state")
+		w.WriteHeader(http.StatusBadRequest)
 	}
 }
