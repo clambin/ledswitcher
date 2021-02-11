@@ -17,7 +17,6 @@ func main() {
 	var (
 		hostname   string
 		err        error
-		interval   time.Duration
 		masterHost string
 		masterURL  string
 		rotation   time.Duration
@@ -48,15 +47,6 @@ func main() {
 	if debug {
 		log.SetLevel(log.DebugLevel)
 	}
-
-	// Set refresh interval
-	// TODO: tweak this. accuracy vs. load
-	interval = 100 * time.Millisecond
-
-	log.WithFields(log.Fields{
-		"rotation": rotation,
-		"interval": interval,
-	}).Debug("check intervals")
 
 	// Where are we?
 	if hostname, err = os.Hostname(); err != nil {
