@@ -25,8 +25,7 @@ func (c *Controller) NextClient() (clientName string, clientURL string) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
-	// FIXME: expiry no longer makes sense since we call the client
-	// better: remove the client after x failures to deliver
+	// Remove unavailable clients
 	c.cleanup()
 
 	// find the current active led and move to the next one

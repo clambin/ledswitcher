@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func TestBroker_Rotation(t *testing.T) {
+func TestRotation(t *testing.T) {
 	s := controller.Controller{}
 
 	s.RegisterClient("client1", "")
@@ -32,4 +32,20 @@ func TestBroker_Rotation(t *testing.T) {
 	assert.Equal(t, "client4", next)
 	next, _ = s.NextClient()
 	assert.Equal(t, "client1", next)
+}
+
+func TestCleanup(t *testing.T) {
+	s := controller.Controller{}
+
+	s.RegisterClient("client1", "http://localhost:10000")
+	s.Advance()
+	s.Advance()
+	s.Advance()
+	s.Advance()
+	s.Advance()
+	s.Advance()
+
+	nextHost, nextURL := s.NextClient()
+	assert.Equal(t, "", nextHost)
+	assert.Equal(t, "", nextURL)
 }

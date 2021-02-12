@@ -2,6 +2,7 @@ package controller
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	"net/http"
@@ -20,32 +21,30 @@ type Controller struct {
 }
 
 func (c *Controller) Run() {
-	//	interrupt := make(chan os.Signal, 1)
-	//	signal.Notify(interrupt, os.Interrupt)
-
 	ticker := time.NewTicker(c.Rotation)
-	//loop:
 	for {
 		select {
 		case <-ticker.C:
 			c.Advance()
-			//		case <-interrupt:
-			//			break loop
 		}
 	}
 }
 
 func (c *Controller) Advance() {
 	if c.activeURL != "" {
-		c.setClientLED(c.activeURL, false)
+		_ = c.setClientLED(c.activeURL, false)
 	}
 	c.NextClient()
 	if c.activeURL != "" {
-		c.setClientLED(c.activeURL, true)
+		if err := c.setClientLED(c.activeURL, true); err != nil {
+			activeClient, _ := c.clients[c.activeClient]
+			activeClient.failures++
+			c.clients[c.activeClient] = activeClient
+		}
 	}
 }
 
-func (c *Controller) setClientLED(clientURL string, state bool) {
+func (c *Controller) setClientLED(clientURL string, state bool) error {
 	fullURL := fmt.Sprintf("%s/led", clientURL)
 
 	body := fmt.Sprintf(`{ "state": %v }`, state)
@@ -54,15 +53,19 @@ func (c *Controller) setClientLED(clientURL string, state bool) {
 	httpClient := &http.Client{}
 	resp, err := httpClient.Do(req)
 
-	if err != nil {
-		log.WithField("err", err).Warning("failed to contact led to set LED")
-	} else {
+	if err == nil {
 		if resp.StatusCode != http.StatusOK {
-			log.WithFields(log.Fields{
-				"code":   resp.StatusCode,
-				"status": resp.Status,
-			}).Warning("failed to contact led to set LED")
+			err = errors.New(fmt.Sprintf("%d - %s",
+				resp.StatusCode,
+				resp.Status,
+			))
 		}
 		resp.Body.Close()
 	}
+
+	if err != nil {
+		log.WithField("err", err).Warning("failed to contact led to set LED")
+	}
+
+	return err
 }
