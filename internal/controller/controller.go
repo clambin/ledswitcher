@@ -5,8 +5,6 @@ import (
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	"net/http"
-	"os"
-	"os/signal"
 	"sync"
 	"time"
 )
@@ -14,7 +12,6 @@ import (
 // Controller structure
 type Controller struct {
 	Rotation time.Duration
-	Expiry   time.Duration
 
 	mutex        sync.Mutex
 	clients      map[string]clientEntry
@@ -23,17 +20,17 @@ type Controller struct {
 }
 
 func (c *Controller) Run() {
-	interrupt := make(chan os.Signal, 1)
-	signal.Notify(interrupt, os.Interrupt)
+	//	interrupt := make(chan os.Signal, 1)
+	//	signal.Notify(interrupt, os.Interrupt)
 
 	ticker := time.NewTicker(c.Rotation)
-loop:
+	//loop:
 	for {
 		select {
 		case <-ticker.C:
 			c.Advance()
-		case <-interrupt:
-			break loop
+			//		case <-interrupt:
+			//			break loop
 		}
 	}
 }

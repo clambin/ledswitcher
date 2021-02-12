@@ -54,6 +54,13 @@ func (server *Server) HandleRegisterClient(w http.ResponseWriter, req *http.Requ
 
 	if body, err = ioutil.ReadAll(req.Body); err == nil {
 		err = json.Unmarshal(body, &request)
+
+		if err != nil {
+			log.WithFields(log.Fields{
+				"err":  err,
+				"body": string(body),
+			}).Debug("failed to parse request")
+		}
 	}
 
 	if err == nil {

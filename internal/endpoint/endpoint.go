@@ -46,10 +46,10 @@ func (endpoint *Endpoint) realRegister(masterURL string) error {
 		resp *http.Response
 	)
 
-	endpointURL := fmt.Sprintf("http://%s:%d/", endpoint.Hostname, endpoint.Port)
+	endpointURL := fmt.Sprintf("http://%s:%d", endpoint.Hostname, endpoint.Port)
 
 	body := fmt.Sprintf(`{ "name": "%s", "url": "%s" }`, endpoint.Name, endpointURL)
-	req, _ := http.NewRequest("GET", masterURL+"register", bytes.NewBufferString(body))
+	req, _ := http.NewRequest("GET", masterURL+"/register", bytes.NewBufferString(body))
 
 	httpClient := &http.Client{}
 	resp, err = httpClient.Do(req)

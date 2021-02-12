@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/clambin/ledswitcher/internal/controller"
 	"github.com/clambin/ledswitcher/internal/endpoint"
 	"github.com/clambin/ledswitcher/internal/led"
@@ -9,6 +10,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/alecthomas/kingpin.v2"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"time"
 )
@@ -20,7 +22,6 @@ func main() {
 		masterHost string
 		masterURL  string
 		rotation   time.Duration
-		expiry     time.Duration
 		port       int
 		ledPath    string
 		debug      bool
@@ -32,16 +33,17 @@ func main() {
 	a.VersionFlag.Short('v')
 	a.Flag("debug", "Log debug messages").Default("false").BoolVar(&debug)
 	a.Flag("rotation", "Delay of led switching to the next controller").Default("1s").DurationVar(&rotation)
-	a.Flag("expiry", "Remove clients from the list if we have not seen them").Default("1m").DurationVar(&expiry)
 	a.Flag("port", "Controller listener port").Default("8080").IntVar(&port)
 	a.Flag("master", "Hostname of instance that acts as controller").Required().StringVar(&masterHost)
-	a.Flag("master-url", "URL used to reach the master").Default("http://ledswitcher:8080").StringVar(&masterURL)
-	a.Flag("led-path", "path name to the sysfs directory for the LED").Default("/host/sys/class/leds/led1").StringVar(&ledPath)
+	a.Flag("led-path", "path name to the sysfs directory for the LED").Default("/sys/class/leds/led1").StringVar(&ledPath)
 
 	if _, err = a.Parse(os.Args[1:]); err != nil {
 		a.Usage(os.Args[1:])
 		os.Exit(1)
 	}
+
+	// Set master URL
+	masterURL = fmt.Sprintf("http://%s:%d", masterHost, port)
 
 	log.WithField("version", version.BuildVersion).Info("starting")
 	if debug {
@@ -60,7 +62,6 @@ func main() {
 		MasterURL: masterURL,
 		Controller: controller.Controller{
 			Rotation: rotation,
-			Expiry:   expiry,
 		},
 		Endpoint: endpoint.Endpoint{
 			Name:     hostname,
@@ -72,6 +73,9 @@ func main() {
 		},
 	}
 
+	// Get the LED's current state
+	origState := s.Endpoint.LEDSetter.GetLED()
+
 	// If we are the designated master, run the controller
 	if hostname == masterHost {
 		go func() {
@@ -82,8 +86,23 @@ func main() {
 	// Register the endpoint
 	s.Endpoint.Register(masterURL)
 
-	// Run the API server
-	s.Run()
+	// Run the API server in the background
+	go func() { s.Run() }()
+
+	// Wait for the process to get
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, os.Interrupt)
+
+loop:
+	for {
+		select {
+		case <-interrupt:
+			break loop
+		}
+	}
+
+	// Set the LED back to its default state
+	_ = s.Endpoint.LEDSetter.SetLED(origState)
 
 	log.Info("exiting")
 }

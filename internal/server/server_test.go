@@ -17,10 +17,9 @@ func TestServer(t *testing.T) {
 	servers = append(servers, &server.Server{
 		Port:      10000,
 		IsMaster:  true,
-		MasterURL: "http://localhost:10000/",
+		MasterURL: "http://localhost:10000",
 		Controller: controller.Controller{
 			Rotation: 250 * time.Millisecond,
-			Expiry:   24 * time.Hour,
 		},
 		Endpoint: endpoint.Endpoint{
 			Name:      "client1",
@@ -31,7 +30,7 @@ func TestServer(t *testing.T) {
 	})
 	servers = append(servers, &server.Server{
 		Port:      10001,
-		MasterURL: "http://localhost:10000/",
+		MasterURL: "http://localhost:10000",
 		Endpoint: endpoint.Endpoint{
 			Name:      "client2",
 			Hostname:  "localhost",
@@ -41,7 +40,7 @@ func TestServer(t *testing.T) {
 	})
 	servers = append(servers, &server.Server{
 		Port:      10002,
-		MasterURL: "http://localhost:10000/",
+		MasterURL: "http://localhost:10000",
 		Endpoint: endpoint.Endpoint{
 			Name:      "client3",
 			Hostname:  "localhost",

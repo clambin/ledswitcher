@@ -2,12 +2,11 @@ package controller
 
 import (
 	"sort"
-	"time"
 )
 
 type clientEntry struct {
 	clientURL string
-	expiry    time.Time
+	failures  int
 }
 
 // RegisterClient registers the led
@@ -18,10 +17,7 @@ func (c *Controller) RegisterClient(clientName string, clientURL string) {
 	if c.clients == nil {
 		c.clients = make(map[string]clientEntry)
 	}
-	c.clients[clientName] = clientEntry{
-		clientURL,
-		time.Now().Add(c.Expiry),
-	}
+	c.clients[clientName] = clientEntry{clientURL: clientURL}
 }
 
 // NextClient returns the next Client Name & URL that should be switched on
@@ -65,7 +61,8 @@ func (c *Controller) NextClient() (clientName string, clientURL string) {
 // cleanup removes any clients that haven't been seen for "expiry" time
 func (c *Controller) cleanup() {
 	for client, entry := range c.clients {
-		if time.Now().After(entry.expiry) {
+		// FIXME: no magic numbers
+		if entry.failures > 5 {
 			delete(c.clients, client)
 		}
 	}
