@@ -64,7 +64,10 @@ func (c *Controller) setClientLED(clientURL string, state bool) error {
 	}
 
 	if err != nil {
-		log.WithField("err", err).Warning("failed to contact led to set LED")
+		log.WithFields(log.Fields{
+			"err": err,
+			"url": clientURL,
+		}).Warning("failed to contact endpoint to set LED")
 	}
 
 	return err

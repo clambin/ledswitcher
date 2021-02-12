@@ -54,12 +54,15 @@ func (endpoint *Endpoint) realRegister() error {
 
 	if err != nil {
 		log.WithField("err", err).Warning("failed to register")
-	} else if resp.StatusCode != http.StatusOK {
-		log.WithFields(log.Fields{
-			"code":   resp.StatusCode,
-			"status": resp.Status,
-		}).Warning("failed to register")
-		err = fmt.Errorf("failed to register: %d - %s", resp.StatusCode, resp.Status)
+	} else {
+		if resp.StatusCode != http.StatusOK {
+			log.WithFields(log.Fields{
+				"code":   resp.StatusCode,
+				"status": resp.Status,
+			}).Warning("failed to register")
+			err = fmt.Errorf("failed to register: %d - %s", resp.StatusCode, resp.Status)
+		}
+		resp.Body.Close()
 	}
 
 	if err == nil {

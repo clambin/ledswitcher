@@ -11,7 +11,6 @@ import (
 )
 
 func TestServer(t *testing.T) {
-	// log.SetLevel(log.DebugLevel)
 	servers := make([]*server.Server, 0)
 
 	servers = append(servers, &server.Server{
@@ -95,6 +94,36 @@ func TestServer(t *testing.T) {
 				servers[1].Endpoint.LEDSetter.GetLED() == false &&
 				servers[2].Endpoint.LEDSetter.GetLED() == false
 		}, 1*time.Second, 100*time.Millisecond)
+	}
+}
+
+func BenchmarkServer(b *testing.B) {
+	s := server.Server{
+		Port:      10000,
+		IsMaster:  true,
+		MasterURL: "http://localhost:10000",
+		Controller: controller.Controller{
+			Rotation: 250 * time.Millisecond,
+		},
+		Endpoint: endpoint.Endpoint{
+			Name:      "client1",
+			Hostname:  "localhost",
+			MasterURL: "http://localhost:10000",
+			Port:      10000,
+			LEDSetter: &MockLEDSetter{},
+		},
+	}
+
+	go func(serv *server.Server) {
+		serv.Run()
+	}(&s)
+	s.Endpoint.Register()
+
+	if assert.Eventually(b, func() bool { return s.Endpoint.GetRegistered() }, 5*time.Second, 100*time.Millisecond) {
+
+		for i := 0; i < 10000; i++ {
+			s.Controller.Advance()
+		}
 	}
 }
 
