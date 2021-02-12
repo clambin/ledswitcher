@@ -22,7 +22,7 @@ type Server struct {
 
 // Run the Server instance. Dispatch requests to the controller or led
 func (server *Server) Run() {
-	server.Endpoint.Register(server.MasterURL)
+	server.Endpoint.Register()
 	r := mux.NewRouter()
 	if server.IsMaster {
 		r.HandleFunc("/register", server.HandleRegisterClient)

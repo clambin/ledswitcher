@@ -42,9 +42,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Set master URL
-	masterURL = fmt.Sprintf("http://%s:%d", masterHost, port)
-
 	log.WithField("version", version.BuildVersion).Info("starting")
 	if debug {
 		log.SetLevel(log.DebugLevel)
@@ -55,6 +52,9 @@ func main() {
 		log.WithField("err", err).Fatal("unable to determine hostname")
 	}
 
+	// Set up master URL
+	masterURL = fmt.Sprintf("http://%s:%d", masterHost, port)
+
 	// Set up the server
 	s := server.Server{
 		Port:      port,
@@ -64,17 +64,15 @@ func main() {
 			Rotation: rotation,
 		},
 		Endpoint: endpoint.Endpoint{
-			Name:     hostname,
-			Hostname: hostname,
-			Port:     port,
+			Name:      hostname,
+			Hostname:  hostname,
+			Port:      port,
+			MasterURL: masterURL,
 			LEDSetter: &led.RealSetter{
 				LEDPath: ledPath,
 			},
 		},
 	}
-
-	// Get the LED's current state
-	origState := s.Endpoint.LEDSetter.GetLED()
 
 	// If we are the designated master, run the controller
 	if hostname == masterHost {
@@ -83,26 +81,29 @@ func main() {
 		}()
 	}
 
-	// Register the endpoint
-	s.Endpoint.Register(masterURL)
-
 	// Run the API server in the background
 	go func() { s.Run() }()
 
-	// Wait for the process to get
+	// Register the endpoint
+	s.Endpoint.Register()
+
+	// Re-register periodically in case we lose connection
+	refresh := time.NewTicker(30 * time.Second)
+
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 
 loop:
 	for {
 		select {
+		case <-refresh.C:
+			s.Endpoint.Register()
 		case <-interrupt:
 			break loop
 		}
 	}
 
-	// Set the LED back to its default state
-	_ = s.Endpoint.LEDSetter.SetLED(origState)
+	_ = s.Endpoint.LEDSetter.SetLED(true)
 
 	log.Info("exiting")
 }

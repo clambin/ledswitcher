@@ -24,6 +24,7 @@ func TestServer(t *testing.T) {
 		Endpoint: endpoint.Endpoint{
 			Name:      "client1",
 			Hostname:  "localhost",
+			MasterURL: "http://localhost:10000",
 			Port:      10000,
 			LEDSetter: &MockLEDSetter{},
 		},
@@ -34,6 +35,7 @@ func TestServer(t *testing.T) {
 		Endpoint: endpoint.Endpoint{
 			Name:      "client2",
 			Hostname:  "localhost",
+			MasterURL: "http://localhost:10000",
 			Port:      10001,
 			LEDSetter: &MockLEDSetter{},
 		},
@@ -44,6 +46,7 @@ func TestServer(t *testing.T) {
 		Endpoint: endpoint.Endpoint{
 			Name:      "client3",
 			Hostname:  "localhost",
+			MasterURL: "http://localhost:10000",
 			Port:      10002,
 			LEDSetter: &MockLEDSetter{},
 		},

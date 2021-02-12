@@ -16,20 +16,21 @@ type Endpoint struct {
 	Name      string
 	Hostname  string
 	Port      int
+	MasterURL string
 	LEDSetter led.Setter
 
 	registered bool
 	lock       sync.Mutex
 }
 
-func (endpoint *Endpoint) Register(masterURL string) {
-	if err := endpoint.realRegister(masterURL); err != nil {
+func (endpoint *Endpoint) Register() {
+	if err := endpoint.realRegister(); err != nil {
 		log.WithField("err", err).Warning("failed to register. will retry in the background")
 
 		go func() {
 			for {
 				time.Sleep(1 * time.Second)
-				if err = endpoint.realRegister(masterURL); err == nil {
+				if err = endpoint.realRegister(); err == nil {
 					endpoint.setRegistered()
 					log.Info("successfully registered")
 					break
@@ -40,7 +41,7 @@ func (endpoint *Endpoint) Register(masterURL string) {
 	}
 }
 
-func (endpoint *Endpoint) realRegister(masterURL string) error {
+func (endpoint *Endpoint) realRegister() error {
 	var (
 		err  error
 		resp *http.Response
@@ -49,7 +50,7 @@ func (endpoint *Endpoint) realRegister(masterURL string) error {
 	endpointURL := fmt.Sprintf("http://%s:%d", endpoint.Hostname, endpoint.Port)
 
 	body := fmt.Sprintf(`{ "name": "%s", "url": "%s" }`, endpoint.Name, endpointURL)
-	req, _ := http.NewRequest("GET", masterURL+"/register", bytes.NewBufferString(body))
+	req, _ := http.NewRequest("GET", endpoint.MasterURL+"/register", bytes.NewBufferString(body))
 
 	httpClient := &http.Client{}
 	resp, err = httpClient.Do(req)
