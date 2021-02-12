@@ -6,6 +6,9 @@ import (
 	"github.com/clambin/ledswitcher/internal/controller"
 	"github.com/clambin/ledswitcher/internal/endpoint"
 	"github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 	"io/ioutil"
 	"net/http"
@@ -24,10 +27,13 @@ type Server struct {
 func (server *Server) Run() {
 	server.Endpoint.Register()
 	r := mux.NewRouter()
+	r.Use(prometheusMiddleware)
+	r.Path("/metrics").Handler(promhttp.Handler())
+
+	r.HandleFunc("/led", server.HandleLED)
 	if server.IsMaster {
 		r.HandleFunc("/register", server.HandleRegisterClient)
 	}
-	r.HandleFunc("/led", server.HandleLED)
 
 	address := ":8080"
 	if server.Port > 0 {
@@ -50,8 +56,6 @@ func (server *Server) HandleRegisterClient(w http.ResponseWriter, req *http.Requ
 	)
 	defer req.Body.Close()
 
-	log.Debug("/register")
-
 	if body, err = ioutil.ReadAll(req.Body); err == nil {
 		err = json.Unmarshal(body, &request)
 
@@ -65,6 +69,10 @@ func (server *Server) HandleRegisterClient(w http.ResponseWriter, req *http.Requ
 
 	if err == nil {
 		server.Controller.RegisterClient(request.ClientName, request.ClientURL)
+		log.WithFields(log.Fields{
+			"name": request.ClientName,
+			"url":  request.ClientURL,
+		}).Debug("/register")
 	}
 
 	if err == nil {
@@ -103,4 +111,22 @@ func (server *Server) HandleLED(w http.ResponseWriter, req *http.Request) {
 		log.WithField("err", err).Warning("failed to set LED state")
 		w.WriteHeader(http.StatusBadRequest)
 	}
+}
+
+// Prometheus metrics
+var (
+	httpDuration = promauto.NewSummaryVec(prometheus.SummaryOpts{
+		Name: "http_duration_seconds",
+		Help: "API duration of HTTP requests.",
+	}, []string{"path"})
+)
+
+func prometheusMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		route := mux.CurrentRoute(r)
+		path, _ := route.GetPathTemplate()
+		timer := prometheus.NewTimer(httpDuration.WithLabelValues(path))
+		next.ServeHTTP(w, r)
+		timer.ObserveDuration()
+	})
 }

@@ -56,6 +56,7 @@ func TestServer(t *testing.T) {
 		go func(serv *server.Server) {
 			serv.Run()
 		}(s)
+		s.Endpoint.Register()
 	}
 
 	if assert.Eventually(t, func() bool {

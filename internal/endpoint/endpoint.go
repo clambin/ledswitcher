@@ -2,7 +2,6 @@ package endpoint
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"github.com/clambin/ledswitcher/internal/led"
 	log "github.com/sirupsen/logrus"
@@ -31,8 +30,6 @@ func (endpoint *Endpoint) Register() {
 			for {
 				time.Sleep(1 * time.Second)
 				if err = endpoint.realRegister(); err == nil {
-					endpoint.setRegistered()
-					log.Info("successfully registered")
 					break
 				}
 			}
@@ -62,7 +59,12 @@ func (endpoint *Endpoint) realRegister() error {
 			"code":   resp.StatusCode,
 			"status": resp.Status,
 		}).Warning("failed to register")
-		err = errors.New(fmt.Sprintf("failed to register: %d - %s", resp.StatusCode, resp.Status))
+		err = fmt.Errorf("failed to register: %d - %s", resp.StatusCode, resp.Status)
+	}
+
+	if err == nil {
+		endpoint.setRegistered()
+		log.Info("successfully registered")
 	}
 
 	return err
