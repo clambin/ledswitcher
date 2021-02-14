@@ -22,6 +22,8 @@ type Endpoint struct {
 	lock       sync.Mutex
 }
 
+// Register the endpoint with the server.  Tries once in the main thread and, if the server isn't available yet,
+// retries in the background until it succeeds
 func (endpoint *Endpoint) Register() {
 	if err := endpoint.realRegister(); err != nil {
 		log.WithField("err", err).Warning("failed to register. will retry in the background")
@@ -66,8 +68,12 @@ func (endpoint *Endpoint) realRegister() error {
 	}
 
 	if err == nil {
+		// were we already registered?
+		wasRegistered := endpoint.GetRegistered()
 		endpoint.setRegistered()
-		log.Info("successfully registered")
+		if !wasRegistered {
+			log.Info("successfully registered")
+		}
 	}
 
 	return err
@@ -80,6 +86,7 @@ func (endpoint *Endpoint) setRegistered() {
 
 }
 
+// GetRegistered returns whether the endpoint has registered with the server
 func (endpoint *Endpoint) GetRegistered() bool {
 	endpoint.lock.Lock()
 	defer endpoint.lock.Unlock()
