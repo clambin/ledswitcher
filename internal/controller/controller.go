@@ -17,7 +17,6 @@ type Controller struct {
 	mutex        sync.Mutex
 	clients      map[string]clientEntry
 	activeClient string
-	activeURL    string
 }
 
 func (c *Controller) Run() {
@@ -31,12 +30,16 @@ func (c *Controller) Run() {
 }
 
 func (c *Controller) Advance() {
-	if c.activeURL != "" {
-		_ = c.setClientLED(c.activeURL, false)
+	var activeURL string
+
+	if _, activeURL = c.GetActiveClient(); activeURL != "" {
+		_ = c.setClientLED(activeURL, false)
 	}
+
 	c.NextClient()
-	if c.activeURL != "" {
-		if err := c.setClientLED(c.activeURL, true); err != nil {
+
+	if _, activeURL = c.GetActiveClient(); activeURL != "" {
+		if err := c.setClientLED(activeURL, true); err != nil {
 			activeClient, _ := c.clients[c.activeClient]
 			activeClient.failures++
 			c.clients[c.activeClient] = activeClient

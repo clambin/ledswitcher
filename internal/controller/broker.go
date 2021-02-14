@@ -20,8 +20,20 @@ func (c *Controller) RegisterClient(clientName string, clientURL string) {
 	c.clients[clientName] = clientEntry{clientURL: clientURL}
 }
 
+// GetActiveClient returns the name & url of the active client
+func (c *Controller) GetActiveClient() (name, url string) {
+	name = c.activeClient
+	if active, ok := c.clients[name]; ok {
+		url = active.clientURL
+	} else {
+		url = ""
+	}
+
+	return
+}
+
 // NextClient returns the next Client Name & URL that should be switched on
-func (c *Controller) NextClient() (clientName string, clientURL string) {
+func (c *Controller) NextClient() {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
@@ -45,16 +57,12 @@ func (c *Controller) NextClient() (clientName string, clientURL string) {
 				break
 			}
 		}
-		if activeClient, ok := c.clients[clients[index]]; ok {
+		if _, ok := c.clients[clients[index]]; ok {
 			c.activeClient = clients[index]
-			c.activeURL = activeClient.clientURL
 		}
 	} else {
 		c.activeClient = ""
-		c.activeURL = ""
 	}
-
-	return c.activeClient, c.activeURL
 }
 
 // cleanup removes any clients that haven't been seen for "expiry" time

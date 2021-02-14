@@ -52,10 +52,10 @@ func TestServer(t *testing.T) {
 	})
 
 	for _, s := range servers {
+		s.Endpoint.Register()
 		go func(serv *server.Server) {
 			serv.Run()
 		}(s)
-		s.Endpoint.Register()
 	}
 
 	if assert.Eventually(t, func() bool {

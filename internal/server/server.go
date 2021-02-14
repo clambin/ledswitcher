@@ -25,14 +25,13 @@ type Server struct {
 
 // Run the Server instance. Dispatch requests to the controller or led
 func (server *Server) Run() {
-	server.Endpoint.Register()
 	r := mux.NewRouter()
 	r.Use(prometheusMiddleware)
 	r.Path("/metrics").Handler(promhttp.Handler())
 
-	r.HandleFunc("/led", server.HandleLED)
+	r.HandleFunc("/led", server.handleLED)
 	if server.IsMaster {
-		r.HandleFunc("/register", server.HandleRegisterClient)
+		r.HandleFunc("/register", server.handleRegisterClient)
 	}
 
 	address := ":8080"
@@ -43,16 +42,14 @@ func (server *Server) Run() {
 	log.Fatal(http.ListenAndServe(address, r))
 }
 
-type registerBody struct {
-	ClientName string `json:"name"`
-	ClientURL  string `json:"url"`
-}
-
-func (server *Server) HandleRegisterClient(w http.ResponseWriter, req *http.Request) {
+func (server *Server) handleRegisterClient(w http.ResponseWriter, req *http.Request) {
 	var (
 		err     error
 		body    []byte
-		request registerBody
+		request struct {
+			ClientName string `json:"name"`
+			ClientURL  string `json:"url"`
+		}
 	)
 	defer req.Body.Close()
 
@@ -83,15 +80,13 @@ func (server *Server) HandleRegisterClient(w http.ResponseWriter, req *http.Requ
 	}
 }
 
-type ledBody struct {
-	State bool `json:"state"`
-}
-
-func (server *Server) HandleLED(w http.ResponseWriter, req *http.Request) {
+func (server *Server) handleLED(w http.ResponseWriter, req *http.Request) {
 	var (
 		err     error
 		body    []byte
-		request ledBody
+		request struct {
+			State bool `json:"state"`
+		}
 	)
 	defer req.Body.Close()
 
