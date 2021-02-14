@@ -76,6 +76,7 @@ func main() {
 
 	// If we are the designated master, run the controller
 	if hostname == masterHost {
+		log.Infof("server running on %s", hostname)
 		go func() {
 			s.Controller.Run()
 		}()
