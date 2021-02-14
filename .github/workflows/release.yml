@@ -27,7 +27,7 @@ jobs:
       matrix:
         target: [ ledswitcher ]
         platform: [ linux ]
-        arch: [ amd64, arm ]
+        arch: [ arm64, arm ]
     steps:
     - uses: actions/checkout@v2
     - uses: actions/setup-go@v2
@@ -62,7 +62,7 @@ jobs:
           path: ./bld
       - uses: actions/download-artifact@v2
         with:
-          name: ledswitcher-linux-amd64
+          name: ledswitcher-linux-arm64
           path: ./bld
       - name: Fix permissions
         run: chmod +x bld/*
@@ -86,7 +86,7 @@ jobs:
         with:
           context: .
           file: ./build/Dockerfile
-          platforms: linux/amd64,linux/arm
+          platforms: linux/arm64,linux/arm
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.docker_meta.outputs.tags }}
           labels: ${{ steps.docker_meta.outputs.labels }}
