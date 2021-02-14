@@ -26,7 +26,7 @@ type Endpoint struct {
 // retries in the background until it succeeds
 func (endpoint *Endpoint) Register() {
 	if err := endpoint.realRegister(); err != nil {
-		log.WithField("err", err).Warning("failed to register. will retry in the background")
+		log.Warning("will retry in the background")
 
 		go func() {
 			for {
