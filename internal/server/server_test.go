@@ -3,6 +3,7 @@ package server_test
 import (
 	"github.com/clambin/ledswitcher/internal/controller"
 	"github.com/clambin/ledswitcher/internal/server"
+	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"sync"
 	"testing"
@@ -28,6 +29,7 @@ func TestServer(t *testing.T) {
 		LEDSetter:  &MockLEDSetter{},
 	})
 
+	log.SetLevel(log.DebugLevel)
 	for _, s := range servers {
 		go s.Run()
 		// elect first server as the master

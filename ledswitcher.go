@@ -47,6 +47,7 @@ func main() {
 		os.Exit(1)
 	}
 
+	log.SetReportCaller(true)
 	log.WithField("version", version.BuildVersion).Info("starting")
 	if debug {
 		log.SetLevel(log.DebugLevel)
@@ -114,22 +115,21 @@ func main() {
 		Callbacks: leaderelection.LeaderCallbacks{
 			OnStartedLeading: func(ctx context.Context) {
 				// we are the leader
-				log.WithField("id", hostname).Info("we are the leader. entering ticker loop")
+				log.WithField("id", s.Controller.MyURL).Info("entering ticker loop")
 
 				tickTimer := time.NewTimer(rotation)
 			loop:
 				for {
 					select {
 					case <-tickTimer.C:
+						log.Debug("pre-tick")
 						s.Controller.Tick <- struct{}{}
+						log.Debug("post-tick")
 					case <-ctx.Done():
 						break loop
 					}
 				}
 				tickTimer.Stop()
-
-				// is this needed? how does OnNewLeader factor into this?
-				s.Controller.NewLeader <- ""
 				log.Debug("exiting ticker loop")
 			},
 			OnStoppedLeading: func() {

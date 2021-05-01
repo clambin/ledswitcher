@@ -151,6 +151,12 @@ func (c *Controller) register() error {
 		return errors.New("no leader found")
 	}
 
+	if c.leaderURL == c.MyURL {
+		log.Debug("we are the leader. direct registration")
+		c.registerClient(c.MyURL)
+		return nil
+	}
+
 	body := fmt.Sprintf(`{ "url": "%s" }`, c.MyURL)
 	req, _ := http.NewRequest(http.MethodPost, c.leaderURL+"/register", bytes.NewBufferString(body))
 
