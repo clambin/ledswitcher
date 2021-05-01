@@ -1,30 +1,34 @@
 package main
 
 import (
-	"fmt"
+	"context"
 	"github.com/clambin/ledswitcher/internal/controller"
-	"github.com/clambin/ledswitcher/internal/endpoint"
 	"github.com/clambin/ledswitcher/internal/led"
 	"github.com/clambin/ledswitcher/internal/server"
 	"github.com/clambin/ledswitcher/internal/version"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/alecthomas/kingpin.v2"
 	"os"
-	"os/signal"
 	"path/filepath"
 	"time"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	clientset "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/leaderelection"
+	"k8s.io/client-go/tools/leaderelection/resourcelock"
 )
 
 func main() {
 	var (
-		hostname   string
-		err        error
-		masterHost string
-		masterURL  string
-		rotation   time.Duration
-		port       int
-		ledPath    string
-		debug      bool
+		hostname           string
+		err                error
+		rotation           time.Duration
+		port               int
+		ledPath            string
+		debug              bool
+		leaseLockName      string
+		leaseLockNamespace string
 	)
 	// Parse args
 	a := kingpin.New(filepath.Base(os.Args[0]), "ledswitcher")
@@ -34,8 +38,9 @@ func main() {
 	a.Flag("debug", "Log debug messages").Default("false").BoolVar(&debug)
 	a.Flag("rotation", "Delay of led switching to the next controller").Default("1s").DurationVar(&rotation)
 	a.Flag("port", "Controller listener port").Default("8080").IntVar(&port)
-	a.Flag("master", "Hostname of instance that acts as controller").Required().StringVar(&masterHost)
 	a.Flag("led-path", "path name to the sysfs directory for the LED").Default("/sys/class/leds/led1").StringVar(&ledPath)
+	a.Flag("lock-name", "name of the election lock").Default("ledswitcher").StringVar(&leaseLockName)
+	a.Flag("lock-namespace", "namespace of the election lock").Default("default").StringVar(&leaseLockNamespace)
 
 	if _, err = a.Parse(os.Args[1:]); err != nil {
 		a.Usage(os.Args[1:])
@@ -52,59 +57,97 @@ func main() {
 		log.WithField("err", err).Fatal("unable to determine hostname")
 	}
 
-	// Set up master URL
-	masterURL = fmt.Sprintf("http://%s:%d", masterHost, port)
-
 	// Set up the server
 	s := server.Server{
-		Port:      port,
-		IsMaster:  hostname == masterHost,
-		MasterURL: masterURL,
-		Controller: controller.Controller{
-			Rotation: rotation,
-		},
-		Endpoint: endpoint.Endpoint{
-			Name:      hostname,
-			Hostname:  hostname,
-			Port:      port,
-			MasterURL: masterURL,
-			LEDSetter: &led.RealSetter{
-				LEDPath: ledPath,
-			},
+		Port:       port,
+		Controller: controller.New(hostname, port, rotation),
+		LEDSetter: &led.RealSetter{
+			LEDPath: ledPath,
 		},
 	}
 
-	// If we are the designated master, run the controller
-	if s.IsMaster {
-		log.Infof("server running on %s", hostname)
-		go func() {
-			s.Controller.Run()
-		}()
-	}
-
-	// Run the API server in the background
+	// Run the server in the background
 	go func() { s.Run() }()
 
-	// Register the endpoint
-	s.Endpoint.Register()
+	// leader election uses the Kubernetes API by writing to a
+	// lock object, which can be a LeaseLock object (preferred),
+	// a ConfigMap, or an Endpoints (deprecated) object.
+	// Conflicting writes are detected and each client handles those actions
+	// independently.
+	var cfg *rest.Config
+	if cfg, err = rest.InClusterConfig(); err != nil {
+		log.WithField("err", err).Fatal("rest.InClusterConfig failed")
+	}
+	client := clientset.NewForConfigOrDie(cfg)
 
-	// Re-register periodically in case we lose connection
-	refresh := time.NewTicker(30 * time.Second)
+	// use a Go context so we can tell the leader election code when we
+	// want to step down
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	interrupt := make(chan os.Signal, 1)
-	signal.Notify(interrupt, os.Interrupt)
-
-loop:
-	for {
-		select {
-		case <-refresh.C:
-			s.Endpoint.Register()
-		case <-interrupt:
-			break loop
-		}
+	// we use the Lease lock type since edits to Leases are less common
+	// and fewer objects in the cluster watch "all Leases".
+	lock := &resourcelock.LeaseLock{
+		LeaseMeta: metav1.ObjectMeta{
+			Name:      leaseLockName,
+			Namespace: leaseLockNamespace,
+		},
+		Client: client.CoordinationV1(),
+		LockConfig: resourcelock.ResourceLockConfig{
+			Identity: hostname,
+		},
 	}
 
-	_ = s.Endpoint.LEDSetter.SetLED(true)
+	// start the leader election code loop
+	leaderelection.RunOrDie(ctx, leaderelection.LeaderElectionConfig{
+		Lock: lock,
+		// IMPORTANT: you MUST ensure that any code you have that
+		// is protected by the lease must terminate **before**
+		// you call cancel. Otherwise, you could have a background
+		// loop still running and another process could
+		// get elected before your background loop finished, violating
+		// the stated goal of the lease.
+		ReleaseOnCancel: true,
+		LeaseDuration:   60 * time.Second,
+		RenewDeadline:   15 * time.Second,
+		RetryPeriod:     5 * time.Second,
+		Callbacks: leaderelection.LeaderCallbacks{
+			OnStartedLeading: func(ctx context.Context) {
+				// we are the leader
+				log.WithField("id", hostname).Info("we are the leader")
+				s.Controller.NewLeader <- s.Controller.MyURL
+
+				tickTimer := time.NewTimer(rotation)
+			loop:
+				for {
+					select {
+					case <-tickTimer.C:
+						s.Controller.Tick <- struct{}{}
+					case <-ctx.Done():
+						break loop
+					}
+				}
+				tickTimer.Stop()
+
+				// is this needed? how does OnNewLeader factor into this?
+				s.Controller.NewLeader <- ""
+			},
+			OnStoppedLeading: func() {
+				// we can do cleanup here
+				log.WithField("id", hostname).Info("leader lost")
+				// os.Exit(0)
+			},
+			OnNewLeader: func(identity string) {
+				log.WithField("id", identity).Info("new leader elected")
+				// we're notified when new leader elected
+				s.Controller.NewLeader <- identity
+				// if identity == hostname {
+				// I just got the lock
+				//	return
+				//}
+			},
+		},
+	})
 
 	log.Info("exiting")
 }

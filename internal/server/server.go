@@ -4,12 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/clambin/ledswitcher/internal/controller"
-	"github.com/clambin/ledswitcher/internal/endpoint"
+	"github.com/clambin/ledswitcher/internal/led"
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
+	"io"
 	"io/ioutil"
 	"net/http"
 )
@@ -17,10 +18,8 @@ import (
 // Server runs the REST API Server and dispatches requests to the led or controller
 type Server struct {
 	Port       int
-	IsMaster   bool
-	MasterURL  string
-	Controller controller.Controller
-	Endpoint   endpoint.Endpoint
+	Controller *controller.Controller
+	LEDSetter  led.Setter
 }
 
 // Run the Server instance. Dispatch requests to the controller or led
@@ -29,15 +28,15 @@ func (server *Server) Run() {
 	r.Use(prometheusMiddleware)
 	r.Path("/metrics").Handler(promhttp.Handler())
 
-	r.HandleFunc("/led", server.handleLED)
-	if server.IsMaster {
-		r.HandleFunc("/register", server.handleRegisterClient)
-	}
+	r.HandleFunc("/led", server.handleLED).Methods(http.MethodPost)
+	r.HandleFunc("/register", server.handleRegisterClient).Methods(http.MethodPost)
 
 	address := ":8080"
 	if server.Port > 0 {
 		address = fmt.Sprintf(":%d", server.Port)
 	}
+
+	go server.Controller.Run()
 
 	log.Fatal(http.ListenAndServe(address, r))
 }
@@ -47,29 +46,25 @@ func (server *Server) handleRegisterClient(w http.ResponseWriter, req *http.Requ
 		err     error
 		body    []byte
 		request struct {
-			ClientName string `json:"name"`
-			ClientURL  string `json:"url"`
+			ClientURL string `json:"url"`
 		}
 	)
-	defer req.Body.Close()
+	defer func(Body io.ReadCloser) {
+		_ = Body.Close()
+	}(req.Body)
 
 	if body, err = ioutil.ReadAll(req.Body); err == nil {
-		err = json.Unmarshal(body, &request)
-
-		if err != nil {
+		if err = json.Unmarshal(body, &request); err == nil {
+			server.Controller.NewClient <- request.ClientURL
+			log.WithFields(log.Fields{
+				"url": request.ClientURL,
+			}).Debug("/register")
+		} else {
 			log.WithFields(log.Fields{
 				"err":  err,
 				"body": string(body),
 			}).Debug("failed to parse request")
 		}
-	}
-
-	if err == nil {
-		server.Controller.RegisterClient(request.ClientName, request.ClientURL)
-		log.WithFields(log.Fields{
-			"name": request.ClientName,
-			"url":  request.ClientURL,
-		}).Debug("/register")
 	}
 
 	if err == nil {
@@ -88,7 +83,9 @@ func (server *Server) handleLED(w http.ResponseWriter, req *http.Request) {
 			State bool `json:"state"`
 		}
 	)
-	defer req.Body.Close()
+	defer func(Body io.ReadCloser) {
+		_ = Body.Close()
+	}(req.Body)
 
 	log.Debug("/led")
 
@@ -97,7 +94,13 @@ func (server *Server) handleLED(w http.ResponseWriter, req *http.Request) {
 	}
 
 	if err == nil {
-		err = server.Endpoint.LEDSetter.SetLED(request.State)
+		err = server.LEDSetter.SetLED(request.State)
+
+		log.WithFields(log.Fields{
+			"err":    err,
+			"state":  request.State,
+			"client": server.Controller.MyURL,
+		}).Debug("SetLED")
 	}
 
 	if err == nil {

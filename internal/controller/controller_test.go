@@ -1,5 +1,6 @@
 package controller_test
 
+/*
 import (
 	"github.com/clambin/ledswitcher/internal/controller"
 	"github.com/stretchr/testify/assert"
@@ -59,3 +60,4 @@ func TestCleanup(t *testing.T) {
 	assert.Equal(t, "", nextHost)
 	assert.Equal(t, "", nextURL)
 }
+*/

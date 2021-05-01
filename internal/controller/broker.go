@@ -1,50 +1,41 @@
 package controller
 
 import (
+	log "github.com/sirupsen/logrus"
 	"sort"
 )
 
 type clientEntry struct {
-	clientURL string
-	failures  int
+	failures int
 }
 
 // RegisterClient registers the led
-func (c *Controller) RegisterClient(clientName string, clientURL string) {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-
-	if c.clients == nil {
-		c.clients = make(map[string]clientEntry)
-	}
-	c.clients[clientName] = clientEntry{clientURL: clientURL}
+func (c *Controller) registerClient(clientURL string) {
+	c.clients[clientURL] = clientEntry{}
+	log.WithField("client", clientURL).Debug("new client")
 }
 
 // GetActiveClient returns the name & url of the active client
-func (c *Controller) GetActiveClient() (name, url string) {
-	name = c.activeClient
-	if active, ok := c.clients[name]; ok {
-		url = active.clientURL
-	} else {
+func (c *Controller) getActiveClient() (url string) {
+	url = c.activeClient
+	// check if the active URL hasn't been removed due to too many failures
+	if _, ok := c.clients[url]; ok == false {
 		url = ""
 	}
 
 	return
 }
 
-// NextClient returns the next Client Name & URL that should be switched on
-func (c *Controller) NextClient() {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-
+// NextClient sets the next Client Name & URL that should be switched on
+func (c *Controller) nextClient() {
 	// Remove unavailable clients
 	c.cleanup()
 
 	// find the current active led and move to the next one
 	// if no active clients exist, next led is empty
 	if len(c.clients) > 0 {
-		// list of all clients
-		clients := make([]string, 0)
+		// sorted list of all clients
+		clients := make([]string, 0, len(c.clients))
 		for client := range c.clients {
 			clients = append(clients, client)
 		}
