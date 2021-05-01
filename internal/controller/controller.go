@@ -38,15 +38,13 @@ func New(hostname string, port int, rotation time.Duration) *Controller {
 }
 
 func (c *Controller) Run() {
-	registerTimer := time.NewTimer(10 * time.Millisecond)
+	registerTimer := time.NewTimer(100 * time.Millisecond)
 	for {
 		select {
 		case <-c.Tick:
 			c.advance()
 		case <-registerTimer.C:
-			err := c.register()
-
-			if err == nil {
+			if err := c.register(); err == nil {
 				c.setRegistered(true)
 				// once we're registered, only re-register every 5 minutes
 				// TODO: alternatively, re-register when a new leader gets elected
@@ -57,9 +55,10 @@ func (c *Controller) Run() {
 			}
 		case newLeader := <-c.NewLeader:
 			c.leaderURL = newLeader
-			log.WithField("leader", newLeader).Debug("new leader")
+			log.WithField("leader", newLeader).Debug("controller found new leader")
 		case newClient := <-c.NewClient:
 			c.registerClient(newClient)
+			log.WithField("client", newClient).Debug("controller found new client")
 		}
 	}
 }
@@ -139,6 +138,7 @@ func (c *Controller) register() error {
 	)
 
 	if c.leaderURL == "" {
+		log.Debug("skipping registration. no leader set")
 		return errors.New("no leader found")
 	}
 
