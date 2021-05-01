@@ -6,6 +6,8 @@ import (
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	"net/http"
+	"sort"
+	"strings"
 	"sync"
 	"time"
 )
@@ -77,6 +79,13 @@ func (c *Controller) setRegistered(registered bool) {
 
 func (c *Controller) advance() {
 	var activeURL string
+
+	clients := make([]string, 0)
+	for client := range c.clients {
+		clients = append(clients, client)
+	}
+	sort.Strings(clients)
+	log.WithField("clients", strings.Join(clients, ",")).Debug("tick")
 
 	// switch off the active client
 	if activeURL = c.getActiveClient(); activeURL != "" {

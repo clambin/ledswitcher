@@ -114,9 +114,7 @@ func main() {
 		Callbacks: leaderelection.LeaderCallbacks{
 			OnStartedLeading: func(ctx context.Context) {
 				// we are the leader
-				log.WithField("id", hostname).Info("we are the leader")
-				s.Controller.NewLeader <- s.Controller.MyURL
-				log.Debug("entering ticker loop")
+				log.WithField("id", hostname).Info("we are the leader. entering ticker loop")
 
 				tickTimer := time.NewTimer(rotation)
 			loop:
@@ -132,6 +130,7 @@ func main() {
 
 				// is this needed? how does OnNewLeader factor into this?
 				s.Controller.NewLeader <- ""
+				log.Debug("exiting ticker loop")
 			},
 			OnStoppedLeading: func() {
 				// we can do cleanup here
