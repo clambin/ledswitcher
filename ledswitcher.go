@@ -94,7 +94,7 @@ func main() {
 		},
 		Client: client.CoordinationV1(),
 		LockConfig: resourcelock.ResourceLockConfig{
-			Identity: hostname,
+			Identity: s.Controller.MyURL,
 		},
 	}
 
@@ -116,6 +116,7 @@ func main() {
 				// we are the leader
 				log.WithField("id", hostname).Info("we are the leader")
 				s.Controller.NewLeader <- s.Controller.MyURL
+				log.Debug("entering ticker loop")
 
 				tickTimer := time.NewTimer(rotation)
 			loop:
