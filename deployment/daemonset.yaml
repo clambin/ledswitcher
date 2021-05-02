@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: ledswitcher
+  labels:
+    app: ledswitcher
+spec:
+  selector:
+    matchLabels:
+      app: ledswitcher
+  template:
+    metadata:
+      labels:
+        app: ledswitcher
+    spec:
+      automountServiceAccountToken: true
+      serviceAccountName: ledswitcher
+      hostNetwork: true
+      volumes:
+        - name: hostsys
+          hostPath:
+            path: /sys
+      containers:
+        - name: ledswitcher
+          image: clambin/ledswitcher
+          args:
+            - '--port=8088'
+            - '--led-path=/host/sys/class/leds/led1'
+          volumeMounts:
+            - name: hostsys
+              mountPath: /host/sys
+---
