@@ -1,63 +1,60 @@
-package controller_test
+package controller
 
-/*
 import (
-	"github.com/clambin/ledswitcher/internal/controller"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
 func TestRotation(t *testing.T) {
-	s := controller.Controller{}
+	s := New("localhost", 1000)
+	//go s.Run()
 
-	s.RegisterClient("client1", "")
-	s.RegisterClient("client2", "")
-	s.RegisterClient("client3", "")
+	//s.NewLeader <- "localhost"
+	s.registerClient("client1")
+	s.registerClient("client2")
+	s.registerClient("client3")
 
-	s.NextClient()
-	next, _ := s.GetActiveClient()
-	assert.Equal(t, "client1", next)
-	s.RegisterClient("client4", "")
-	s.NextClient()
-	next, _ = s.GetActiveClient()
-	assert.Equal(t, "client2", next)
-	s.NextClient()
-	next, _ = s.GetActiveClient()
-	assert.Equal(t, "client3", next)
-	s.NextClient()
-	next, _ = s.GetActiveClient()
-	assert.Equal(t, "client4", next)
-	s.NextClient()
-	next, _ = s.GetActiveClient()
-	assert.Equal(t, "client1", next)
-	s.NextClient()
-	next, _ = s.GetActiveClient()
-	assert.Equal(t, "client2", next)
-	s.NextClient()
-	next, _ = s.GetActiveClient()
-	assert.Equal(t, "client3", next)
-	s.NextClient()
-	next, _ = s.GetActiveClient()
-	assert.Equal(t, "client4", next)
-	s.NextClient()
-	next, _ = s.GetActiveClient()
-	assert.Equal(t, "client1", next)
+	s.nextClient()
+	assert.Equal(t, "client1", s.getActiveClient())
+
+	s.registerClient("client4")
+	s.nextClient()
+	assert.Equal(t, "client2", s.getActiveClient())
+
+	s.nextClient()
+	assert.Equal(t, "client3", s.getActiveClient())
+
+	s.nextClient()
+	assert.Equal(t, "client4", s.getActiveClient())
+
+	s.nextClient()
+	assert.Equal(t, "client1", s.getActiveClient())
+
+	s.nextClient()
+	assert.Equal(t, "client2", s.getActiveClient())
+
+	s.nextClient()
+	assert.Equal(t, "client3", s.getActiveClient())
+
+	s.nextClient()
+	assert.Equal(t, "client4", s.getActiveClient())
+
+	s.nextClient()
+	assert.Equal(t, "client1", s.getActiveClient())
+
 }
 
 func TestCleanup(t *testing.T) {
-	s := controller.Controller{}
+	s := New("localhost", 10000)
 
-	s.RegisterClient("client1", "http://localhost:10000")
-	s.Advance()
-	s.Advance()
-	s.Advance()
-	s.Advance()
-	s.Advance()
-	s.Advance()
+	s.registerClient("http://localhost:10000")
+	s.advance()
+	s.advance()
+	s.advance()
+	s.advance()
+	s.advance()
+	s.advance()
 
-	s.NextClient()
-	nextHost, nextURL := s.GetActiveClient()
-	assert.Equal(t, "", nextHost)
-	assert.Equal(t, "", nextURL)
+	s.nextClient()
+	assert.Equal(t, "", s.getActiveClient())
 }
-*/

@@ -14,17 +14,15 @@ import (
 
 // Controller structure
 type Controller struct {
-	Tick      chan struct{}
-	NewLeader chan string
-	NewClient chan string
-	MyURL     string
-
+	Tick         chan struct{}
+	NewLeader    chan string
+	NewClient    chan string
+	MyURL        string
 	leaderURL    string
 	clients      map[string]clientEntry
 	activeClient string
-
-	registered bool
-	lock       sync.RWMutex
+	registered   bool
+	lock         sync.RWMutex
 }
 
 func New(hostname string, port int) *Controller {
@@ -38,21 +36,21 @@ func New(hostname string, port int) *Controller {
 }
 
 func (c *Controller) Run() {
-	registerTimer := time.NewTimer(100 * time.Millisecond)
+	// wait for a leader to emerge
+	// "I've got a bad feeling about this"
+	c.leaderURL = <-c.NewLeader
+	err := c.register()
+	c.setRegistered(err == nil)
+
+	// main loop
+	registerTicker := time.NewTicker(30 * time.Second)
 	for {
 		select {
 		case <-c.Tick:
 			c.advance()
-		case <-registerTimer.C:
-			if err := c.register(); err == nil {
-				c.setRegistered(true)
-				// once we're registered, only re-register every 5 minutes
-				// TODO: alternatively, re-register when a new leader gets elected
-				registerTimer.Stop()
-				registerTimer = time.NewTimer(5 * time.Minute)
-			} else {
-				c.setRegistered(false)
-			}
+		case <-registerTicker.C:
+			err = c.register()
+			c.setRegistered(err == nil)
 		case newLeader := <-c.NewLeader:
 			if c.leaderURL != newLeader {
 				log.WithField("leader", newLeader).Debug("controller found new leader")
@@ -60,7 +58,6 @@ func (c *Controller) Run() {
 			}
 		case newClient := <-c.NewClient:
 			c.registerClient(newClient)
-			log.WithField("client", newClient).Debug("controller found new client")
 		}
 	}
 }
@@ -93,7 +90,7 @@ func (c *Controller) advance() {
 	// switch off the active client
 	if activeURL = c.getActiveClient(); activeURL != "" {
 		err := c.setClientLED(activeURL, false)
-		log.WithFields(log.Fields{"client": activeURL, "err": err}).Debug("switch off led")
+		log.WithFields(log.Fields{"client": activeURL, "err": err}).Debug("OFF")
 	}
 
 	// determine the next client
@@ -110,7 +107,7 @@ func (c *Controller) advance() {
 			c.clients[c.activeClient] = activeClient
 		}
 
-		log.WithFields(log.Fields{"client": activeURL, "err": err}).Debug("switch on led")
+		log.WithFields(log.Fields{"client": activeURL, "err": err}).Debug("ON")
 	}
 }
 
