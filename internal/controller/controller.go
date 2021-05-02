@@ -56,8 +56,10 @@ func (c *Controller) Run() {
 				c.setRegistered(false)
 			}
 		case newLeader := <-c.NewLeader:
-			c.leaderURL = newLeader
-			log.WithField("leader", newLeader).Debug("controller found new leader")
+			if c.leaderURL != newLeader {
+				log.WithField("leader", newLeader).Debug("controller found new leader")
+				c.leaderURL = newLeader
+			}
 		case newClient := <-c.NewClient:
 			c.registerClient(newClient)
 			log.WithField("client", newClient).Debug("controller found new client")

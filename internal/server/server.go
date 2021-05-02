@@ -87,7 +87,7 @@ func (server *Server) handleLED(w http.ResponseWriter, req *http.Request) {
 		_ = Body.Close()
 	}(req.Body)
 
-	log.Debug("/led")
+	log.WithField("client", server.Controller.MyURL).Debug("/led")
 
 	if body, err = ioutil.ReadAll(req.Body); err == nil {
 		err = json.Unmarshal(body, &request)

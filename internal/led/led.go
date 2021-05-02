@@ -1,7 +1,6 @@
 package led
 
 import (
-	log "github.com/sirupsen/logrus"
 	"io/ioutil"
 	"path"
 )
@@ -12,7 +11,7 @@ type Setter interface {
 	GetLED() bool
 }
 
-// Setter structure
+// RealSetter structure
 type RealSetter struct {
 	LEDPath string
 }
@@ -24,13 +23,7 @@ func (setter *RealSetter) SetLED(state bool) error {
 	}
 
 	fullPath := path.Join(setter.LEDPath, "brightness")
-	err := ioutil.WriteFile(fullPath, []byte(data), 0640)
-	log.WithFields(log.Fields{
-		"err":   err,
-		"state": state,
-	}).Debug("SetLED")
-
-	return err
+	return ioutil.WriteFile(fullPath, []byte(data), 0640)
 }
 
 func (setter *RealSetter) GetLED() (state bool) {

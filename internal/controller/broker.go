@@ -11,8 +11,13 @@ type clientEntry struct {
 
 // RegisterClient registers the led
 func (c *Controller) registerClient(clientURL string) {
-	c.clients[clientURL] = clientEntry{}
-	log.WithField("client", clientURL).Debug("new client")
+	if entry, ok := c.clients[clientURL]; ok {
+		entry.failures = 0
+		c.clients[clientURL] = entry
+	} else {
+		c.clients[clientURL] = clientEntry{}
+		log.WithField("client", clientURL).Debug("new client")
+	}
 }
 
 // GetActiveClient returns the name & url of the active client
