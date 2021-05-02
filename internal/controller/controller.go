@@ -7,7 +7,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"net/http"
 	"sort"
-	"strings"
 	"sync"
 	"time"
 )
@@ -85,8 +84,6 @@ func (c *Controller) listClients() (clients []string) {
 func (c *Controller) advance() {
 	var activeURL string
 
-	log.WithField("clients", strings.Join(c.listClients(), ",")).Debug("tick")
-
 	// switch off the active client
 	if activeURL = c.getActiveClient(); activeURL != "" {
 		err := c.setClientLED(activeURL, false)
@@ -145,11 +142,6 @@ func (c *Controller) register() error {
 		err  error
 		resp *http.Response
 	)
-
-	if c.leaderURL == "" {
-		log.Debug("skipping registration. no leader set")
-		return errors.New("no leader found")
-	}
 
 	if c.leaderURL == c.MyURL {
 		log.Debug("we are the leader. direct registration")

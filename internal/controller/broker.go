@@ -16,7 +16,7 @@ func (c *Controller) registerClient(clientURL string) {
 		c.clients[clientURL] = entry
 	} else {
 		c.clients[clientURL] = clientEntry{}
-		log.WithField("client", clientURL).Debug("new client")
+		log.WithFields(log.Fields{"client": clientURL, "clients": c.listClients()}).Info("new client")
 	}
 }
 
