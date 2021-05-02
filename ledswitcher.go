@@ -9,6 +9,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/alecthomas/kingpin.v2"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"time"
 
@@ -29,7 +30,9 @@ func main() {
 		debug              bool
 		leaseLockName      string
 		leaseLockNamespace string
+		leader             string
 	)
+
 	// Parse args
 	a := kingpin.New(filepath.Base(os.Args[0]), "ledswitcher")
 	a.Version(version.BuildVersion)
@@ -41,6 +44,7 @@ func main() {
 	a.Flag("led-path", "path name to the sysfs directory for the LED").Default("/sys/class/leds/led1").StringVar(&ledPath)
 	a.Flag("lock-name", "name of the election lock").Default("ledswitcher").StringVar(&leaseLockName)
 	a.Flag("lock-namespace", "namespace of the election lock").Default("default").StringVar(&leaseLockNamespace)
+	a.Flag("leader", "node to act as leader (if empty, k8s leader election will be used").Default("").StringVar(&leader)
 
 	if _, err = a.Parse(os.Args[1:]); err != nil {
 		a.Usage(os.Args[1:])
@@ -62,20 +66,61 @@ func main() {
 	s := server.Server{
 		Port:       port,
 		Controller: controller.New(hostname, port),
-		LEDSetter: &led.RealSetter{
-			LEDPath: ledPath,
-		},
+		LEDSetter:  &led.RealSetter{LEDPath: ledPath},
+	}
+	go s.Run()
+
+	if leader == "" {
+		runWithLeaderElection(leaseLockName, leaseLockNamespace, hostname, s.Controller, rotation)
+	} else {
+		runWithoutLeaderElection(s.Controller, rotation, hostname == leader)
 	}
 
-	// Run the server in the background
-	go func() { s.Run() }()
+	log.Info("exiting")
+}
 
+func run(ctx context.Context, controllr *controller.Controller, rotation time.Duration, isLeader bool) {
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, os.Interrupt)
+
+	if isLeader {
+		log.WithField("rotation", rotation).Info("leader started")
+
+		ticker := time.NewTicker(rotation)
+	loop:
+		for {
+			select {
+			case <-ticker.C:
+				controllr.Tick <- struct{}{}
+			case <-ctx.Done():
+				break loop
+			case <-interrupt:
+				break loop
+			}
+		}
+		log.Debug("leader stopped")
+	} else {
+		<-interrupt
+	}
+}
+
+func runWithoutLeaderElection(controllr *controller.Controller, rotation time.Duration, isLeader bool) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	run(ctx, controllr, rotation, isLeader)
+}
+
+func runWithLeaderElection(leaseLockName, leaseLockNamespace, hostname string, controllr *controller.Controller, rotation time.Duration) {
+	var (
+		err error
+		cfg *rest.Config
+	)
 	// leader election uses the Kubernetes API by writing to a
 	// lock object, which can be a LeaseLock object (preferred),
 	// a ConfigMap, or an Endpoints (deprecated) object.
 	// Conflicting writes are detected and each client handles those actions
 	// independently.
-	var cfg *rest.Config
 	if cfg, err = rest.InClusterConfig(); err != nil {
 		log.WithField("err", err).Fatal("rest.InClusterConfig failed")
 	}
@@ -95,7 +140,7 @@ func main() {
 		},
 		Client: client.CoordinationV1(),
 		LockConfig: resourcelock.ResourceLockConfig{
-			Identity: s.Controller.MyURL,
+			Identity: controllr.MyURL,
 		},
 	}
 
@@ -115,40 +160,17 @@ func main() {
 		Callbacks: leaderelection.LeaderCallbacks{
 			OnStartedLeading: func(ctx context.Context) {
 				// we are the leader
-				log.WithFields(log.Fields{
-					"node":     hostname,
-					"rotation": rotation,
-				}).Info("leader started")
-
-				ticker := time.NewTicker(rotation)
-			loop:
-				for {
-					select {
-					case <-ticker.C:
-						s.Controller.Tick <- struct{}{}
-					case <-ctx.Done():
-						break loop
-					}
-				}
-				ticker.Stop()
-				log.WithField("node", hostname).Debug("leader stopped")
+				run(ctx, controllr, rotation, true)
 			},
 			OnStoppedLeading: func() {
-				// we can do cleanup here
 				log.WithField("id", hostname).Debug("leader lost")
 				// os.Exit(0)
 			},
 			OnNewLeader: func(identity string) {
-				log.WithField("id", identity).Info("new leader elected")
 				// we're notified when new leader elected
-				s.Controller.NewLeader <- identity
-				// if identity == hostname {
-				// I just got the lock
-				//	return
-				//}
+				log.WithField("id", identity).Info("new leader elected")
+				controllr.NewLeader <- identity
 			},
 		},
 	})
-
-	log.Info("exiting")
 }
