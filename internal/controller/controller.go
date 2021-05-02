@@ -49,7 +49,7 @@ func (c *Controller) Run() {
 				// once we're registered, only re-register every 5 minutes
 				// TODO: alternatively, re-register when a new leader gets elected
 				registerTimer.Stop()
-				registerTimer = time.NewTimer(5 * time.Second)
+				registerTimer = time.NewTimer(5 * time.Minute)
 			} else {
 				c.setRegistered(false)
 			}
@@ -77,15 +77,18 @@ func (c *Controller) setRegistered(registered bool) {
 	c.registered = registered
 }
 
-func (c *Controller) advance() {
-	var activeURL string
-
-	clients := make([]string, 0)
+func (c *Controller) listClients() (clients []string) {
 	for client := range c.clients {
 		clients = append(clients, client)
 	}
 	sort.Strings(clients)
-	log.WithField("clients", strings.Join(clients, ",")).Debug("tick")
+	return
+}
+
+func (c *Controller) advance() {
+	var activeURL string
+
+	log.WithField("clients", strings.Join(c.listClients(), ",")).Debug("tick")
 
 	// switch off the active client
 	if activeURL = c.getActiveClient(); activeURL != "" {

@@ -47,7 +47,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	log.SetReportCaller(true)
+	// log.SetReportCaller(true)
 	log.WithField("version", version.BuildVersion).Info("starting")
 	if debug {
 		log.SetLevel(log.DebugLevel)
@@ -116,29 +116,26 @@ func main() {
 			OnStartedLeading: func(ctx context.Context) {
 				// we are the leader
 				log.WithFields(log.Fields{
-					"id":       s.Controller.MyURL,
+					"node":     hostname,
 					"rotation": rotation,
-				}).Info("entering ticker loop")
+				}).Info("leader started")
 
 				ticker := time.NewTicker(rotation)
 			loop:
 				for {
 					select {
 					case <-ticker.C:
-						log.Debug("pre-tick")
 						s.Controller.Tick <- struct{}{}
-						log.Debug("post-tick")
 					case <-ctx.Done():
-						log.Debug("breaking loop")
 						break loop
 					}
 				}
 				ticker.Stop()
-				log.Debug("exiting ticker loop")
+				log.WithField("node", hostname).Debug("leader stopped")
 			},
 			OnStoppedLeading: func() {
 				// we can do cleanup here
-				log.WithField("id", hostname).Info("leader lost")
+				log.WithField("id", hostname).Debug("leader lost")
 				// os.Exit(0)
 			},
 			OnNewLeader: func(identity string) {
