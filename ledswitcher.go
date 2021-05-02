@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"github.com/clambin/ledswitcher/internal/controller"
 	"github.com/clambin/ledswitcher/internal/led"
 	"github.com/clambin/ledswitcher/internal/server"
@@ -73,7 +74,7 @@ func main() {
 	if leader == "" {
 		runWithLeaderElection(leaseLockName, leaseLockNamespace, hostname, s.Controller, rotation)
 	} else {
-		runWithoutLeaderElection(s.Controller, rotation, hostname == leader)
+		runWithoutLeaderElection(s.Controller, rotation, fmt.Sprintf("http://%s:%d", leader, port), hostname == leader)
 	}
 
 	log.Info("exiting")
@@ -104,10 +105,11 @@ func run(ctx context.Context, controllr *controller.Controller, rotation time.Du
 	}
 }
 
-func runWithoutLeaderElection(controllr *controller.Controller, rotation time.Duration, isLeader bool) {
+func runWithoutLeaderElection(controllr *controller.Controller, rotation time.Duration, leaderURL string, isLeader bool) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	controllr.NewLeader <- leaderURL
 	run(ctx, controllr, rotation, isLeader)
 }
 
