@@ -120,11 +120,11 @@ func main() {
 					"rotation": rotation,
 				}).Info("entering ticker loop")
 
-				tickTimer := time.NewTimer(rotation)
+				ticker := time.NewTicker(rotation)
 			loop:
 				for {
 					select {
-					case <-tickTimer.C:
+					case <-ticker.C:
 						log.Debug("pre-tick")
 						s.Controller.Tick <- struct{}{}
 						log.Debug("post-tick")
@@ -133,7 +133,7 @@ func main() {
 						break loop
 					}
 				}
-				tickTimer.Stop()
+				ticker.Stop()
 				log.Debug("exiting ticker loop")
 			},
 			OnStoppedLeading: func() {
