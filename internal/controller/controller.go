@@ -14,7 +14,6 @@ import (
 
 // Controller structure
 type Controller struct {
-	Rotation  time.Duration
 	Tick      chan struct{}
 	NewLeader chan string
 	NewClient chan string
@@ -28,9 +27,8 @@ type Controller struct {
 	lock       sync.RWMutex
 }
 
-func New(hostname string, port int, rotation time.Duration) *Controller {
+func New(hostname string, port int) *Controller {
 	return &Controller{
-		Rotation:  rotation,
 		Tick:      make(chan struct{}),
 		NewLeader: make(chan string),
 		NewClient: make(chan string, 5),

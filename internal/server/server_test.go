@@ -15,17 +15,17 @@ func TestServer(t *testing.T) {
 
 	servers = append(servers, &server.Server{
 		Port:       10000,
-		Controller: controller.New("localhost", 10000, 250*time.Millisecond),
+		Controller: controller.New("localhost", 10000),
 		LEDSetter:  &MockLEDSetter{},
 	})
 	servers = append(servers, &server.Server{
 		Port:       10001,
-		Controller: controller.New("localhost", 10001, 250*time.Millisecond),
+		Controller: controller.New("localhost", 10001),
 		LEDSetter:  &MockLEDSetter{},
 	})
 	servers = append(servers, &server.Server{
 		Port:       10002,
-		Controller: controller.New("localhost", 10002, 250*time.Millisecond),
+		Controller: controller.New("localhost", 10002),
 		LEDSetter:  &MockLEDSetter{},
 	})
 

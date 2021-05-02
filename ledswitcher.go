@@ -61,7 +61,7 @@ func main() {
 	// Set up the server
 	s := server.Server{
 		Port:       port,
-		Controller: controller.New(hostname, port, rotation),
+		Controller: controller.New(hostname, port),
 		LEDSetter: &led.RealSetter{
 			LEDPath: ledPath,
 		},
@@ -115,7 +115,10 @@ func main() {
 		Callbacks: leaderelection.LeaderCallbacks{
 			OnStartedLeading: func(ctx context.Context) {
 				// we are the leader
-				log.WithField("id", s.Controller.MyURL).Info("entering ticker loop")
+				log.WithFields(log.Fields{
+					"id":       s.Controller.MyURL,
+					"rotation": rotation,
+				}).Info("entering ticker loop")
 
 				tickTimer := time.NewTimer(rotation)
 			loop:
