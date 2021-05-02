@@ -51,7 +51,7 @@ func (c *Controller) Run() {
 				// once we're registered, only re-register every 5 minutes
 				// TODO: alternatively, re-register when a new leader gets elected
 				registerTimer.Stop()
-				registerTimer = time.NewTimer(5 * time.Minute)
+				registerTimer = time.NewTimer(5 * time.Second)
 			} else {
 				c.setRegistered(false)
 			}

@@ -126,6 +126,7 @@ func main() {
 						s.Controller.Tick <- struct{}{}
 						log.Debug("post-tick")
 					case <-ctx.Done():
+						log.Debug("breaking loop")
 						break loop
 					}
 				}
