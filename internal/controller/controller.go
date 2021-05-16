@@ -2,7 +2,6 @@ package controller
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	"net/http"
@@ -42,7 +41,7 @@ func (c *Controller) Run() {
 	c.setRegistered(err == nil)
 
 	// main loop
-	registerTicker := time.NewTicker(30 * time.Second)
+	registerTicker := time.NewTicker(5 * time.Minute)
 	for {
 		select {
 		case <-c.Tick:
@@ -109,20 +108,15 @@ func (c *Controller) advance() {
 }
 
 func (c *Controller) setClientLED(clientURL string, state bool) error {
-	fullURL := fmt.Sprintf("%s/led", clientURL)
-
 	body := fmt.Sprintf(`{ "state": %v }`, state)
-	req, _ := http.NewRequest(http.MethodPost, fullURL, bytes.NewBufferString(body))
+	req, _ := http.NewRequest(http.MethodPost, clientURL+"/led", bytes.NewBufferString(body))
 
 	httpClient := &http.Client{}
 	resp, err := httpClient.Do(req)
 
 	if err == nil {
 		if resp.StatusCode != http.StatusOK {
-			err = errors.New(fmt.Sprintf("%d - %s",
-				resp.StatusCode,
-				resp.Status,
-			))
+			err = fmt.Errorf("%d - %s", resp.StatusCode, resp.Status)
 		}
 		_ = resp.Body.Close()
 	}
@@ -133,6 +127,8 @@ func (c *Controller) setClientLED(clientURL string, state bool) error {
 			"url": clientURL,
 		}).Warning("failed to contact endpoint to set LED")
 	}
+
+	log.WithFields(log.Fields{"err": err, "client": clientURL, "state": state}).Debug("setLED")
 
 	return err
 }
@@ -155,17 +151,15 @@ func (c *Controller) register() error {
 	httpClient := &http.Client{}
 	resp, err = httpClient.Do(req)
 
-	if err != nil {
-		log.WithField("err", err).Warning("failed to register")
-	} else {
+	if err == nil {
 		if resp.StatusCode != http.StatusOK {
-			log.WithFields(log.Fields{
-				"code":   resp.StatusCode,
-				"status": resp.Status,
-			}).Warning("failed to register")
-			err = fmt.Errorf("failed to register: %d - %s", resp.StatusCode, resp.Status)
+			err = fmt.Errorf("%d - %s", resp.StatusCode, resp.Status)
 		}
 		_ = resp.Body.Close()
+	}
+
+	if err != nil {
+		log.WithField("err", err).Warning("failed to register")
 	}
 
 	log.WithFields(log.Fields{"err": err, "client": c.MyURL}).Debug("register")
