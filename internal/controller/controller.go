@@ -116,7 +116,7 @@ func (c *Controller) setClientLED(clientURL string, state bool) error {
 
 	if err == nil {
 		if resp.StatusCode != http.StatusOK {
-			err = fmt.Errorf("%d - %s", resp.StatusCode, resp.Status)
+			err = fmt.Errorf("%s", resp.Status)
 		}
 		_ = resp.Body.Close()
 	}
@@ -153,7 +153,7 @@ func (c *Controller) register() error {
 
 	if err == nil {
 		if resp.StatusCode != http.StatusOK {
-			err = fmt.Errorf("%d - %s", resp.StatusCode, resp.Status)
+			err = fmt.Errorf("%s", resp.Status)
 		}
 		_ = resp.Body.Close()
 	}
