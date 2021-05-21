@@ -37,8 +37,7 @@ func (c *Controller) Run() {
 	// wait for a leader to emerge
 	// "I've got a bad feeling about this"
 	c.leaderURL = <-c.NewLeader
-	err := c.register()
-	c.setRegistered(err == nil)
+	_ = c.register()
 
 	// main loop
 	registerTicker := time.NewTicker(5 * time.Minute)
@@ -47,12 +46,12 @@ func (c *Controller) Run() {
 		case <-c.Tick:
 			c.advance()
 		case <-registerTicker.C:
-			err = c.register()
-			c.setRegistered(err == nil)
+			_ = c.register()
 		case newLeader := <-c.NewLeader:
 			if c.leaderURL != newLeader {
 				log.WithField("leader", newLeader).Debug("controller found new leader")
 				c.leaderURL = newLeader
+				_ = c.register()
 			}
 		case newClient := <-c.NewClient:
 			c.registerClient(newClient)
@@ -86,7 +85,7 @@ func (c *Controller) advance() {
 	// switch off the active client
 	if activeURL = c.getActiveClient(); activeURL != "" {
 		err := c.setClientLED(activeURL, false)
-		log.WithFields(log.Fields{"client": activeURL, "err": err}).Debug("OFF")
+		log.WithError(err).WithField("client", activeURL).Debug("OFF")
 	}
 
 	// determine the next client
@@ -103,7 +102,7 @@ func (c *Controller) advance() {
 			c.clients[c.activeClient] = activeClient
 		}
 
-		log.WithFields(log.Fields{"client": activeURL, "err": err}).Debug("ON")
+		log.WithError(err).WithField("client", activeURL).Debug("ON")
 	}
 }
 
@@ -122,13 +121,10 @@ func (c *Controller) setClientLED(clientURL string, state bool) error {
 	}
 
 	if err != nil {
-		log.WithFields(log.Fields{
-			"err": err,
-			"url": clientURL,
-		}).Warning("failed to contact endpoint to set LED")
+		log.WithError(err).WithField("url", clientURL).Warning("failed to contact endpoint to set LED")
 	}
 
-	log.WithFields(log.Fields{"err": err, "client": clientURL, "state": state}).Debug("setLED")
+	log.WithError(err).WithFields(log.Fields{"client": clientURL, "state": state}).Debug("setLED")
 
 	return err
 }
@@ -142,26 +138,27 @@ func (c *Controller) register() error {
 	if c.leaderURL == c.MyURL {
 		log.Debug("we are the leader. direct registration")
 		c.registerClient(c.MyURL)
-		return nil
-	}
+	} else {
+		body := fmt.Sprintf(`{ "url": "%s" }`, c.MyURL)
+		req, _ := http.NewRequest(http.MethodPost, c.leaderURL+"/register", bytes.NewBufferString(body))
 
-	body := fmt.Sprintf(`{ "url": "%s" }`, c.MyURL)
-	req, _ := http.NewRequest(http.MethodPost, c.leaderURL+"/register", bytes.NewBufferString(body))
+		httpClient := &http.Client{}
+		resp, err = httpClient.Do(req)
 
-	httpClient := &http.Client{}
-	resp, err = httpClient.Do(req)
-
-	if err == nil {
-		if resp.StatusCode != http.StatusOK {
-			err = fmt.Errorf("%s", resp.Status)
+		if err == nil {
+			if resp.StatusCode != http.StatusOK {
+				err = fmt.Errorf("%s", resp.Status)
+			}
+			_ = resp.Body.Close()
 		}
-		_ = resp.Body.Close()
 	}
+
+	c.setRegistered(err == nil)
 
 	if err != nil {
-		log.WithField("err", err).Warning("failed to register")
+		log.WithError(err).Warning("failed to register")
 	}
 
-	log.WithFields(log.Fields{"err": err, "client": c.MyURL}).Debug("register")
+	log.WithError(err).WithField("client", c.MyURL).Debug("register")
 	return err
 }
