@@ -21,9 +21,9 @@ type Controller struct {
 	lock       sync.RWMutex
 }
 
-func New(url string, interval time.Duration) *Controller {
+func New(url string, interval time.Duration, alternate bool) *Controller {
 	return &Controller{
-		Broker:    broker.New(interval),
+		Broker:    broker.New(interval, alternate),
 		APIClient: &RealAPIClient{HTTPClient: &http.Client{}},
 		NewLeader: make(chan string),
 		NewClient: make(chan string, 5),

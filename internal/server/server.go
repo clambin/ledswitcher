@@ -20,10 +20,10 @@ type Server struct {
 	LEDSetter  led.Setter
 }
 
-func New(hostname string, port int, ledPath string, rotation time.Duration) *Server {
+func New(hostname string, port int, ledPath string, rotation time.Duration, alternate bool) *Server {
 	return &Server{
 		Port:       port,
-		Controller: controller.New(fmt.Sprintf("http://%s:%d", hostname, port), rotation),
+		Controller: controller.New(fmt.Sprintf("http://%s:%d", hostname, port), rotation, alternate),
 		LEDSetter:  &led.RealSetter{LEDPath: ledPath},
 	}
 }

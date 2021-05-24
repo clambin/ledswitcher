@@ -14,7 +14,7 @@ import (
 
 func TestController(t *testing.T) {
 	// log.SetLevel(log.DebugLevel)
-	c := controller.New("http://localhost:10000", 20*time.Millisecond)
+	c := controller.New("http://localhost:10000", 20*time.Millisecond, true)
 	mock := NewMockAPIClient(c)
 	c.APIClient = mock
 	go c.Run()
@@ -25,7 +25,7 @@ func TestController(t *testing.T) {
 	c.NewClient <- "http://localhost:10002"
 	c.NewClient <- "http://localhost:10003"
 
-	for _, pattern := range []string{"1000", "0100", "0010", "0001", "1000"} {
+	for _, pattern := range []string{"1000", "0100", "0010", "0001", "0010", "0100", "1000", "0100"} {
 		if assert.Eventually(t, func() bool {
 			return mock.GetStates() == pattern
 		}, 1*time.Second, 10*time.Millisecond, pattern) == false {

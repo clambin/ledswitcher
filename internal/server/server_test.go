@@ -11,9 +11,9 @@ import (
 func TestServer(t *testing.T) {
 	servers := make([]*server.Server, 0)
 
-	servers = append(servers, server.New("localhost", 10000, "", 50*time.Millisecond))
-	servers = append(servers, server.New("localhost", 10001, "", 50*time.Millisecond))
-	servers = append(servers, server.New("localhost", 10002, "", 50*time.Millisecond))
+	servers = append(servers, server.New("localhost", 10000, "", 50*time.Millisecond, false))
+	servers = append(servers, server.New("localhost", 10001, "", 50*time.Millisecond, false))
+	servers = append(servers, server.New("localhost", 10002, "", 50*time.Millisecond, false))
 
 	for _, s := range servers {
 		s.LEDSetter = &MockLEDSetter{}

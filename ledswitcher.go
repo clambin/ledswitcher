@@ -24,6 +24,7 @@ func main() {
 		hostname           string
 		err                error
 		rotation           time.Duration
+		alternate          bool
 		port               int
 		ledPath            string
 		debug              bool
@@ -37,8 +38,9 @@ func main() {
 	a.Version(version.BuildVersion)
 	a.HelpFlag.Short('h')
 	a.VersionFlag.Short('v')
-	a.Flag("debug", "Log debug messages").Default("false").BoolVar(&debug)
+	a.Flag("debug", "Log debug messages").Short('d').Default("false").BoolVar(&debug)
 	a.Flag("rotation", "Delay of led switching to the next controller").Default("1s").DurationVar(&rotation)
+	a.Flag("alternate", "Alternate direction").Short('a').Default("false").BoolVar(&alternate)
 	a.Flag("port", "Controller listener port").Default("8080").IntVar(&port)
 	a.Flag("led-path", "path name to the sysfs directory for the LED").Default("/sys/class/leds/led1").StringVar(&ledPath)
 	a.Flag("lock-name", "name of the election lock").Default("ledswitcher").StringVar(&leaseLockName)
@@ -62,7 +64,7 @@ func main() {
 	}
 
 	// Set up the server
-	s := server.New(hostname, port, ledPath, rotation)
+	s := server.New(hostname, port, ledPath, rotation, alternate)
 	go s.Run()
 
 	if leader == "" {

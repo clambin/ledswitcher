@@ -20,17 +20,21 @@ type Broker struct {
 	NextClient chan string
 	Status     chan Status
 
-	clients map[string]clientEntry
-	ticker  *time.Ticker
+	clients   map[string]clientEntry
+	ticker    *time.Ticker
+	alternate bool
+	direction int
 }
 
-func New(interval time.Duration) *Broker {
+func New(interval time.Duration, alternate bool) *Broker {
 	return &Broker{
 		Register:   make(chan string),
 		NextClient: make(chan string),
 		Status:     make(chan Status),
 		clients:    make(map[string]clientEntry),
 		ticker:     time.NewTicker(interval),
+		alternate:  alternate,
+		direction:  1,
 	}
 }
 
@@ -112,7 +116,16 @@ func (b *Broker) nextClient(currentClient string) string {
 	}
 
 	// next
-	index = (index + 1) % len(clients)
+	if b.alternate == false {
+		index = (index + 1) % len(clients)
+	} else {
+		index = index + b.direction
+
+		if index == -1 || index == len(clients) {
+			b.direction = -b.direction
+			index += 2 * b.direction
+		}
+	}
 
 	return clients[index]
 }
