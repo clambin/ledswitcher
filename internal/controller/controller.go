@@ -41,7 +41,7 @@ func (c *Controller) Run() {
 	_ = c.register()
 
 	// main loop
-	registerTicker := time.NewTicker(5 * time.Minute)
+	registerTicker := time.NewTicker(1 * time.Minute)
 	current := ""
 	for {
 		select {
