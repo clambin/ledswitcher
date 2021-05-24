@@ -48,8 +48,9 @@ func (b *Broker) Run() {
 			b.setStatus(status.Client, status.Success)
 			b.cleanup()
 		case <-b.ticker.C:
-			activeClient = b.nextClient(activeClient)
-			b.NextClient <- activeClient
+			if activeClient = b.nextClient(activeClient); activeClient != "" {
+				b.NextClient <- activeClient
+			}
 		}
 	}
 }

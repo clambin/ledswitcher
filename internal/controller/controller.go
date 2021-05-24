@@ -111,7 +111,6 @@ func (c *Controller) setClientLED(clientURL string, state bool) (err error) {
 
 func (c *Controller) register() (err error) {
 	if c.isLeader() {
-		log.WithFields(log.Fields{"leader": c.leaderURL, "me": c.MyURL}).Debug("we are the leader. direct registration")
 		c.Broker.Register <- c.MyURL
 	} else {
 		body := fmt.Sprintf(`{ "url": "%s" }`, c.MyURL)

@@ -34,6 +34,29 @@ func TestController(t *testing.T) {
 	}
 }
 
+func TestSwitchingLeader(t *testing.T) {
+	c := controller.New("http://localhost:10000", 20*time.Millisecond, true)
+	mock := NewMockAPIClient(c)
+	c.APIClient = mock
+	go c.Run()
+
+	c.NewLeader <- "http://localhost:10001"
+
+	c.NewLeader <- "http://localhost:10000"
+
+	c.NewClient <- "http://localhost:10000"
+	c.NewClient <- "http://localhost:10001"
+	c.NewClient <- "http://localhost:10002"
+	c.NewClient <- "http://localhost:10003"
+
+	initState := mock.GetStates()
+
+	assert.Eventually(t, func() bool {
+		return mock.GetStates() != initState
+	}, 1*time.Second, 10*time.Millisecond)
+
+}
+
 type MockAPIClient struct {
 	controllr *controller.Controller
 	States    map[string]bool
