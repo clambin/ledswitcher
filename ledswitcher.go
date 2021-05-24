@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/clambin/ledswitcher/internal/controller"
-	"github.com/clambin/ledswitcher/internal/led"
 	"github.com/clambin/ledswitcher/internal/server"
 	"github.com/clambin/ledswitcher/internal/version"
 	log "github.com/sirupsen/logrus"
@@ -63,56 +62,42 @@ func main() {
 	}
 
 	// Set up the server
-	s := server.Server{
-		Port:       port,
-		Controller: controller.New(hostname, port),
-		LEDSetter:  &led.RealSetter{LEDPath: ledPath},
-	}
+	s := server.New(hostname, port, ledPath, rotation)
 	go s.Run()
 
 	if leader == "" {
-		runWithLeaderElection(leaseLockName, leaseLockNamespace, hostname, s.Controller, rotation)
+		runWithLeaderElection(leaseLockName, leaseLockNamespace, hostname, s.Controller)
 	} else {
-		runWithoutLeaderElection(s.Controller, rotation, fmt.Sprintf("http://%s:%d", leader, port), hostname == leader)
+		runWithoutLeaderElection(s.Controller, fmt.Sprintf("http://%s:%d", leader, port))
 	}
 
 	log.Info("exiting")
 }
 
-func run(ctx context.Context, controllr *controller.Controller, rotation time.Duration, isLeader bool) {
+func run(ctx context.Context) {
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 
-	if isLeader {
-		log.WithField("rotation", rotation).Info("leader started")
-
-		ticker := time.NewTicker(rotation)
-	loop:
-		for {
-			select {
-			case <-ticker.C:
-				controllr.Tick <- struct{}{}
-			case <-ctx.Done():
-				break loop
-			case <-interrupt:
-				break loop
-			}
+loop:
+	for {
+		select {
+		case <-ctx.Done():
+			break loop
+		case <-interrupt:
+			break loop
 		}
-		log.Debug("leader stopped")
-	} else {
-		<-interrupt
 	}
 }
 
-func runWithoutLeaderElection(controllr *controller.Controller, rotation time.Duration, leaderURL string, isLeader bool) {
+func runWithoutLeaderElection(controllr *controller.Controller, leaderURL string) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	controllr.NewLeader <- leaderURL
-	run(ctx, controllr, rotation, isLeader)
+	run(ctx)
 }
 
-func runWithLeaderElection(leaseLockName, leaseLockNamespace, hostname string, controllr *controller.Controller, rotation time.Duration) {
+func runWithLeaderElection(leaseLockName, leaseLockNamespace, hostname string, controllr *controller.Controller) {
 	var (
 		err error
 		cfg *rest.Config
@@ -161,7 +146,7 @@ func runWithLeaderElection(leaseLockName, leaseLockNamespace, hostname string, c
 		Callbacks: leaderelection.LeaderCallbacks{
 			OnStartedLeading: func(ctx context.Context) {
 				// we are the leader
-				run(ctx, controllr, rotation, true)
+				run(ctx)
 			},
 			OnStoppedLeading: func() {
 				log.WithField("id", hostname).Debug("leader lost")

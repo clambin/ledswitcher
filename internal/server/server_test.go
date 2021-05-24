@@ -1,7 +1,6 @@
 package server_test
 
 import (
-	"github.com/clambin/ledswitcher/internal/controller"
 	"github.com/clambin/ledswitcher/internal/server"
 	"github.com/stretchr/testify/assert"
 	"sync"
@@ -12,61 +11,44 @@ import (
 func TestServer(t *testing.T) {
 	servers := make([]*server.Server, 0)
 
-	servers = append(servers, &server.Server{
-		Port:       10000,
-		Controller: controller.New("localhost", 10000),
-		LEDSetter:  &MockLEDSetter{},
-	})
-	servers = append(servers, &server.Server{
-		Port:       10001,
-		Controller: controller.New("localhost", 10001),
-		LEDSetter:  &MockLEDSetter{},
-	})
-	servers = append(servers, &server.Server{
-		Port:       10002,
-		Controller: controller.New("localhost", 10002),
-		LEDSetter:  &MockLEDSetter{},
-	})
+	servers = append(servers, server.New("localhost", 10000, "", 50*time.Millisecond))
+	servers = append(servers, server.New("localhost", 10001, "", 50*time.Millisecond))
+	servers = append(servers, server.New("localhost", 10002, "", 50*time.Millisecond))
 
 	for _, s := range servers {
+		s.LEDSetter = &MockLEDSetter{}
 		go s.Run()
 		// elect first server as the master
 		s.Controller.NewLeader <- servers[0].Controller.MyURL
 	}
 
 	assert.Eventually(t, func() bool {
-		allRegistered := true
 		for _, s := range servers {
 			if s.Controller.IsRegistered() == false {
-				allRegistered = false
-				break
+				return false
 			}
 		}
-		return allRegistered
+		return true
 	}, 500*time.Millisecond, 10*time.Millisecond)
 
-	servers[0].Controller.Tick <- struct{}{}
 	assert.Eventually(t, func() bool {
 		return servers[0].LEDSetter.GetLED() == true &&
 			servers[1].LEDSetter.GetLED() == false &&
 			servers[2].LEDSetter.GetLED() == false
 	}, 1*time.Second, 10*time.Millisecond)
 
-	servers[0].Controller.Tick <- struct{}{}
 	assert.Eventually(t, func() bool {
 		return servers[0].LEDSetter.GetLED() == false &&
 			servers[1].LEDSetter.GetLED() == true &&
 			servers[2].LEDSetter.GetLED() == false
 	}, 1*time.Second, 10*time.Millisecond)
 
-	servers[0].Controller.Tick <- struct{}{}
 	assert.Eventually(t, func() bool {
 		return servers[0].LEDSetter.GetLED() == false &&
 			servers[1].LEDSetter.GetLED() == false &&
 			servers[2].LEDSetter.GetLED() == true
 	}, 1*time.Second, 10*time.Millisecond)
 
-	servers[0].Controller.Tick <- struct{}{}
 	assert.Eventually(t, func() bool {
 		return servers[0].LEDSetter.GetLED() == true &&
 			servers[1].LEDSetter.GetLED() == false &&

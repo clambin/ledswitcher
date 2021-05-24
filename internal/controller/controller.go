@@ -1,39 +1,40 @@
 package controller
 
 import (
-	"bytes"
 	"fmt"
+	"github.com/clambin/ledswitcher/internal/broker"
 	log "github.com/sirupsen/logrus"
 	"net/http"
-	"sort"
 	"sync"
 	"time"
 )
 
 // Controller structure
 type Controller struct {
-	Tick         chan struct{}
-	NewLeader    chan string
-	NewClient    chan string
-	MyURL        string
-	leaderURL    string
-	clients      map[string]clientEntry
-	activeClient string
-	registered   bool
-	lock         sync.RWMutex
+	Broker     *broker.Broker
+	APIClient  APIClient
+	NewLeader  chan string
+	NewClient  chan string
+	MyURL      string
+	leaderURL  string
+	registered bool
+	lock       sync.RWMutex
 }
 
-func New(hostname string, port int) *Controller {
+func New(url string, interval time.Duration) *Controller {
 	return &Controller{
-		Tick:      make(chan struct{}),
+		Broker:    broker.New(interval),
+		APIClient: &RealAPIClient{HTTPClient: &http.Client{}},
 		NewLeader: make(chan string),
 		NewClient: make(chan string, 5),
-		MyURL:     fmt.Sprintf("http://%s:%d", hostname, port),
-		clients:   make(map[string]clientEntry),
+		MyURL:     url,
 	}
 }
 
 func (c *Controller) Run() {
+	// start the broker
+	go c.Broker.Run()
+
 	// wait for a leader to emerge
 	// "I've got a bad feeling about this"
 	c.leaderURL = <-c.NewLeader
@@ -41,10 +42,14 @@ func (c *Controller) Run() {
 
 	// main loop
 	registerTicker := time.NewTicker(5 * time.Minute)
+	current := ""
 	for {
 		select {
-		case <-c.Tick:
-			c.advance()
+		case next := <-c.Broker.NextClient:
+			if c.isLeader() {
+				c.advance(current, next)
+				current = next
+			}
 		case <-registerTicker.C:
 			_ = c.register()
 		case newLeader := <-c.NewLeader:
@@ -54,9 +59,13 @@ func (c *Controller) Run() {
 				_ = c.register()
 			}
 		case newClient := <-c.NewClient:
-			c.registerClient(newClient)
+			c.Broker.Register <- newClient
 		}
 	}
+}
+
+func (c *Controller) isLeader() bool {
+	return c.MyURL == c.leaderURL
 }
 
 func (c *Controller) IsRegistered() bool {
@@ -71,54 +80,25 @@ func (c *Controller) setRegistered(registered bool) {
 	c.registered = registered
 }
 
-func (c *Controller) listClients() (clients []string) {
-	for client := range c.clients {
-		clients = append(clients, client)
-	}
-	sort.Strings(clients)
-	return
-}
-
-func (c *Controller) advance() {
-	var activeURL string
-
+func (c *Controller) advance(current, next string) {
 	// switch off the active client
-	if activeURL = c.getActiveClient(); activeURL != "" {
-		err := c.setClientLED(activeURL, false)
-		log.WithError(err).WithField("client", activeURL).Debug("OFF")
+	if current != "" {
+		err := c.setClientLED(current, false)
+		c.Broker.Status <- broker.Status{Client: current, Success: err == nil}
+		log.WithError(err).WithField("client", current).Debug("OFF")
 	}
-
-	// determine the next client
-	c.nextClient()
 
 	// switch on the next active client
-	if activeURL = c.getActiveClient(); activeURL != "" {
-		err := c.setClientLED(activeURL, true)
-
-		if err != nil {
-			// failed to reach the client. mark the failure so we eventually remove the client from the list.
-			activeClient, _ := c.clients[c.activeClient]
-			activeClient.failures++
-			c.clients[c.activeClient] = activeClient
-		}
-
-		log.WithError(err).WithField("client", activeURL).Debug("ON")
+	if next != "" {
+		err := c.setClientLED(next, true)
+		c.Broker.Status <- broker.Status{Client: next, Success: err == nil}
+		log.WithError(err).WithField("client", next).Debug("ON")
 	}
 }
 
-func (c *Controller) setClientLED(clientURL string, state bool) error {
+func (c *Controller) setClientLED(clientURL string, state bool) (err error) {
 	body := fmt.Sprintf(`{ "state": %v }`, state)
-	req, _ := http.NewRequest(http.MethodPost, clientURL+"/led", bytes.NewBufferString(body))
-
-	httpClient := &http.Client{}
-	resp, err := httpClient.Do(req)
-
-	if err == nil {
-		if resp.StatusCode != http.StatusOK {
-			err = fmt.Errorf("%s", resp.Status)
-		}
-		_ = resp.Body.Close()
-	}
+	err = c.APIClient.DoPOST(clientURL+"/led", body)
 
 	if err != nil {
 		log.WithError(err).WithField("url", clientURL).Warning("failed to contact endpoint to set LED")
@@ -126,31 +106,16 @@ func (c *Controller) setClientLED(clientURL string, state bool) error {
 
 	log.WithError(err).WithFields(log.Fields{"client": clientURL, "state": state}).Debug("setLED")
 
-	return err
+	return
 }
 
-func (c *Controller) register() error {
-	var (
-		err  error
-		resp *http.Response
-	)
-
-	if c.leaderURL == c.MyURL {
-		log.Debug("we are the leader. direct registration")
-		c.registerClient(c.MyURL)
+func (c *Controller) register() (err error) {
+	if c.isLeader() {
+		log.WithFields(log.Fields{"leader": c.leaderURL, "me": c.MyURL}).Debug("we are the leader. direct registration")
+		c.Broker.Register <- c.MyURL
 	} else {
 		body := fmt.Sprintf(`{ "url": "%s" }`, c.MyURL)
-		req, _ := http.NewRequest(http.MethodPost, c.leaderURL+"/register", bytes.NewBufferString(body))
-
-		httpClient := &http.Client{}
-		resp, err = httpClient.Do(req)
-
-		if err == nil {
-			if resp.StatusCode != http.StatusOK {
-				err = fmt.Errorf("%s", resp.Status)
-			}
-			_ = resp.Body.Close()
-		}
+		err = c.APIClient.DoPOST(c.leaderURL+"/register", body)
 	}
 
 	c.setRegistered(err == nil)

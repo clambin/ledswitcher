@@ -10,6 +10,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 	"net/http"
+	"time"
 )
 
 // Server runs the REST API Server and dispatches requests to the led or controller
@@ -17,6 +18,14 @@ type Server struct {
 	Port       int
 	Controller *controller.Controller
 	LEDSetter  led.Setter
+}
+
+func New(hostname string, port int, ledPath string, rotation time.Duration) *Server {
+	return &Server{
+		Port:       port,
+		Controller: controller.New(fmt.Sprintf("http://%s:%d", hostname, port), rotation),
+		LEDSetter:  &led.RealSetter{LEDPath: ledPath},
+	}
 }
 
 // Run the Server instance. Dispatch requests to the controller or led
@@ -35,7 +44,8 @@ func (server *Server) Run() {
 
 	go server.Controller.Run()
 
-	log.Fatal(http.ListenAndServe(address, r))
+	err := http.ListenAndServe(address, r)
+	log.WithError(err).Fatal("failed to start server")
 }
 
 // Prometheus metrics
