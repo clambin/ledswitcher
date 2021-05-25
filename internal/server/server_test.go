@@ -1,6 +1,7 @@
 package server_test
 
 import (
+	"github.com/clambin/ledswitcher/internal/controller"
 	"github.com/clambin/ledswitcher/internal/server"
 	"github.com/stretchr/testify/assert"
 	"sync"
@@ -8,15 +9,23 @@ import (
 	"time"
 )
 
+func NewTestServer(hostname string, port int) *server.Server {
+	return &server.Server{
+		Port:       port,
+		Controller: controller.New(hostname, port, 50*time.Millisecond, false),
+		LEDSetter:  &MockLEDSetter{},
+	}
+}
+
 func TestServer(t *testing.T) {
 	servers := make([]*server.Server, 0)
 
-	servers = append(servers, server.New("localhost", 10000, "", 50*time.Millisecond, false))
-	servers = append(servers, server.New("localhost", 10001, "", 50*time.Millisecond, false))
-	servers = append(servers, server.New("localhost", 10002, "", 50*time.Millisecond, false))
+	servers = append(servers, NewTestServer("localhost", 10000))
+	servers = append(servers, NewTestServer("localhost", 10001))
+	servers = append(servers, NewTestServer("localhost", 10002))
 
 	for _, s := range servers {
-		s.LEDSetter = &MockLEDSetter{}
+		go s.Controller.Run()
 		go s.Run()
 		// elect first server as the master
 		s.Controller.NewLeader <- servers[0].Controller.MyURL

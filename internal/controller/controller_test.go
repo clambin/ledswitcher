@@ -14,7 +14,7 @@ import (
 
 func TestController(t *testing.T) {
 	// log.SetLevel(log.DebugLevel)
-	c := controller.New("http://localhost:10000", 20*time.Millisecond, true)
+	c := controller.New("localhost", 10000, 20*time.Millisecond, true)
 	mock := NewMockAPIClient(c)
 	c.APIClient = mock
 	go c.Run()
@@ -35,7 +35,7 @@ func TestController(t *testing.T) {
 }
 
 func TestSwitchingLeader(t *testing.T) {
-	c := controller.New("http://localhost:10000", 20*time.Millisecond, true)
+	c := controller.New("localhost", 10000, 20*time.Millisecond, true)
 	mock := NewMockAPIClient(c)
 	c.APIClient = mock
 	go c.Run()

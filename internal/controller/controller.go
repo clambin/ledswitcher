@@ -21,14 +21,18 @@ type Controller struct {
 	lock       sync.RWMutex
 }
 
-func New(url string, interval time.Duration, alternate bool) *Controller {
+func New(hostname string, port int, interval time.Duration, alternate bool) *Controller {
 	return &Controller{
 		Broker:    broker.New(interval, alternate),
 		APIClient: &RealAPIClient{HTTPClient: &http.Client{}},
 		NewLeader: make(chan string),
 		NewClient: make(chan string, 5),
-		MyURL:     url,
+		MyURL:     MakeURL(hostname, port),
 	}
+}
+
+func MakeURL(hostname string, port int) string {
+	return fmt.Sprintf("http://%s:%d", hostname, port)
 }
 
 func (c *Controller) Run() {

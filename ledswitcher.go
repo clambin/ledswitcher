@@ -2,8 +2,8 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"github.com/clambin/ledswitcher/internal/controller"
+	"github.com/clambin/ledswitcher/internal/led"
 	"github.com/clambin/ledswitcher/internal/server"
 	"github.com/clambin/ledswitcher/internal/version"
 	log "github.com/sirupsen/logrus"
@@ -52,7 +52,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// log.SetReportCaller(true)
 	log.WithField("version", version.BuildVersion).Info("starting")
 	if debug {
 		log.SetLevel(log.DebugLevel)
@@ -63,14 +62,22 @@ func main() {
 		log.WithField("err", err).Fatal("unable to determine hostname")
 	}
 
-	// Set up the server
-	s := server.New(hostname, port, ledPath, rotation, alternate)
+	// Create the controller
+	c := controller.New(hostname, port, rotation, alternate)
+	go c.Run()
+
+	// Set up the REST server
+	s := &server.Server{
+		Port:       port,
+		Controller: c,
+		LEDSetter:  &led.RealSetter{LEDPath: ledPath},
+	}
 	go s.Run()
 
 	if leader == "" {
-		runWithLeaderElection(leaseLockName, leaseLockNamespace, hostname, s.Controller)
+		runWithLeaderElection(leaseLockName, leaseLockNamespace, c)
 	} else {
-		runWithoutLeaderElection(s.Controller, fmt.Sprintf("http://%s:%d", leader, port))
+		runWithoutLeaderElection(c, controller.MakeURL(leader, port))
 	}
 
 	log.Info("exiting")
@@ -99,7 +106,7 @@ func runWithoutLeaderElection(controllr *controller.Controller, leaderURL string
 	run(ctx)
 }
 
-func runWithLeaderElection(leaseLockName, leaseLockNamespace, hostname string, controllr *controller.Controller) {
+func runWithLeaderElection(leaseLockName, leaseLockNamespace string, controllr *controller.Controller) {
 	var (
 		err error
 		cfg *rest.Config
@@ -147,15 +154,12 @@ func runWithLeaderElection(leaseLockName, leaseLockNamespace, hostname string, c
 		RetryPeriod:     5 * time.Second,
 		Callbacks: leaderelection.LeaderCallbacks{
 			OnStartedLeading: func(ctx context.Context) {
-				// we are the leader
 				run(ctx)
 			},
 			OnStoppedLeading: func() {
-				log.WithField("id", hostname).Debug("leader lost")
-				// os.Exit(0)
+				log.Info("leader lost")
 			},
 			OnNewLeader: func(identity string) {
-				// we're notified when new leader elected
 				log.WithField("id", identity).Info("new leader elected")
 				controllr.NewLeader <- identity
 			},
