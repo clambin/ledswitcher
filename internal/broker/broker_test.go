@@ -31,10 +31,12 @@ func TestBroker_RunAlternate(t *testing.T) {
 	go b.Run()
 
 	b.Register <- "client1"
+	assert.Equal(t, "client1", <-b.NextClient)
+	assert.Equal(t, "client1", <-b.NextClient)
+
 	b.Register <- "client2"
 	b.Register <- "client3"
 
-	assert.Equal(t, "client1", <-b.NextClient)
 	assert.Equal(t, "client2", <-b.NextClient)
 	assert.Equal(t, "client3", <-b.NextClient)
 	assert.Equal(t, "client2", <-b.NextClient)

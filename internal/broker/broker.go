@@ -117,14 +117,16 @@ func (b *Broker) nextClient(currentClient string) string {
 	}
 
 	// next
-	if b.alternate == false {
-		index = (index + 1) % len(clients)
-	} else {
-		index = index + b.direction
+	if len(clients) > 1 {
+		if b.alternate == false {
+			index = (index + 1) % len(clients)
+		} else {
+			index = index + b.direction
 
-		if index == -1 || index == len(clients) {
-			b.direction = -b.direction
-			index += 2 * b.direction
+			if index == -1 || index == len(clients) {
+				b.direction = -b.direction
+				index += 2 * b.direction
+			}
 		}
 	}
 
