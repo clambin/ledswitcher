@@ -13,7 +13,6 @@ import (
 // Controller structure
 type Controller struct {
 	Broker     *broker.Broker
-	Advance    chan advanceInfo
 	APIClient  APIClient
 	NewLeader  chan string
 	NewClient  chan string
@@ -23,15 +22,9 @@ type Controller struct {
 	lock       sync.RWMutex
 }
 
-type advanceInfo struct {
-	from string
-	to   string
-}
-
 func New(hostname string, port int, interval time.Duration, alternate bool) *Controller {
 	return &Controller{
 		Broker:    broker.New(interval, alternate),
-		Advance:   make(chan advanceInfo),
 		APIClient: &RealAPIClient{HTTPClient: &http.Client{}},
 		NewLeader: make(chan string),
 		NewClient: make(chan string, 5),
@@ -53,11 +46,13 @@ func (c *Controller) Run() {
 	_ = c.register()
 
 	// main loop
+	current := ""
 	registerTicker := time.NewTicker(1 * time.Minute)
 	for {
 		select {
-		case info := <-c.Advance:
-			c.advance(info.from, info.to)
+		case next := <-c.Broker.NextClient:
+			c.advance(current, next)
+			current = next
 		case <-registerTicker.C:
 			_ = c.register()
 		case newLeader := <-c.NewLeader:
@@ -76,18 +71,10 @@ func (c *Controller) Lead(ctx context.Context) {
 	// we're leading. tell the broker to start advancing
 	c.Broker.Running <- true
 
-	current := ""
-loop:
-	for {
-		select {
-		case next := <-c.Broker.NextClient:
-			c.Advance <- advanceInfo{from: current, to: next}
-			current = next
-		case <-ctx.Done():
-			break loop
-		}
-	}
+	// wait until we lose the lease
+	<-ctx.Done()
 
+	// we're not leading anymore
 	c.Broker.Running <- false
 }
 
