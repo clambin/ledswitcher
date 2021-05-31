@@ -83,19 +83,19 @@ func main() {
 	log.Info("exiting")
 }
 
-func runWithoutLeaderElection(controllr *controller.Controller, leaderURL string, leading bool) {
+func runWithoutLeaderElection(controllr *controller.Controller, leaderURL string, isLeading bool) {
 	controllr.NewLeader <- leaderURL
 
-	if leading {
+	if isLeading {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		controllr.Lead(ctx)
-	} else {
-		interrupt := make(chan os.Signal, 1)
-		signal.Notify(interrupt, os.Interrupt)
-		<-interrupt
+		go controllr.Lead(ctx)
 	}
+
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, os.Interrupt)
+	<-interrupt
 }
 
 func runWithLeaderElection(leaseLockName, leaseLockNamespace string, controllr *controller.Controller) {
