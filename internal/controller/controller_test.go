@@ -1,6 +1,7 @@
 package controller_test
 
 import (
+	"context"
 	"fmt"
 	"github.com/clambin/ledswitcher/internal/controller"
 	"github.com/stretchr/testify/assert"
@@ -18,6 +19,11 @@ func TestController(t *testing.T) {
 	mock := NewMockAPIClient(c)
 	c.APIClient = mock
 	go c.Run()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go c.Lead(ctx)
+
 	c.NewLeader <- "http://localhost:10000"
 
 	c.NewClient <- "http://localhost:10000"
@@ -39,6 +45,10 @@ func TestSwitchingLeader(t *testing.T) {
 	mock := NewMockAPIClient(c)
 	c.APIClient = mock
 	go c.Run()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go c.Lead(ctx)
 
 	c.NewLeader <- "http://localhost:10001"
 

@@ -10,6 +10,7 @@ import (
 func TestBroker_Run(t *testing.T) {
 	b := broker.New(10*time.Millisecond, false)
 	go b.Run()
+	b.Running <- true
 
 	b.Register <- "client1"
 	b.Register <- "client2"
@@ -29,6 +30,7 @@ func TestBroker_Run(t *testing.T) {
 func TestBroker_RunAlternate(t *testing.T) {
 	b := broker.New(10*time.Millisecond, true)
 	go b.Run()
+	b.Running <- true
 
 	b.Register <- "client1"
 	assert.Equal(t, "client1", <-b.NextClient)
@@ -51,6 +53,7 @@ func TestBroker_RunAlternate(t *testing.T) {
 func TestBroker_Cleanup(t *testing.T) {
 	b := broker.New(10*time.Millisecond, false)
 	go b.Run()
+	b.Running <- true
 
 	b.Register <- "client1"
 	b.Register <- "client2"
@@ -68,4 +71,24 @@ func TestBroker_Cleanup(t *testing.T) {
 	assert.Equal(t, "client2", <-b.NextClient)
 	assert.Equal(t, "client3", <-b.NextClient)
 	assert.Equal(t, "client2", <-b.NextClient)
+}
+
+func TestBroker_Running(t *testing.T) {
+	b := broker.New(10*time.Millisecond, false)
+	go b.Run()
+	b.Register <- "client1"
+
+	assert.Never(t, func() bool {
+		_ = <-b.NextClient
+		return true
+	}, 100*time.Millisecond, 10*time.Millisecond)
+
+	b.Running <- true
+	assert.Equal(t, "client1", <-b.NextClient)
+
+	b.Running <- false
+	assert.Never(t, func() bool {
+		_ = <-b.NextClient
+		return true
+	}, 100*time.Millisecond, 10*time.Millisecond)
 }

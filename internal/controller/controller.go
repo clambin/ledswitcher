@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"context"
 	"fmt"
 	"github.com/clambin/ledswitcher/internal/broker"
 	log "github.com/sirupsen/logrus"
@@ -12,6 +13,7 @@ import (
 // Controller structure
 type Controller struct {
 	Broker     *broker.Broker
+	Advance    chan advanceInfo
 	APIClient  APIClient
 	NewLeader  chan string
 	NewClient  chan string
@@ -21,9 +23,15 @@ type Controller struct {
 	lock       sync.RWMutex
 }
 
+type advanceInfo struct {
+	from string
+	to   string
+}
+
 func New(hostname string, port int, interval time.Duration, alternate bool) *Controller {
 	return &Controller{
 		Broker:    broker.New(interval, alternate),
+		Advance:   make(chan advanceInfo),
 		APIClient: &RealAPIClient{HTTPClient: &http.Client{}},
 		NewLeader: make(chan string),
 		NewClient: make(chan string, 5),
@@ -46,14 +54,10 @@ func (c *Controller) Run() {
 
 	// main loop
 	registerTicker := time.NewTicker(1 * time.Minute)
-	current := ""
 	for {
 		select {
-		case next := <-c.Broker.NextClient:
-			if c.isLeader() {
-				c.advance(current, next)
-				current = next
-			}
+		case info := <-c.Advance:
+			c.advance(info.from, info.to)
 		case <-registerTicker.C:
 			_ = c.register()
 		case newLeader := <-c.NewLeader:
@@ -66,6 +70,25 @@ func (c *Controller) Run() {
 			c.Broker.Register <- newClient
 		}
 	}
+}
+
+func (c *Controller) Lead(ctx context.Context) {
+	// we're leading. tell the broker to start advancing
+	c.Broker.Running <- true
+
+	current := ""
+loop:
+	for {
+		select {
+		case next := <-c.Broker.NextClient:
+			c.Advance <- advanceInfo{from: current, to: next}
+			current = next
+		case <-ctx.Done():
+			break loop
+		}
+	}
+
+	c.Broker.Running <- false
 }
 
 func (c *Controller) isLeader() bool {

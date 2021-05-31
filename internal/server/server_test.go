@@ -1,6 +1,7 @@
 package server_test
 
 import (
+	"context"
 	"github.com/clambin/ledswitcher/internal/controller"
 	"github.com/clambin/ledswitcher/internal/server"
 	"github.com/stretchr/testify/assert"
@@ -30,6 +31,10 @@ func TestServer(t *testing.T) {
 		// elect first server as the master
 		s.Controller.NewLeader <- servers[0].Controller.MyURL
 	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go servers[0].Controller.Lead(ctx)
 
 	assert.Eventually(t, func() bool {
 		for _, s := range servers {

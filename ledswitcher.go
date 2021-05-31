@@ -77,33 +77,25 @@ func main() {
 	if leader == "" {
 		runWithLeaderElection(leaseLockName, leaseLockNamespace, c)
 	} else {
-		runWithoutLeaderElection(c, controller.MakeURL(leader, port))
+		runWithoutLeaderElection(c, controller.MakeURL(leader, port), hostname == leader)
 	}
 
 	log.Info("exiting")
 }
 
-func run(ctx context.Context) {
-	interrupt := make(chan os.Signal, 1)
-	signal.Notify(interrupt, os.Interrupt)
-
-loop:
-	for {
-		select {
-		case <-ctx.Done():
-			break loop
-		case <-interrupt:
-			break loop
-		}
-	}
-}
-
-func runWithoutLeaderElection(controllr *controller.Controller, leaderURL string) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
+func runWithoutLeaderElection(controllr *controller.Controller, leaderURL string, leading bool) {
 	controllr.NewLeader <- leaderURL
-	run(ctx)
+
+	if leading {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		controllr.Lead(ctx)
+	} else {
+		interrupt := make(chan os.Signal, 1)
+		signal.Notify(interrupt, os.Interrupt)
+		<-interrupt
+	}
 }
 
 func runWithLeaderElection(leaseLockName, leaseLockNamespace string, controllr *controller.Controller) {
@@ -111,23 +103,15 @@ func runWithLeaderElection(leaseLockName, leaseLockNamespace string, controllr *
 		err error
 		cfg *rest.Config
 	)
-	// leader election uses the Kubernetes API by writing to a
-	// lock object, which can be a LeaseLock object (preferred),
-	// a ConfigMap, or an Endpoints (deprecated) object.
-	// Conflicting writes are detected and each client handles those actions
-	// independently.
+
 	if cfg, err = rest.InClusterConfig(); err != nil {
 		log.WithField("err", err).Fatal("rest.InClusterConfig failed")
 	}
 	client := clientset.NewForConfigOrDie(cfg)
 
-	// use a Go context so we can tell the leader election code when we
-	// want to step down
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// we use the Lease lock type since edits to Leases are less common
-	// and fewer objects in the cluster watch "all Leases".
 	lock := &resourcelock.LeaseLock{
 		LeaseMeta: metav1.ObjectMeta{
 			Name:      leaseLockName,
@@ -139,22 +123,15 @@ func runWithLeaderElection(leaseLockName, leaseLockNamespace string, controllr *
 		},
 	}
 
-	// start the leader election code loop
 	leaderelection.RunOrDie(ctx, leaderelection.LeaderElectionConfig{
-		Lock: lock,
-		// IMPORTANT: you MUST ensure that any code you have that
-		// is protected by the lease must terminate **before**
-		// you call cancel. Otherwise, you could have a background
-		// loop still running and another process could
-		// get elected before your background loop finished, violating
-		// the stated goal of the lease.
+		Lock:            lock,
 		ReleaseOnCancel: true,
 		LeaseDuration:   60 * time.Second,
 		RenewDeadline:   15 * time.Second,
 		RetryPeriod:     5 * time.Second,
 		Callbacks: leaderelection.LeaderCallbacks{
 			OnStartedLeading: func(ctx context.Context) {
-				run(ctx)
+				controllr.Lead(ctx)
 			},
 			OnStoppedLeading: func() {
 				log.Info("leader lost")

@@ -19,11 +19,13 @@ type Broker struct {
 	Register   chan string
 	NextClient chan string
 	Status     chan Status
+	Running    chan bool
 
 	clients   map[string]clientEntry
 	ticker    *time.Ticker
 	alternate bool
 	direction int
+	running   bool
 }
 
 func New(interval time.Duration, alternate bool) *Broker {
@@ -31,6 +33,7 @@ func New(interval time.Duration, alternate bool) *Broker {
 		Register:   make(chan string),
 		NextClient: make(chan string),
 		Status:     make(chan Status),
+		Running:    make(chan bool),
 		clients:    make(map[string]clientEntry),
 		ticker:     time.NewTicker(interval),
 		alternate:  alternate,
@@ -47,9 +50,13 @@ func (b *Broker) Run() {
 		case status := <-b.Status:
 			b.setStatus(status.Client, status.Success)
 			b.cleanup()
+		case running := <-b.Running:
+			b.running = running
 		case <-b.ticker.C:
-			if activeClient = b.nextClient(activeClient); activeClient != "" {
-				b.NextClient <- activeClient
+			if b.running {
+				if activeClient = b.nextClient(activeClient); activeClient != "" {
+					b.NextClient <- activeClient
+				}
 			}
 		}
 	}
