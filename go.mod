@@ -17,7 +17,7 @@ require (
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 	k8s.io/apimachinery v0.21.2
-	k8s.io/client-go v0.21.1
+	k8s.io/client-go v0.21.2
 	k8s.io/utils v0.0.0-20210517184530-5a248b5acedc // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.1.1 // indirect
 )
