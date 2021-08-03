@@ -3,7 +3,7 @@ package controller_test
 import (
 	"context"
 	"fmt"
-	"github.com/clambin/ledswitcher/internal/controller"
+	"github.com/clambin/ledswitcher/controller"
 	"github.com/stretchr/testify/assert"
 	"regexp"
 	"sort"

@@ -2,8 +2,8 @@ package server_test
 
 import (
 	"context"
-	"github.com/clambin/ledswitcher/internal/controller"
-	"github.com/clambin/ledswitcher/internal/server"
+	"github.com/clambin/ledswitcher/controller"
+	"github.com/clambin/ledswitcher/server"
 	"github.com/stretchr/testify/assert"
 	"sync"
 	"testing"

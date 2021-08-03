@@ -2,10 +2,10 @@ package main
 
 import (
 	"context"
-	"github.com/clambin/ledswitcher/internal/controller"
-	"github.com/clambin/ledswitcher/internal/led"
-	"github.com/clambin/ledswitcher/internal/server"
-	"github.com/clambin/ledswitcher/internal/version"
+	"github.com/clambin/ledswitcher/controller"
+	"github.com/clambin/ledswitcher/led"
+	"github.com/clambin/ledswitcher/server"
+	"github.com/clambin/ledswitcher/version"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/alecthomas/kingpin.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

@@ -1,7 +1,7 @@
 package broker_test
 
 import (
-	"github.com/clambin/ledswitcher/internal/broker"
+	"github.com/clambin/ledswitcher/broker"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"

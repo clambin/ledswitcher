@@ -1,7 +1,7 @@
 package led_test
 
 import (
-	"github.com/clambin/ledswitcher/internal/led"
+	"github.com/clambin/ledswitcher/led"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
@@ -14,7 +14,10 @@ func TestSetter(t *testing.T) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer os.RemoveAll(tmpdir)
+	defer func(tmpdir string) {
+		err = os.RemoveAll(tmpdir)
+		assert.NoError(t, err)
+	}(tmpdir)
 
 	setter := led.RealSetter{LEDPath: tmpdir}
 

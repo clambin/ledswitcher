@@ -3,7 +3,7 @@ package controller
 import (
 	"context"
 	"fmt"
-	"github.com/clambin/ledswitcher/internal/broker"
+	"github.com/clambin/ledswitcher/broker"
 	log "github.com/sirupsen/logrus"
 	"net/http"
 	"sync"

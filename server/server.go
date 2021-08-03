@@ -2,8 +2,8 @@ package server
 
 import (
 	"fmt"
-	"github.com/clambin/ledswitcher/internal/controller"
-	"github.com/clambin/ledswitcher/internal/led"
+	"github.com/clambin/ledswitcher/controller"
+	"github.com/clambin/ledswitcher/led"
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
