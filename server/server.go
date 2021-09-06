@@ -1,56 +1,48 @@
 package server
 
 import (
-	"fmt"
+	"github.com/clambin/gotools/metrics"
 	"github.com/clambin/ledswitcher/controller"
 	"github.com/clambin/ledswitcher/led"
-	"github.com/gorilla/mux"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 	"net/http"
+	"time"
 )
 
 // Server runs the REST API Server and dispatches requests to the led or controller
 type Server struct {
-	Port       int
 	Controller *controller.Controller
 	LEDSetter  led.Setter
+	HTTPServer *metrics.Server
+}
+
+// New creates a new Server
+func New(hostname string, port int, interval time.Duration, alternate bool, ledPath string) (server *Server) {
+	server = &Server{
+		Controller: controller.New(hostname, port, interval, alternate),
+		LEDSetter:  &led.RealSetter{LEDPath: ledPath},
+	}
+	server.HTTPServer = metrics.NewServerWithHandlers(port, []metrics.Handler{
+		{
+			Path:    "/led",
+			Handler: http.HandlerFunc(server.handleLED),
+			Methods: []string{http.MethodPost},
+		},
+		{
+			Path:    "/register",
+			Handler: http.HandlerFunc(server.handleRegisterClient),
+			Methods: []string{http.MethodPost},
+		},
+	})
+	server.Controller.MyURL = controller.MakeURL(hostname, server.HTTPServer.Port)
+	return
 }
 
 // Run the Server instance. Dispatch requests to the controller or led
 func (server *Server) Run() {
-	r := mux.NewRouter()
-	r.Use(prometheusMiddleware)
-	r.Path("/metrics").Handler(promhttp.Handler())
-
-	r.HandleFunc("/led", server.handleLED).Methods(http.MethodPost)
-	r.HandleFunc("/register", server.handleRegisterClient).Methods(http.MethodPost)
-
-	address := ":8080"
-	if server.Port > 0 {
-		address = fmt.Sprintf(":%d", server.Port)
+	go server.Controller.Run()
+	err := server.HTTPServer.Run()
+	if err != http.ErrServerClosed {
+		log.WithError(err).Fatal("failed to start server")
 	}
-
-	err := http.ListenAndServe(address, r)
-	log.WithError(err).Fatal("failed to start server")
-}
-
-// Prometheus metrics
-var (
-	httpDuration = promauto.NewSummaryVec(prometheus.SummaryOpts{
-		Name: "http_duration_seconds",
-		Help: "API duration of HTTP requests.",
-	}, []string{"path"})
-)
-
-func prometheusMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		route := mux.CurrentRoute(r)
-		path, _ := route.GetPathTemplate()
-		timer := prometheus.NewTimer(httpDuration.WithLabelValues(path))
-		next.ServeHTTP(w, r)
-		timer.ObserveDuration()
-	})
 }

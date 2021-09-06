@@ -2,31 +2,28 @@ package server_test
 
 import (
 	"context"
-	"github.com/clambin/ledswitcher/controller"
 	"github.com/clambin/ledswitcher/server"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"sync"
 	"testing"
 	"time"
 )
 
-func NewTestServer(hostname string, port int, alternate bool) *server.Server {
-	return &server.Server{
-		Port:       port,
-		Controller: controller.New(hostname, port, 50*time.Millisecond, alternate),
-		LEDSetter:  &MockLEDSetter{},
-	}
+func NewTestServer(hostname string, port int, alternate bool) (s *server.Server) {
+	s = server.New(hostname, port, 50*time.Millisecond, alternate, "")
+	s.LEDSetter = &MockLEDSetter{}
+	return
 }
 
 func TestServer(t *testing.T) {
 	servers := make([]*server.Server, 0)
 
-	servers = append(servers, NewTestServer("localhost", 10000, false))
-	servers = append(servers, NewTestServer("localhost", 10001, false))
-	servers = append(servers, NewTestServer("localhost", 10002, false))
+	servers = append(servers, NewTestServer("localhost", 0, false))
+	servers = append(servers, NewTestServer("localhost", 0, false))
+	servers = append(servers, NewTestServer("localhost", 0, false))
 
 	for _, s := range servers {
-		go s.Controller.Run()
 		go s.Run()
 		// elect first server as the master
 		s.Controller.NewLeader <- servers[0].Controller.MyURL
@@ -36,7 +33,7 @@ func TestServer(t *testing.T) {
 	defer cancel()
 	go servers[0].Controller.Lead(ctx)
 
-	assert.Eventually(t, func() bool {
+	require.Eventually(t, func() bool {
 		for _, s := range servers {
 			if s.Controller.IsRegistered() == false {
 				return false
@@ -54,12 +51,11 @@ func TestServer(t *testing.T) {
 func TestServer_Alternate(t *testing.T) {
 	servers := make([]*server.Server, 0)
 
-	servers = append(servers, NewTestServer("localhost", 10010, true))
-	servers = append(servers, NewTestServer("localhost", 10011, true))
-	servers = append(servers, NewTestServer("localhost", 10012, true))
+	servers = append(servers, NewTestServer("localhost", 0, true))
+	servers = append(servers, NewTestServer("localhost", 0, true))
+	servers = append(servers, NewTestServer("localhost", 0, true))
 
 	for _, s := range servers {
-		go s.Controller.Run()
 		go s.Run()
 		// elect first server as the master
 		s.Controller.NewLeader <- servers[0].Controller.MyURL
@@ -69,7 +65,7 @@ func TestServer_Alternate(t *testing.T) {
 	defer cancel()
 	go servers[0].Controller.Lead(ctx)
 
-	assert.Eventually(t, func() bool {
+	require.Eventually(t, func() bool {
 		for _, s := range servers {
 			if s.Controller.IsRegistered() == false {
 				return false

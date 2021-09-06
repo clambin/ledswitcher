@@ -42,8 +42,11 @@ func (c *Controller) Run() {
 
 	// wait for a leader to emerge
 	// "I've got a bad feeling about this"
+	log.Debug("waiting for leader to emerge")
 	c.leaderURL = <-c.NewLeader
+	log.Debug("new leader: " + c.leaderURL)
 	_ = c.register()
+	log.Debug("registered. here we go")
 
 	// main loop
 	current := ""

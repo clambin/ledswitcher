@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"github.com/clambin/ledswitcher/controller"
-	"github.com/clambin/ledswitcher/led"
 	"github.com/clambin/ledswitcher/server"
 	"github.com/clambin/ledswitcher/version"
 	log "github.com/sirupsen/logrus"
@@ -62,22 +61,14 @@ func main() {
 		log.WithField("err", err).Fatal("unable to determine hostname")
 	}
 
-	// Create the controller
-	c := controller.New(hostname, port, rotation, alternate)
-	go c.Run()
-
 	// Set up the REST server
-	s := &server.Server{
-		Port:       port,
-		Controller: c,
-		LEDSetter:  &led.RealSetter{LEDPath: ledPath},
-	}
+	s := server.New(hostname, port, rotation, alternate, ledPath)
 	go s.Run()
 
 	if leader == "" {
-		runWithLeaderElection(leaseLockName, leaseLockNamespace, c)
+		runWithLeaderElection(leaseLockName, leaseLockNamespace, s.Controller)
 	} else {
-		runWithoutLeaderElection(c, controller.MakeURL(leader, port), hostname == leader)
+		runWithoutLeaderElection(s.Controller, controller.MakeURL(leader, port), hostname == leader)
 	}
 
 	log.Info("exiting")
