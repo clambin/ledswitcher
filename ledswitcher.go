@@ -68,7 +68,7 @@ func main() {
 	if leader == "" {
 		runWithLeaderElection(leaseLockName, leaseLockNamespace, s.Controller)
 	} else {
-		runWithoutLeaderElection(s.Controller, controller.MakeURL(leader, port), hostname == leader)
+		runWithoutLeaderElection(s.Controller, s.Controller.GetURL(), hostname == leader)
 	}
 
 	log.Info("exiting")
@@ -110,7 +110,7 @@ func runWithLeaderElection(leaseLockName, leaseLockNamespace string, controllr *
 		},
 		Client: client.CoordinationV1(),
 		LockConfig: resourcelock.ResourceLockConfig{
-			Identity: controllr.MyURL,
+			Identity: controllr.GetURL(),
 		},
 	}
 

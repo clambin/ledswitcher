@@ -26,7 +26,7 @@ func TestServer(t *testing.T) {
 	for _, s := range servers {
 		go s.Run()
 		// elect first server as the master
-		s.Controller.NewLeader <- servers[0].Controller.MyURL
+		s.Controller.NewLeader <- servers[0].Controller.GetURL()
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -58,7 +58,7 @@ func TestServer_Alternate(t *testing.T) {
 	for _, s := range servers {
 		go s.Run()
 		// elect first server as the master
-		s.Controller.NewLeader <- servers[0].Controller.MyURL
+		s.Controller.NewLeader <- servers[0].Controller.GetURL()
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())

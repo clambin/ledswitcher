@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/clambin/ledswitcher/controller"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"regexp"
 	"sort"
 	"strings"
@@ -15,7 +16,8 @@ import (
 
 func TestController(t *testing.T) {
 	// log.SetLevel(log.DebugLevel)
-	c := controller.New("localhost", 10000, 20*time.Millisecond, true)
+	c := controller.New(20*time.Millisecond, true)
+	c.SetURL("localhost", 10000)
 	mock := NewMockAPIClient(c)
 	c.APIClient = mock
 	go c.Run()
@@ -32,16 +34,15 @@ func TestController(t *testing.T) {
 	c.NewClient <- "http://localhost:10003"
 
 	for _, pattern := range []string{"1000", "0100", "0010", "0001", "0010", "0100", "1000", "0100"} {
-		if assert.Eventually(t, func() bool {
+		require.Eventually(t, func() bool {
 			return mock.GetStates() == pattern
-		}, 1*time.Second, 10*time.Millisecond, pattern) == false {
-			break
-		}
+		}, 1*time.Second, 10*time.Millisecond, pattern)
 	}
 }
 
 func TestSwitchingLeader(t *testing.T) {
-	c := controller.New("localhost", 10000, 20*time.Millisecond, true)
+	c := controller.New(20*time.Millisecond, true)
+	c.SetURL("localhost", 10000)
 	mock := NewMockAPIClient(c)
 	c.APIClient = mock
 	go c.Run()

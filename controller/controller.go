@@ -10,32 +10,44 @@ import (
 	"time"
 )
 
-// Controller structure
+// Controller implements the core logic of ledswitcher.  It registers the client with the leader and, if it is the leader
+// sends requests to the registered clients to change the LED
 type Controller struct {
 	Broker     *broker.Broker
 	APIClient  APIClient
 	NewLeader  chan string
 	NewClient  chan string
-	MyURL      string
+	myURL      string
 	leaderURL  string
 	registered bool
 	lock       sync.RWMutex
 }
 
-func New(hostname string, port int, interval time.Duration, alternate bool) *Controller {
+// New creates a new controller
+func New(interval time.Duration, alternate bool) *Controller {
 	return &Controller{
 		Broker:    broker.New(interval, alternate),
 		APIClient: &RealAPIClient{HTTPClient: &http.Client{}},
 		NewLeader: make(chan string),
 		NewClient: make(chan string, 5),
-		MyURL:     MakeURL(hostname, port),
 	}
 }
 
-func MakeURL(hostname string, port int) string {
-	return fmt.Sprintf("http://%s:%d", hostname, port)
+// SetURL sets the controller's own URL
+func (c *Controller) SetURL(hostname string, port int) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	c.myURL = fmt.Sprintf("http://%s:%d", hostname, port)
 }
 
+// GetURL returns the controller's URL
+func (c *Controller) GetURL() string {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
+	return c.myURL
+}
+
+// Run start the controller
 func (c *Controller) Run() {
 	// start the broker
 	go c.Broker.Run()
@@ -70,6 +82,7 @@ func (c *Controller) Run() {
 	}
 }
 
+// Lead tells the controller it is the leader, so it should send LED requests to registered clients
 func (c *Controller) Lead(ctx context.Context) {
 	// we're leading. tell the broker to start advancing
 	c.Broker.Running <- true
@@ -82,7 +95,7 @@ func (c *Controller) Lead(ctx context.Context) {
 }
 
 func (c *Controller) isLeader() bool {
-	return c.MyURL == c.leaderURL
+	return c.myURL == c.leaderURL
 }
 
 func (c *Controller) IsRegistered() bool {
@@ -128,9 +141,9 @@ func (c *Controller) setClientLED(clientURL string, state bool) (err error) {
 
 func (c *Controller) register() (err error) {
 	if c.isLeader() {
-		c.Broker.Register <- c.MyURL
+		c.Broker.Register <- c.myURL
 	} else {
-		body := fmt.Sprintf(`{ "url": "%s" }`, c.MyURL)
+		body := fmt.Sprintf(`{ "url": "%s" }`, c.myURL)
 		err = c.APIClient.DoPOST(c.leaderURL+"/register", body)
 	}
 
@@ -140,6 +153,6 @@ func (c *Controller) register() (err error) {
 		log.WithError(err).Warning("failed to register")
 	}
 
-	log.WithError(err).WithField("client", c.MyURL).Debug("register")
+	log.WithError(err).WithField("client", c.myURL).Debug("register")
 	return err
 }
