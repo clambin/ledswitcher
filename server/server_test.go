@@ -23,14 +23,18 @@ func TestServer(t *testing.T) {
 	servers = append(servers, NewTestServer("localhost", 0, false))
 	servers = append(servers, NewTestServer("localhost", 0, false))
 
+	wg := sync.WaitGroup{}
+	ctx, cancel := context.WithCancel(context.Background())
 	for _, s := range servers {
-		go s.Run()
+		wg.Add(1)
+		go func() {
+			err := s.Run(ctx)
+			require.NoError(t, err)
+			wg.Done()
+		}()
 		// elect first server as the master
 		s.Controller.NewLeader <- servers[0].Controller.GetURL()
 	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	go servers[0].Controller.Lead(ctx)
 
 	require.Eventually(t, func() bool {
@@ -46,6 +50,11 @@ func TestServer(t *testing.T) {
 	assert.Eventually(t, func() bool { return checkLEDS(servers, "010") }, 75*time.Second, 10*time.Millisecond)
 	assert.Eventually(t, func() bool { return checkLEDS(servers, "001") }, 75*time.Second, 10*time.Millisecond)
 	assert.Eventually(t, func() bool { return checkLEDS(servers, "100") }, 75*time.Second, 10*time.Millisecond)
+
+	cancel()
+	wg.Wait()
+
+	assert.True(t, checkLEDS(servers, "111"))
 }
 
 func TestServer_Alternate(t *testing.T) {
@@ -55,14 +64,18 @@ func TestServer_Alternate(t *testing.T) {
 	servers = append(servers, NewTestServer("localhost", 0, true))
 	servers = append(servers, NewTestServer("localhost", 0, true))
 
+	wg := sync.WaitGroup{}
+	wg.Add(len(servers))
+	ctx, cancel := context.WithCancel(context.Background())
 	for _, s := range servers {
-		go s.Run()
+		go func() {
+			err := s.Run(ctx)
+			wg.Done()
+			require.NoError(t, err)
+		}()
 		// elect first server as the master
 		s.Controller.NewLeader <- servers[0].Controller.GetURL()
 	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	go servers[0].Controller.Lead(ctx)
 
 	require.Eventually(t, func() bool {
@@ -78,6 +91,13 @@ func TestServer_Alternate(t *testing.T) {
 	assert.Eventually(t, func() bool { return checkLEDS(servers, "010") }, 75*time.Second, 10*time.Millisecond)
 	assert.Eventually(t, func() bool { return checkLEDS(servers, "001") }, 75*time.Second, 10*time.Millisecond)
 	assert.Eventually(t, func() bool { return checkLEDS(servers, "010") }, 75*time.Second, 10*time.Millisecond)
+	assert.Eventually(t, func() bool { return checkLEDS(servers, "100") }, 75*time.Second, 10*time.Millisecond)
+	assert.Eventually(t, func() bool { return checkLEDS(servers, "010") }, 75*time.Second, 10*time.Millisecond)
+
+	cancel()
+	wg.Wait()
+
+	assert.True(t, checkLEDS(servers, "111"))
 }
 
 func checkLEDS(servers []*server.Server, expected string) bool {

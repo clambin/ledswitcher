@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/clambin/ledswitcher/controller"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"regexp"
 	"sort"
@@ -15,15 +14,18 @@ import (
 )
 
 func TestController(t *testing.T) {
-	// log.SetLevel(log.DebugLevel)
 	c := controller.New(20*time.Millisecond, true)
 	c.SetURL("localhost", 10000)
 	mock := NewMockAPIClient(c)
 	c.APIClient = mock
-	go c.Run()
 
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		c.Run(ctx)
+		wg.Done()
+	}()
 	go c.Lead(ctx)
 
 	c.NewLeader <- "http://localhost:10000"
@@ -38,6 +40,9 @@ func TestController(t *testing.T) {
 			return mock.GetStates() == pattern
 		}, 1*time.Second, 10*time.Millisecond, pattern)
 	}
+
+	cancel()
+	wg.Wait()
 }
 
 func TestSwitchingLeader(t *testing.T) {
@@ -45,10 +50,15 @@ func TestSwitchingLeader(t *testing.T) {
 	c.SetURL("localhost", 10000)
 	mock := NewMockAPIClient(c)
 	c.APIClient = mock
-	go c.Run()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		c.Run(ctx)
+		wg.Done()
+	}()
 	go c.Lead(ctx)
 
 	c.NewLeader <- "http://localhost:10001"
@@ -62,10 +72,12 @@ func TestSwitchingLeader(t *testing.T) {
 
 	initState := mock.GetStates()
 
-	assert.Eventually(t, func() bool {
+	require.Eventually(t, func() bool {
 		return mock.GetStates() != initState
 	}, 1*time.Second, 10*time.Millisecond)
 
+	cancel()
+	wg.Wait()
 }
 
 type MockAPIClient struct {

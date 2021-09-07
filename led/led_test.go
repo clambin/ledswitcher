@@ -2,32 +2,29 @@ package led_test
 
 import (
 	"github.com/clambin/ledswitcher/led"
-	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
-	"io/ioutil"
+	"github.com/stretchr/testify/require"
 	"os"
 	"testing"
 )
 
 func TestSetter(t *testing.T) {
-	tmpdir, err := ioutil.TempDir("", "")
-	if err != nil {
-		log.Fatal(err)
-	}
+	tmpdir, err := os.MkdirTemp("", "")
+	require.NoError(t, err)
 	defer func(tmpdir string) {
 		err = os.RemoveAll(tmpdir)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}(tmpdir)
 
 	setter := led.RealSetter{LEDPath: tmpdir}
 
 	err = setter.SetLED(true)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.True(t, setter.GetLED())
 	err = setter.SetLED(false)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.False(t, setter.GetLED())
 	err = setter.SetLED(true)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.True(t, setter.GetLED())
 }

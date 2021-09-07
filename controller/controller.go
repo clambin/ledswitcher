@@ -13,8 +13,8 @@ import (
 // Controller implements the core logic of ledswitcher.  It registers the client with the leader and, if it is the leader
 // sends requests to the registered clients to change the LED
 type Controller struct {
+	APIClient
 	Broker     *broker.Broker
-	APIClient  APIClient
 	NewLeader  chan string
 	NewClient  chan string
 	myURL      string
@@ -48,23 +48,22 @@ func (c *Controller) GetURL() string {
 }
 
 // Run start the controller
-func (c *Controller) Run() {
+func (c *Controller) Run(ctx context.Context) {
 	// start the broker
 	go c.Broker.Run()
 
 	// wait for a leader to emerge
 	// "I've got a bad feeling about this"
-	log.Debug("waiting for leader to emerge")
 	c.leaderURL = <-c.NewLeader
-	log.Debug("new leader: " + c.leaderURL)
 	_ = c.register()
-	log.Debug("registered. here we go")
 
 	// main loop
 	current := ""
 	registerTicker := time.NewTicker(1 * time.Minute)
-	for {
+	for running := true; running; {
 		select {
+		case <-ctx.Done():
+			running = false
 		case next := <-c.Broker.NextClient:
 			c.advance(current, next)
 			current = next
@@ -133,8 +132,6 @@ func (c *Controller) setClientLED(clientURL string, state bool) (err error) {
 	if err != nil {
 		log.WithError(err).WithField("url", clientURL).Warning("failed to contact endpoint to set LED")
 	}
-
-	log.WithError(err).WithFields(log.Fields{"client": clientURL, "state": state}).Debug("setLED")
 
 	return
 }

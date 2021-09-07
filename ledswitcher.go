@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"github.com/clambin/ledswitcher/controller"
 	"github.com/clambin/ledswitcher/server"
 	"github.com/clambin/ledswitcher/version"
 	log "github.com/sirupsen/logrus"
@@ -15,6 +14,8 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"sync"
+	"syscall"
 	"time"
 )
 
@@ -63,33 +64,42 @@ func main() {
 
 	// Set up the REST server
 	s := server.New(hostname, port, rotation, alternate, ledPath)
-	go s.Run()
+	ctx, cancel := context.WithCancel(context.Background())
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		err = s.Run(ctx)
+		if err != nil {
+			log.WithError(err).Error("failed to run ledswitcher server")
+		}
+		wg.Done()
+	}()
 
 	if leader == "" {
-		runWithLeaderElection(leaseLockName, leaseLockNamespace, s.Controller)
+		go runWithLeaderElection(ctx, leaseLockName, leaseLockNamespace, s)
 	} else {
-		runWithoutLeaderElection(s.Controller, s.Controller.GetURL(), hostname == leader)
-	}
-
-	log.Info("exiting")
-}
-
-func runWithoutLeaderElection(controllr *controller.Controller, leaderURL string, isLeading bool) {
-	controllr.NewLeader <- leaderURL
-
-	if isLeading {
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-
-		go controllr.Lead(ctx)
+		go runWithoutLeaderElection(ctx, s, s.Controller.GetURL(), hostname == leader)
 	}
 
 	interrupt := make(chan os.Signal, 1)
-	signal.Notify(interrupt, os.Interrupt)
+	signal.Notify(interrupt, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	<-interrupt
+
+	log.Info("shutting down")
+	cancel()
+	wg.Wait()
+	log.Info("exiting")
 }
 
-func runWithLeaderElection(leaseLockName, leaseLockNamespace string, controllr *controller.Controller) {
+func runWithoutLeaderElection(ctx context.Context, s *server.Server, leaderURL string, isLeading bool) {
+	s.Controller.NewLeader <- leaderURL
+
+	if isLeading {
+		s.Controller.Lead(ctx)
+	}
+}
+
+func runWithLeaderElection(_ context.Context, leaseLockName, leaseLockNamespace string, s *server.Server) {
 	var (
 		err error
 		cfg *rest.Config
@@ -100,9 +110,6 @@ func runWithLeaderElection(leaseLockName, leaseLockNamespace string, controllr *
 	}
 	client := clientset.NewForConfigOrDie(cfg)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	lock := &resourcelock.LeaseLock{
 		LeaseMeta: metav1.ObjectMeta{
 			Name:      leaseLockName,
@@ -110,11 +117,11 @@ func runWithLeaderElection(leaseLockName, leaseLockNamespace string, controllr *
 		},
 		Client: client.CoordinationV1(),
 		LockConfig: resourcelock.ResourceLockConfig{
-			Identity: controllr.GetURL(),
+			Identity: s.Controller.GetURL(),
 		},
 	}
 
-	leaderelection.RunOrDie(ctx, leaderelection.LeaderElectionConfig{
+	leaderelection.RunOrDie(context.TODO(), leaderelection.LeaderElectionConfig{
 		Lock:            lock,
 		ReleaseOnCancel: true,
 		LeaseDuration:   60 * time.Second,
@@ -122,14 +129,15 @@ func runWithLeaderElection(leaseLockName, leaseLockNamespace string, controllr *
 		RetryPeriod:     5 * time.Second,
 		Callbacks: leaderelection.LeaderCallbacks{
 			OnStartedLeading: func(ctx context.Context) {
-				controllr.Lead(ctx)
+				log.Info("leading")
+				s.Controller.Lead(ctx)
 			},
 			OnStoppedLeading: func() {
 				log.Info("leader lost")
 			},
 			OnNewLeader: func(identity string) {
 				log.WithField("id", identity).Info("new leader elected")
-				controllr.NewLeader <- identity
+				s.Controller.NewLeader <- identity
 			},
 		},
 	})

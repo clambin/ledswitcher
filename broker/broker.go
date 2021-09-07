@@ -69,7 +69,7 @@ func (b *Broker) registerClient(client string) {
 		b.clients[client] = entry
 	} else {
 		b.clients[client] = clientEntry{}
-		log.WithFields(log.Fields{"client": client, "clients": b.listClients()}).Info("new client")
+		log.WithFields(log.Fields{"client": client, "clients": b.listClients()}).Info("new client registered")
 	}
 }
 

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"github.com/clambin/gotools/metrics"
 	"github.com/clambin/ledswitcher/controller"
 	"github.com/clambin/ledswitcher/led"
@@ -41,10 +42,20 @@ func New(hostname string, port int, interval time.Duration, alternate bool, ledP
 }
 
 // Run the Server instance. Dispatch requests to the controller or led
-func (server *Server) Run() {
-	go server.Controller.Run()
-	err := server.HTTPServer.Run()
-	if err != http.ErrServerClosed {
-		log.WithError(err).Fatal("failed to start server")
-	}
+func (server *Server) Run(ctx context.Context) (err error) {
+	log.WithField("url", server.Controller.GetURL()).Info("server started")
+	go func() {
+		err2 := server.HTTPServer.Run()
+		if err2 != http.ErrServerClosed {
+			log.WithError(err2).Fatal("failed to start server")
+		}
+	}()
+
+	server.Controller.Run(ctx)
+
+	err = server.HTTPServer.Shutdown(30 * time.Second)
+	err = server.LEDSetter.SetLED(true)
+
+	log.Info("server stopped")
+	return
 }

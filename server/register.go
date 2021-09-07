@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	log "github.com/sirupsen/logrus"
 	"io"
-	"io/ioutil"
 	"net/http"
 )
 
@@ -19,7 +18,7 @@ func parseRegisterRequest(req *http.Request) (clientURL string, err error) {
 		_ = Body.Close()
 	}(req.Body)
 
-	if body, err = ioutil.ReadAll(req.Body); err == nil {
+	if body, err = io.ReadAll(req.Body); err == nil {
 		if err = json.Unmarshal(body, &request); err == nil {
 			clientURL = request.ClientURL
 		}

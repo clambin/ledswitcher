@@ -1,7 +1,7 @@
 package led
 
 import (
-	"io/ioutil"
+	"os"
 	"path"
 )
 
@@ -23,12 +23,12 @@ func (setter *RealSetter) SetLED(state bool) error {
 	}
 
 	fullPath := path.Join(setter.LEDPath, "brightness")
-	return ioutil.WriteFile(fullPath, []byte(data), 0640)
+	return os.WriteFile(fullPath, []byte(data), 0640)
 }
 
 func (setter *RealSetter) GetLED() (state bool) {
 	fullPath := path.Join(setter.LEDPath, "brightness")
-	if content, err := ioutil.ReadFile(fullPath); err == nil {
+	if content, err := os.ReadFile(fullPath); err == nil {
 		state = string(content) == "255"
 	}
 	return
