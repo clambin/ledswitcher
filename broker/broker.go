@@ -1,6 +1,7 @@
 package broker
 
 import (
+	"context"
 	log "github.com/sirupsen/logrus"
 	"sort"
 	"time"
@@ -41,10 +42,12 @@ func New(interval time.Duration, alternate bool) *Broker {
 	}
 }
 
-func (b *Broker) Run() {
+func (b *Broker) Run(ctx context.Context) {
 	var activeClient string
-	for {
+	for running := true; running; {
 		select {
+		case <-ctx.Done():
+			running = false
 		case client := <-b.Register:
 			b.registerClient(client)
 		case status := <-b.Status:
@@ -105,6 +108,9 @@ func (b *Broker) listClients() (clients []string) {
 
 func (b *Broker) nextClient(currentClient string) string {
 	clients := b.listClients()
+	if len(clients) == 0 {
+		return ""
+	}
 
 	// find position of current active client
 	index := -1
@@ -116,11 +122,7 @@ func (b *Broker) nextClient(currentClient string) string {
 	}
 
 	if index == -1 {
-		if len(clients) > 0 {
-			return clients[0]
-		} else {
-			return ""
-		}
+		return clients[0]
 	}
 
 	// next

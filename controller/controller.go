@@ -50,7 +50,7 @@ func (c *Controller) GetURL() string {
 // Run start the controller
 func (c *Controller) Run(ctx context.Context) {
 	// start the broker
-	go c.Broker.Run()
+	go c.Broker.Run(ctx)
 
 	// wait for a leader to emerge
 	// "I've got a bad feeling about this"
