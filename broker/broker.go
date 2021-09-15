@@ -4,6 +4,7 @@ import (
 	"context"
 	log "github.com/sirupsen/logrus"
 	"sort"
+	"sync"
 	"time"
 )
 
@@ -20,13 +21,14 @@ type Broker struct {
 	Register   chan string
 	NextClient chan string
 	Status     chan Status
-	Running    chan bool
+	Leading    chan bool
 
 	clients   map[string]clientEntry
 	ticker    *time.Ticker
 	alternate bool
 	direction int
-	running   bool
+	leading   bool
+	lock      sync.RWMutex
 }
 
 func New(interval time.Duration, alternate bool) *Broker {
@@ -34,7 +36,7 @@ func New(interval time.Duration, alternate bool) *Broker {
 		Register:   make(chan string),
 		NextClient: make(chan string),
 		Status:     make(chan Status),
-		Running:    make(chan bool),
+		Leading:    make(chan bool),
 		clients:    make(map[string]clientEntry),
 		ticker:     time.NewTicker(interval),
 		alternate:  alternate,
@@ -53,10 +55,10 @@ func (b *Broker) Run(ctx context.Context) {
 		case status := <-b.Status:
 			b.setStatus(status.Client, status.Success)
 			b.cleanup()
-		case running := <-b.Running:
-			b.running = running
+		case leading := <-b.Leading:
+			b.leading = leading
 		case <-b.ticker.C:
-			if b.running {
+			if b.leading {
 				if activeClient = b.nextClient(activeClient); activeClient != "" {
 					b.NextClient <- activeClient
 				}
@@ -66,6 +68,8 @@ func (b *Broker) Run(ctx context.Context) {
 }
 
 func (b *Broker) registerClient(client string) {
+	b.lock.Lock()
+	defer b.lock.Unlock()
 	log.WithField("client", client).Debug("registering")
 	if entry, ok := b.clients[client]; ok {
 		entry.failures = 0
@@ -89,7 +93,6 @@ func (b *Broker) setStatus(client string, success bool) {
 
 const FailureCount = 5
 
-// cleanup removes any clients that haven't been seen for "expiry" time
 func (b *Broker) cleanup() {
 	for client, entry := range b.clients {
 		if entry.failures > FailureCount {
@@ -140,4 +143,15 @@ func (b *Broker) nextClient(currentClient string) string {
 	}
 
 	return clients[index]
+}
+
+func (b *Broker) GetClients() (clients []string) {
+	b.lock.RLock()
+	defer b.lock.RUnlock()
+	for client, entry := range b.clients {
+		if entry.failures == 0 {
+			clients = append(clients, client)
+		}
+	}
+	return
 }

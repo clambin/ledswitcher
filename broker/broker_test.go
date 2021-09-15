@@ -19,7 +19,7 @@ func TestBroker_Run(t *testing.T) {
 		wg.Done()
 	}()
 
-	b.Running <- true
+	b.Leading <- true
 	b.Register <- "client1"
 	b.Register <- "client2"
 	b.Register <- "client3"
@@ -33,6 +33,12 @@ func TestBroker_Run(t *testing.T) {
 	assert.Equal(t, "client3", <-b.NextClient)
 	assert.Equal(t, "client4", <-b.NextClient)
 	assert.Equal(t, "client1", <-b.NextClient)
+
+	assert.Contains(t, b.GetClients(), "client1")
+	assert.Contains(t, b.GetClients(), "client2")
+	assert.Contains(t, b.GetClients(), "client3")
+	assert.Contains(t, b.GetClients(), "client4")
+	assert.Len(t, b.GetClients(), 4)
 
 	cancel()
 	wg.Wait()
@@ -48,7 +54,7 @@ func TestBroker_RunAlternate(t *testing.T) {
 		wg.Done()
 	}()
 
-	b.Running <- true
+	b.Leading <- true
 	b.Register <- "client1"
 	assert.Equal(t, "client1", <-b.NextClient)
 	assert.Equal(t, "client1", <-b.NextClient)
@@ -81,7 +87,7 @@ func TestBroker_Cleanup(t *testing.T) {
 		wg.Done()
 	}()
 
-	b.Running <- true
+	b.Leading <- true
 	b.Register <- "client1"
 	b.Register <- "client2"
 	b.Register <- "client3"
@@ -119,10 +125,10 @@ func TestBroker_Running(t *testing.T) {
 		return true
 	}, 100*time.Millisecond, 10*time.Millisecond)
 
-	b.Running <- true
+	b.Leading <- true
 	assert.Equal(t, "client1", <-b.NextClient)
 
-	b.Running <- false
+	b.Leading <- false
 	assert.Never(t, func() bool {
 		_ = <-b.NextClient
 		return true

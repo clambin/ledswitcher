@@ -84,16 +84,18 @@ func (c *Controller) Run(ctx context.Context) {
 // Lead tells the controller it is the leader, so it should send LED requests to registered clients
 func (c *Controller) Lead(ctx context.Context) {
 	// we're leading. tell the broker to start advancing
-	c.Broker.Running <- true
+	c.Broker.Leading <- true
 
 	// wait until we lose the lease
 	<-ctx.Done()
 
 	// we're not leading anymore
-	c.Broker.Running <- false
+	c.Broker.Leading <- false
 }
 
 func (c *Controller) isLeader() bool {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
 	return c.myURL == c.leaderURL
 }
 
