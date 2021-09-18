@@ -2,10 +2,8 @@ package controller_test
 
 import (
 	"context"
-	"fmt"
 	"github.com/clambin/ledswitcher/controller"
 	"github.com/stretchr/testify/require"
-	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -93,33 +91,15 @@ func NewMockAPIClient(c *controller.Controller) *MockAPIClient {
 	}
 }
 
-func (api *MockAPIClient) DoPOST(target, body string) (err error) {
-	if strings.HasSuffix(target, "/register") {
-		// not actually called. here for completeness only
-		err = api.register(body)
-	} else if strings.HasSuffix(target, "/led") {
-		err = api.setLED(strings.TrimSuffix(target, "/led"), true)
-	} else {
-		err = fmt.Errorf("404")
-	}
-	return
+func (api *MockAPIClient) SetLEDOn(targetURL string) (err error) {
+	return api.setLED(strings.TrimSuffix(targetURL, "/led"), true)
 }
 
-func (api *MockAPIClient) DoDELETE(target string) (err error) {
-	if strings.HasSuffix(target, "/led") {
-		err = api.setLED(strings.TrimSuffix(target, "/led"), false)
-	} else {
-		err = fmt.Errorf("404")
-	}
-	return
+func (api *MockAPIClient) SetLEDOff(targetURL string) (err error) {
+	return api.setLED(strings.TrimSuffix(targetURL, "/led"), false)
 }
 
-func (api *MockAPIClient) register(body string) (err error) {
-	r, _ := regexp.Compile(`{ "url": "(.+)" }`)
-	clientURL := r.FindString(body)
-
-	api.States[clientURL] = false
-	api.controllr.Broker.Register <- clientURL
+func (api *MockAPIClient) Register(_, _ string) (err error) {
 	return
 }
 

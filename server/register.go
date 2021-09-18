@@ -14,9 +14,6 @@ func parseRegisterRequest(req *http.Request) (clientURL string, err error) {
 			ClientURL string `json:"url"`
 		}
 	)
-	defer func(Body io.ReadCloser) {
-		_ = Body.Close()
-	}(req.Body)
 
 	if body, err = io.ReadAll(req.Body); err == nil {
 		if err = json.Unmarshal(body, &request); err == nil {
@@ -28,13 +25,14 @@ func parseRegisterRequest(req *http.Request) (clientURL string, err error) {
 
 func (server *Server) handleRegisterClient(w http.ResponseWriter, req *http.Request) {
 	clientURL, err := parseRegisterRequest(req)
+	_ = req.Body.Close()
 
-	if err == nil {
-		log.WithField("url", clientURL).Debug("/register")
-		server.Controller.NewClient <- clientURL
-		w.WriteHeader(http.StatusOK)
-	} else {
+	if err != nil {
 		log.WithField("err", err).Warning("failed to register client")
-		w.WriteHeader(http.StatusBadRequest)
+		http.Error(w, "failed to register client: "+err.Error(), http.StatusBadRequest)
+		return
 	}
+
+	server.Controller.NewClient <- clientURL
+	log.WithField("url", clientURL).Debug("/register")
 }

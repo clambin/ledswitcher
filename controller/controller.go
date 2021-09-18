@@ -26,8 +26,8 @@ type Controller struct {
 // New creates a new controller
 func New(interval time.Duration, alternate bool) *Controller {
 	return &Controller{
+		Caller:    &HTTPCaller{HTTPClient: &http.Client{}},
 		Broker:    broker.New(interval, alternate),
-		Caller:    &Client{HTTPClient: &http.Client{}},
 		NewLeader: make(chan string),
 		NewClient: make(chan string, 5),
 	}
@@ -114,47 +114,30 @@ func (c *Controller) setRegistered(registered bool) {
 func (c *Controller) advance(current, next string) {
 	// switch off the active client
 	if current != "" {
-		err := c.setClientLED(current, false)
+		err := c.Caller.SetLEDOff(current)
 		c.Broker.Status <- broker.Status{Client: current, Success: err == nil}
 		log.WithError(err).WithField("client", current).Debug("OFF")
 	}
 
 	// switch on the next active client
 	if next != "" {
-		err := c.setClientLED(next, true)
+		err := c.Caller.SetLEDOn(next)
 		c.Broker.Status <- broker.Status{Client: next, Success: err == nil}
 		log.WithError(err).WithField("client", next).Debug("ON")
 	}
-}
-
-func (c *Controller) setClientLED(clientURL string, state bool) (err error) {
-	if state == true {
-		err = c.Caller.DoPOST(clientURL+"/led", "")
-	} else {
-		err = c.Caller.DoDELETE(clientURL + "/led")
-	}
-
-	if err != nil {
-		log.WithError(err).WithField("url", clientURL).Warning("failed to contact endpoint to set LED")
-	}
-
-	return
 }
 
 func (c *Controller) register() (err error) {
 	if c.isLeader() {
 		c.Broker.Register <- c.myURL
 	} else {
-		body := fmt.Sprintf(`{ "url": "%s" }`, c.myURL)
-		err = c.Caller.DoPOST(c.leaderURL+"/register", body)
+		err = c.Caller.Register(c.leaderURL, c.myURL)
+		if err != nil {
+			log.WithError(err).Warning("failed to register")
+		}
 	}
-
 	c.setRegistered(err == nil)
 
-	if err != nil {
-		log.WithError(err).Warning("failed to register")
-	}
-
 	log.WithError(err).WithField("client", c.myURL).Debug("register")
-	return err
+	return
 }
