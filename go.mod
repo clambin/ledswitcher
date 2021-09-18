@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/alecthomas/units v0.0.0-20210208195552-ff826a37aa15 // indirect
-	github.com/clambin/gotools v0.5.1
+	github.com/clambin/gotools v0.5.2
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/sirupsen/logrus v1.8.1
 	github.com/stretchr/testify v1.7.0
