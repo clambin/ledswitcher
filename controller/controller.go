@@ -13,7 +13,7 @@ import (
 // Controller implements the core logic of ledswitcher.  It registers the client with the leader and, if it is the leader
 // sends requests to the registered clients to change the LED
 type Controller struct {
-	APIClient
+	Caller
 	Broker     *broker.Broker
 	NewLeader  chan string
 	NewClient  chan string
@@ -27,7 +27,7 @@ type Controller struct {
 func New(interval time.Duration, alternate bool) *Controller {
 	return &Controller{
 		Broker:    broker.New(interval, alternate),
-		APIClient: &RealAPIClient{HTTPClient: &http.Client{}},
+		Caller:    &Client{HTTPClient: &http.Client{}},
 		NewLeader: make(chan string),
 		NewClient: make(chan string, 5),
 	}
@@ -128,8 +128,11 @@ func (c *Controller) advance(current, next string) {
 }
 
 func (c *Controller) setClientLED(clientURL string, state bool) (err error) {
-	body := fmt.Sprintf(`{ "state": %v }`, state)
-	err = c.APIClient.DoPOST(clientURL+"/led", body)
+	if state == true {
+		err = c.Caller.DoPOST(clientURL+"/led", "")
+	} else {
+		err = c.Caller.DoDELETE(clientURL + "/led")
+	}
 
 	if err != nil {
 		log.WithError(err).WithField("url", clientURL).Warning("failed to contact endpoint to set LED")
@@ -143,7 +146,7 @@ func (c *Controller) register() (err error) {
 		c.Broker.Register <- c.myURL
 	} else {
 		body := fmt.Sprintf(`{ "url": "%s" }`, c.myURL)
-		err = c.APIClient.DoPOST(c.leaderURL+"/register", body)
+		err = c.Caller.DoPOST(c.leaderURL+"/register", body)
 	}
 
 	c.setRegistered(err == nil)

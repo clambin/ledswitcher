@@ -13,7 +13,7 @@ func TestController_Health(t *testing.T) {
 	c := controller.New(20*time.Millisecond, true)
 	c.SetURL("localhost", 10000)
 	mock := NewMockAPIClient(c)
-	c.APIClient = mock
+	c.Caller = mock
 
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := sync.WaitGroup{}

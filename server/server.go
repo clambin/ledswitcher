@@ -27,7 +27,7 @@ func New(hostname string, port int, interval time.Duration, alternate bool, ledP
 		{
 			Path:    "/led",
 			Handler: http.HandlerFunc(server.handleLED),
-			Methods: []string{http.MethodPost},
+			Methods: []string{http.MethodPost, http.MethodDelete},
 		},
 		{
 			Path:    "/register",

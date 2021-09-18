@@ -17,7 +17,7 @@ func TestController(t *testing.T) {
 	c := controller.New(20*time.Millisecond, true)
 	c.SetURL("localhost", 10000)
 	mock := NewMockAPIClient(c)
-	c.APIClient = mock
+	c.Caller = mock
 
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := sync.WaitGroup{}
@@ -49,7 +49,7 @@ func TestSwitchingLeader(t *testing.T) {
 	c := controller.New(20*time.Millisecond, true)
 	c.SetURL("localhost", 10000)
 	mock := NewMockAPIClient(c)
-	c.APIClient = mock
+	c.Caller = mock
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -98,7 +98,16 @@ func (api *MockAPIClient) DoPOST(target, body string) (err error) {
 		// not actually called. here for completeness only
 		err = api.register(body)
 	} else if strings.HasSuffix(target, "/led") {
-		err = api.setLED(strings.TrimSuffix(target, "/led"), body)
+		err = api.setLED(strings.TrimSuffix(target, "/led"), true)
+	} else {
+		err = fmt.Errorf("404")
+	}
+	return
+}
+
+func (api *MockAPIClient) DoDELETE(target string) (err error) {
+	if strings.HasSuffix(target, "/led") {
+		err = api.setLED(strings.TrimSuffix(target, "/led"), false)
 	} else {
 		err = fmt.Errorf("404")
 	}
@@ -114,11 +123,11 @@ func (api *MockAPIClient) register(body string) (err error) {
 	return
 }
 
-func (api *MockAPIClient) setLED(target, body string) (err error) {
+func (api *MockAPIClient) setLED(target string, state bool) (err error) {
 	api.lock.Lock()
 	defer api.lock.Unlock()
 
-	api.States[target] = body == `{ "state": true }`
+	api.States[target] = state
 	return
 }
 
@@ -126,8 +135,7 @@ func (api *MockAPIClient) GetStates() (states string) {
 	api.lock.RLock()
 	defer api.lock.RUnlock()
 
-	clients := make([]string, 0, len(api.States))
-
+	var clients []string
 	for url := range api.States {
 		clients = append(clients, url)
 	}
