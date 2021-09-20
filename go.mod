@@ -12,7 +12,7 @@ require (
 	golang.org/x/term v0.0.0-20210503060354-a79de5458b56 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
-	k8s.io/apimachinery v0.22.1
+	k8s.io/apimachinery v0.22.2
 	k8s.io/client-go v0.22.1
 )
 
