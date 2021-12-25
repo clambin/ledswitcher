@@ -10,8 +10,7 @@ import (
 )
 
 func TestController_Health(t *testing.T) {
-	c := controller.New(20*time.Millisecond, true)
-	c.SetURL("localhost", 10000)
+	c := controller.New("localhost", 10000, 20*time.Millisecond, true)
 	mock := NewMockAPIClient(c)
 	c.Caller = mock
 
@@ -22,14 +21,11 @@ func TestController_Health(t *testing.T) {
 		c.Run(ctx)
 		wg.Done()
 	}()
-	// go c.Lead(ctx)
 
-	c.NewLeader <- "http://localhost:10000"
-
-	c.NewClient <- "http://localhost:10000"
-	c.NewClient <- "http://localhost:10001"
-	c.NewClient <- "http://localhost:10002"
-	c.NewClient <- "http://localhost:10003"
+	c.SetLeader("http://localhost:10000")
+	c.RegisterClient("http://localhost:10001")
+	c.RegisterClient("http://localhost:10002")
+	c.RegisterClient("http://localhost:10003")
 
 	assert.Eventually(t, func() bool {
 		health := c.Health()

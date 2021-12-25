@@ -7,32 +7,30 @@ import (
 	"net/http"
 )
 
-func parseRegisterRequest(req *http.Request) (clientURL string, err error) {
-	var (
-		body    []byte
-		request struct {
-			ClientURL string `json:"url"`
-		}
-	)
-
-	if body, err = io.ReadAll(req.Body); err == nil {
-		if err = json.Unmarshal(body, &request); err == nil {
-			clientURL = request.ClientURL
-		}
-	}
-	return
-}
-
 func (server *Server) handleRegisterClient(w http.ResponseWriter, req *http.Request) {
 	clientURL, err := parseRegisterRequest(req)
-	_ = req.Body.Close()
-
 	if err != nil {
 		log.WithField("err", err).Warning("failed to register client")
 		http.Error(w, "failed to register client: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	server.Controller.NewClient <- clientURL
+	server.Controller.RegisterClient(clientURL)
 	log.WithField("url", clientURL).Debug("/register")
+}
+
+func parseRegisterRequest(req *http.Request) (clientURL string, err error) {
+	var body []byte
+	if body, err = io.ReadAll(req.Body); err == nil {
+		var request struct {
+			ClientURL string `json:"url"`
+		}
+
+		if err = json.Unmarshal(body, &request); err == nil {
+			clientURL = request.ClientURL
+		}
+	}
+	_ = req.Body.Close()
+
+	return
 }

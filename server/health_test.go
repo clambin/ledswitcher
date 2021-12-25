@@ -30,7 +30,7 @@ func TestServer_Health(t *testing.T) {
 		wg.Done()
 		require.NoError(t, err2)
 	}()
-	s.Controller.NewLeader <- fmt.Sprintf("http://localhost:%d", s.HTTPServer.Port)
+	s.Controller.SetLeader(fmt.Sprintf("http://localhost:%d", s.HTTPServer.Port))
 
 	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/health", s.HTTPServer.Port))
 	require.NoError(t, err)

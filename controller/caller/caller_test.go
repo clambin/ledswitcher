@@ -1,7 +1,7 @@
-package controller_test
+package caller_test
 
 import (
-	"github.com/clambin/ledswitcher/controller"
+	"github.com/clambin/ledswitcher/controller/caller"
 	"github.com/stretchr/testify/require"
 	"io"
 	"net/http"
@@ -23,7 +23,7 @@ func TestHTTPCaller_SetLEDOn(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := controller.HTTPCaller{
+	client := caller.HTTPCaller{
 		HTTPClient: &http.Client{},
 	}
 
@@ -44,7 +44,7 @@ func TestHTTPCaller_SetLEDOff(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := controller.HTTPCaller{
+	client := caller.HTTPCaller{
 		HTTPClient: &http.Client{},
 	}
 
@@ -81,7 +81,7 @@ func TestHTTPCaller_Register(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := controller.HTTPCaller{
+	client := caller.HTTPCaller{
 		HTTPClient: &http.Client{},
 	}
 

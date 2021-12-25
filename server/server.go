@@ -20,8 +20,7 @@ type Server struct {
 // New creates a new Server
 func New(hostname string, port int, interval time.Duration, alternate bool, ledPath string) (server *Server) {
 	server = &Server{
-		Controller: controller.New(interval, alternate),
-		LEDSetter:  &led.RealSetter{LEDPath: ledPath},
+		LEDSetter: &led.RealSetter{LEDPath: ledPath},
 	}
 	server.HTTPServer = metrics.NewServerWithHandlers(port, []metrics.Handler{
 		{
@@ -41,13 +40,13 @@ func New(hostname string, port int, interval time.Duration, alternate bool, ledP
 	})
 	// If Port is zero, metrics.Server will allocate a free one dynamically.
 	// Set the controller's URL now that we know the port number.
-	server.Controller.SetURL(hostname, server.HTTPServer.Port)
+	server.Controller = controller.New(hostname, server.HTTPServer.Port, interval, alternate)
 	return
 }
 
 // Run the Server instance. Dispatch requests to the controller or led
 func (server *Server) Run(ctx context.Context) (err error) {
-	log.WithField("url", server.Controller.GetURL()).Info("server started")
+	log.WithField("url", server.Controller.URL).Info("server started")
 	go func() {
 		err2 := server.HTTPServer.Run()
 		if err2 != http.ErrServerClosed {

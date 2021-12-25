@@ -75,14 +75,21 @@ func main() {
 		wg.Done()
 	}()
 
-	if leader == "" {
-		go runWithLeaderElection(ctx, leaseLockName, leaseLockNamespace, s)
-	} else {
-		go runWithoutLeaderElection(ctx, s, s.Controller.GetURL(), hostname == leader)
-	}
-
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		if leader == "" {
+			for {
+				runWithLeaderElection(ctx, leaseLockName, leaseLockNamespace, s)
+				time.Sleep(100 * time.Millisecond)
+			}
+		} else {
+			runWithoutLeaderElection(ctx, s, s.Controller.URL, hostname == leader)
+		}
+		interrupt <- syscall.SIGTERM
+	}()
+
 	<-interrupt
 
 	log.Info("shutting down")
@@ -92,7 +99,7 @@ func main() {
 }
 
 func runWithoutLeaderElection(ctx context.Context, s *server.Server, leaderURL string, isLeading bool) {
-	s.Controller.NewLeader <- leaderURL
+	s.Controller.SetLeader(leaderURL)
 
 	if isLeading {
 		s.Controller.Lead(ctx)
@@ -117,7 +124,7 @@ func runWithLeaderElection(_ context.Context, leaseLockName, leaseLockNamespace 
 		},
 		Client: client.CoordinationV1(),
 		LockConfig: resourcelock.ResourceLockConfig{
-			Identity: s.Controller.GetURL(),
+			Identity: s.Controller.URL,
 		},
 	}
 
@@ -137,7 +144,7 @@ func runWithLeaderElection(_ context.Context, leaseLockName, leaseLockNamespace 
 			},
 			OnNewLeader: func(identity string) {
 				log.WithField("id", identity).Info("new leader elected")
-				s.Controller.NewLeader <- identity
+				s.Controller.SetLeader(identity)
 			},
 		},
 	})

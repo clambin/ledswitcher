@@ -3,6 +3,7 @@ package controller_test
 import (
 	"context"
 	"github.com/clambin/ledswitcher/controller"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"sort"
 	"strings"
@@ -12,8 +13,9 @@ import (
 )
 
 func TestController(t *testing.T) {
-	c := controller.New(20*time.Millisecond, true)
-	c.SetURL("localhost", 10000)
+	c := controller.New("localhost", 10000, 20*time.Millisecond, true)
+	assert.Equal(t, "http://localhost:10000", c.URL)
+
 	mock := NewMockAPIClient(c)
 	c.Caller = mock
 
@@ -26,12 +28,12 @@ func TestController(t *testing.T) {
 	}()
 	go c.Lead(ctx)
 
-	c.NewLeader <- "http://localhost:10000"
+	c.SetLeader("http://localhost:10000")
+	assert.True(t, c.IsRegistered())
 
-	c.NewClient <- "http://localhost:10000"
-	c.NewClient <- "http://localhost:10001"
-	c.NewClient <- "http://localhost:10002"
-	c.NewClient <- "http://localhost:10003"
+	c.RegisterClient("http://localhost:10001")
+	c.RegisterClient("http://localhost:10002")
+	c.RegisterClient("http://localhost:10003")
 
 	for _, pattern := range []string{"1000", "0100", "0010", "0001", "0010", "0100", "1000", "0100"} {
 		require.Eventually(t, func() bool {
@@ -44,8 +46,7 @@ func TestController(t *testing.T) {
 }
 
 func TestSwitchingLeader(t *testing.T) {
-	c := controller.New(20*time.Millisecond, true)
-	c.SetURL("localhost", 10000)
+	c := controller.New("localhost", 10000, 20*time.Millisecond, true)
 	mock := NewMockAPIClient(c)
 	c.Caller = mock
 
@@ -59,14 +60,12 @@ func TestSwitchingLeader(t *testing.T) {
 	}()
 	go c.Lead(ctx)
 
-	c.NewLeader <- "http://localhost:10001"
+	c.SetLeader("http://localhost:10001")
+	c.SetLeader("http://localhost:10000")
 
-	c.NewLeader <- "http://localhost:10000"
-
-	c.NewClient <- "http://localhost:10000"
-	c.NewClient <- "http://localhost:10001"
-	c.NewClient <- "http://localhost:10002"
-	c.NewClient <- "http://localhost:10003"
+	c.RegisterClient("http://localhost:10001")
+	c.RegisterClient("http://localhost:10002")
+	c.RegisterClient("http://localhost:10003")
 
 	initState := mock.GetStates()
 

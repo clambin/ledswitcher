@@ -3,7 +3,8 @@ package controller
 import (
 	"context"
 	"fmt"
-	"github.com/clambin/ledswitcher/broker"
+	"github.com/clambin/ledswitcher/controller/broker"
+	"github.com/clambin/ledswitcher/controller/caller"
 	log "github.com/sirupsen/logrus"
 	"net/http"
 	"sync"
@@ -13,38 +14,22 @@ import (
 // Controller implements the core logic of ledswitcher.  It registers the client with the leader and, if it is the leader
 // sends requests to the registered clients to change the LED
 type Controller struct {
-	Caller
-	Broker     *broker.Broker
-	NewLeader  chan string
-	NewClient  chan string
-	myURL      string
+	caller.Caller
+	broker.Broker
+	URL        string
 	leaderURL  string
 	registered bool
+	current    string
 	lock       sync.RWMutex
 }
 
 // New creates a new controller
-func New(interval time.Duration, alternate bool) *Controller {
+func New(hostname string, port int, interval time.Duration, alternate bool) *Controller {
 	return &Controller{
-		Caller:    &HTTPCaller{HTTPClient: &http.Client{}},
-		Broker:    broker.New(interval, alternate),
-		NewLeader: make(chan string),
-		NewClient: make(chan string, 5),
+		Caller: &caller.HTTPCaller{HTTPClient: &http.Client{}},
+		Broker: broker.New(interval, alternate),
+		URL:    fmt.Sprintf("http://%s:%d", hostname, port),
 	}
-}
-
-// SetURL sets the controller's own URL
-func (c *Controller) SetURL(hostname string, port int) {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-	c.myURL = fmt.Sprintf("http://%s:%d", hostname, port)
-}
-
-// GetURL returns the controller's URL
-func (c *Controller) GetURL() string {
-	c.lock.RLock()
-	defer c.lock.RUnlock()
-	return c.myURL
 }
 
 // Run start the controller
@@ -52,51 +37,66 @@ func (c *Controller) Run(ctx context.Context) {
 	// start the broker
 	go c.Broker.Run(ctx)
 
-	// wait for a leader to emerge
-	// "I've got a bad feeling about this"
-	c.leaderURL = <-c.NewLeader
-	_ = c.register()
-
-	// main loop
-	current := ""
 	registerTicker := time.NewTicker(1 * time.Minute)
+
 	for running := true; running; {
 		select {
 		case <-ctx.Done():
 			running = false
-		case next := <-c.Broker.NextClient:
-			c.advance(current, next)
-			current = next
+		case next := <-c.Broker.NextClient():
+			c.advance(next)
 		case <-registerTicker.C:
+			c.lock.Lock()
 			_ = c.register()
-		case newLeader := <-c.NewLeader:
-			if c.leaderURL != newLeader {
-				log.WithField("leader", newLeader).Debug("controller found new leader")
-				c.leaderURL = newLeader
-				_ = c.register()
-			}
-		case newClient := <-c.NewClient:
-			c.Broker.Register <- newClient
+			c.lock.Unlock()
 		}
+	}
+}
+
+// RegisterClient registers a new client
+func (c *Controller) RegisterClient(clientURL string) {
+	c.Broker.RegisterClient(clientURL)
+}
+
+// SetLeader tells the Controller that there is a new leader
+func (c *Controller) SetLeader(leaderURL string) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	if c.leaderURL != leaderURL {
+		log.WithField("leader", leaderURL).Debug("controller found new leader")
+		c.leaderURL = leaderURL
+		_ = c.register()
 	}
 }
 
 // Lead tells the controller it is the leader, so it should send LED requests to registered clients
 func (c *Controller) Lead(ctx context.Context) {
 	// we're leading. tell the broker to start advancing
-	c.Broker.Leading <- true
+	c.Broker.SetLeading(true)
 
 	// wait until we lose the lease
 	<-ctx.Done()
 
 	// we're not leading anymore
-	c.Broker.Leading <- false
+	c.Broker.SetLeading(false)
+}
+
+func (c *Controller) getCurrent() string {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
+	return c.current
+}
+
+func (c *Controller) setCurrent(current string) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	c.current = current
 }
 
 func (c *Controller) isLeader() bool {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
-	return c.myURL == c.leaderURL
+	return c.URL == c.leaderURL
 }
 
 func (c *Controller) IsRegistered() bool {
@@ -105,39 +105,36 @@ func (c *Controller) IsRegistered() bool {
 	return c.registered
 }
 
-func (c *Controller) setRegistered(registered bool) {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-	c.registered = registered
-}
-
-func (c *Controller) advance(current, next string) {
+func (c *Controller) advance(next string) {
+	current := c.getCurrent()
 	// switch off the active client
 	if current != "" {
 		err := c.Caller.SetLEDOff(current)
-		c.Broker.Status <- broker.Status{Client: current, Success: err == nil}
+		c.Broker.SetClientStatus(current, err == nil)
 		log.WithError(err).WithField("client", current).Debug("OFF")
 	}
 
 	// switch on the next active client
 	if next != "" {
 		err := c.Caller.SetLEDOn(next)
-		c.Broker.Status <- broker.Status{Client: next, Success: err == nil}
+		c.Broker.SetClientStatus(next, err == nil)
 		log.WithError(err).WithField("client", next).Debug("ON")
 	}
+	c.setCurrent(next)
 }
 
 func (c *Controller) register() (err error) {
-	if c.isLeader() {
-		c.Broker.Register <- c.myURL
+	// if we're leading, register directly with the broker
+	if c.URL == c.leaderURL {
+		c.Broker.RegisterClient(c.URL)
 	} else {
-		err = c.Caller.Register(c.leaderURL, c.myURL)
+		err = c.Caller.Register(c.leaderURL, c.URL)
 		if err != nil {
 			log.WithError(err).Warning("failed to register")
 		}
 	}
-	c.setRegistered(err == nil)
+	c.registered = err == nil
 
-	log.WithError(err).WithField("client", c.myURL).Debug("register")
+	log.WithError(err).WithField("client", c.URL).Debug("register")
 	return
 }

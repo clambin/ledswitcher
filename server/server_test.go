@@ -27,13 +27,13 @@ func TestServer(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	for _, s := range servers {
 		wg.Add(1)
-		go func() {
-			err := s.Run(ctx)
+		go func(srv *server.Server) {
+			err := srv.Run(ctx)
 			require.NoError(t, err)
 			wg.Done()
-		}()
+		}(s)
 		// elect first server as the master
-		s.Controller.NewLeader <- servers[0].Controller.GetURL()
+		s.Controller.SetLeader(servers[0].Controller.URL)
 	}
 	go servers[0].Controller.Lead(ctx)
 
@@ -46,15 +46,15 @@ func TestServer(t *testing.T) {
 		return true
 	}, 500*time.Millisecond, 10*time.Millisecond)
 
-	assert.Eventually(t, func() bool { return checkLEDS(servers, "100") }, 75*time.Second, 10*time.Millisecond)
-	assert.Eventually(t, func() bool { return checkLEDS(servers, "010") }, 75*time.Second, 10*time.Millisecond)
-	assert.Eventually(t, func() bool { return checkLEDS(servers, "001") }, 75*time.Second, 10*time.Millisecond)
-	assert.Eventually(t, func() bool { return checkLEDS(servers, "100") }, 75*time.Second, 10*time.Millisecond)
+	assert.Eventually(t, func() bool { return getLEDs(servers) == "100" }, 500*time.Millisecond, 10*time.Millisecond)
+	assert.Eventually(t, func() bool { return getLEDs(servers) == "010" }, 500*time.Millisecond, 10*time.Millisecond)
+	assert.Eventually(t, func() bool { return getLEDs(servers) == "001" }, 500*time.Millisecond, 10*time.Millisecond)
+	assert.Eventually(t, func() bool { return getLEDs(servers) == "100" }, 500*time.Millisecond, 10*time.Millisecond)
 
 	cancel()
 	wg.Wait()
 
-	assert.True(t, checkLEDS(servers, "111"))
+	assert.Equal(t, "111", getLEDs(servers))
 }
 
 func TestServer_Alternate(t *testing.T) {
@@ -68,13 +68,13 @@ func TestServer_Alternate(t *testing.T) {
 	wg.Add(len(servers))
 	ctx, cancel := context.WithCancel(context.Background())
 	for _, s := range servers {
-		go func() {
-			err := s.Run(ctx)
+		go func(srv *server.Server) {
+			err := srv.Run(ctx)
 			wg.Done()
 			require.NoError(t, err)
-		}()
+		}(s)
 		// elect first server as the master
-		s.Controller.NewLeader <- servers[0].Controller.GetURL()
+		s.Controller.SetLeader(servers[0].Controller.URL)
 	}
 	go servers[0].Controller.Lead(ctx)
 
@@ -87,22 +87,20 @@ func TestServer_Alternate(t *testing.T) {
 		return true
 	}, 500*time.Millisecond, 10*time.Millisecond)
 
-	assert.Eventually(t, func() bool { return checkLEDS(servers, "100") }, 75*time.Second, 10*time.Millisecond)
-	assert.Eventually(t, func() bool { return checkLEDS(servers, "010") }, 75*time.Second, 10*time.Millisecond)
-	assert.Eventually(t, func() bool { return checkLEDS(servers, "001") }, 75*time.Second, 10*time.Millisecond)
-	assert.Eventually(t, func() bool { return checkLEDS(servers, "010") }, 75*time.Second, 10*time.Millisecond)
-	assert.Eventually(t, func() bool { return checkLEDS(servers, "100") }, 75*time.Second, 10*time.Millisecond)
-	assert.Eventually(t, func() bool { return checkLEDS(servers, "010") }, 75*time.Second, 10*time.Millisecond)
+	assert.Eventually(t, func() bool { return getLEDs(servers) == "100" }, 500*time.Millisecond, 10*time.Millisecond)
+	assert.Eventually(t, func() bool { return getLEDs(servers) == "010" }, 500*time.Millisecond, 10*time.Millisecond)
+	assert.Eventually(t, func() bool { return getLEDs(servers) == "001" }, 500*time.Millisecond, 10*time.Millisecond)
+	assert.Eventually(t, func() bool { return getLEDs(servers) == "010" }, 500*time.Millisecond, 10*time.Millisecond)
+	assert.Eventually(t, func() bool { return getLEDs(servers) == "100" }, 500*time.Millisecond, 10*time.Millisecond)
+	assert.Eventually(t, func() bool { return getLEDs(servers) == "010" }, 500*time.Millisecond, 10*time.Millisecond)
 
 	cancel()
 	wg.Wait()
 
-	assert.True(t, checkLEDS(servers, "111"))
+	assert.Equal(t, "111", getLEDs(servers))
 }
 
-func checkLEDS(servers []*server.Server, expected string) bool {
-	leds := ""
-
+func getLEDs(servers []*server.Server) (leds string) {
 	for _, s := range servers {
 		if s.LEDSetter.GetLED() == true {
 			leds += "1"
@@ -110,8 +108,7 @@ func checkLEDS(servers []*server.Server, expected string) bool {
 			leds += "0"
 		}
 	}
-
-	return leds == expected
+	return
 }
 
 // Unittest mock of LEDSetter
