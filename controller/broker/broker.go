@@ -26,7 +26,7 @@ type LEDBroker struct {
 	nextClient chan string
 	clients    map[string]clientEntry
 	leading    bool
-	ticker     *time.Ticker
+	interval   time.Duration
 	alternate  bool
 	direction  int
 	lock       sync.RWMutex
@@ -37,7 +37,7 @@ func New(interval time.Duration, alternate bool) *LEDBroker {
 	return &LEDBroker{
 		nextClient: make(chan string),
 		clients:    make(map[string]clientEntry),
-		ticker:     time.NewTicker(interval),
+		interval:   interval,
 		alternate:  alternate,
 		direction:  1,
 	}
@@ -97,11 +97,13 @@ func (lb *LEDBroker) isLeading() bool {
 // Run starts the Broker
 func (lb *LEDBroker) Run(ctx context.Context) {
 	var current string
+	ticker := time.NewTicker(lb.interval)
+
 	for running := true; running; {
 		select {
 		case <-ctx.Done():
 			running = false
-		case <-lb.ticker.C:
+		case <-ticker.C:
 			if lb.isLeading() {
 				current = lb.advance(current)
 				if current != "" {
@@ -110,6 +112,8 @@ func (lb *LEDBroker) Run(ctx context.Context) {
 			}
 		}
 	}
+
+	ticker.Stop()
 }
 
 // GetClients returns the list of currently registered clients.
