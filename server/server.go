@@ -2,7 +2,9 @@ package server
 
 import (
 	"context"
+	"errors"
 	"github.com/clambin/gotools/metrics"
+	"github.com/clambin/ledswitcher/broker"
 	"github.com/clambin/ledswitcher/controller"
 	"github.com/clambin/ledswitcher/led"
 	log "github.com/sirupsen/logrus"
@@ -12,6 +14,7 @@ import (
 
 // Server runs the REST API Server and dispatches requests to the led or controller
 type Server struct {
+	Broker     broker.Broker
 	Controller *controller.Controller
 	LEDSetter  led.Setter
 	HTTPServer *metrics.Server
@@ -20,6 +23,7 @@ type Server struct {
 // New creates a new Server
 func New(hostname string, port int, interval time.Duration, alternate bool, ledPath string) (server *Server) {
 	server = &Server{
+		Broker:    broker.New(interval, alternate),
 		LEDSetter: &led.RealSetter{LEDPath: ledPath},
 	}
 	server.HTTPServer = metrics.NewServerWithHandlers(port, []metrics.Handler{
@@ -40,7 +44,7 @@ func New(hostname string, port int, interval time.Duration, alternate bool, ledP
 	})
 	// If Port is zero, metrics.Server will allocate a free one dynamically.
 	// Set the controller's URL now that we know the port number.
-	server.Controller = controller.New(hostname, server.HTTPServer.Port, interval, alternate)
+	server.Controller = controller.New(hostname, server.HTTPServer.Port, server.Broker)
 	return
 }
 
@@ -49,11 +53,12 @@ func (server *Server) Run(ctx context.Context) (err error) {
 	log.WithField("url", server.Controller.URL).Info("server started")
 	go func() {
 		err2 := server.HTTPServer.Run()
-		if err2 != http.ErrServerClosed {
+		if !errors.Is(err2, http.ErrServerClosed) {
 			log.WithError(err2).Fatal("failed to start server")
 		}
 	}()
 
+	go server.Broker.Run(ctx)
 	server.Controller.Run(ctx)
 
 	err = server.HTTPServer.Shutdown(30 * time.Second)

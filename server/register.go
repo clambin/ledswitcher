@@ -8,6 +8,11 @@ import (
 )
 
 func (server *Server) handleRegisterClient(w http.ResponseWriter, req *http.Request) {
+	if server.Broker.IsLeading() == false {
+		http.Error(w, "not leading", http.StatusMethodNotAllowed)
+		return
+	}
+
 	clientURL, err := parseRegisterRequest(req)
 	if err != nil {
 		log.WithField("err", err).Warning("failed to register client")
@@ -15,7 +20,7 @@ func (server *Server) handleRegisterClient(w http.ResponseWriter, req *http.Requ
 		return
 	}
 
-	server.Controller.RegisterClient(clientURL)
+	server.Broker.RegisterClient(clientURL)
 	log.WithField("url", clientURL).Debug("/register")
 }
 

@@ -62,28 +62,15 @@ func main() {
 		log.WithField("err", err).Fatal("unable to determine hostname")
 	}
 
-	// Set up the REST server
-	s := server.New(hostname, port, rotation, alternate, ledPath)
 	ctx, cancel := context.WithCancel(context.Background())
-	wg := sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
-		err = s.Run(ctx)
-		if err != nil {
-			log.WithError(err).Error("failed to run ledswitcher server")
-		}
-		wg.Done()
-	}()
+	s, wg := startServer(ctx, hostname, port, rotation, alternate, ledPath)
 
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
 		if leader == "" {
-			for {
-				runWithLeaderElection(ctx, leaseLockName, leaseLockNamespace, s)
-				time.Sleep(100 * time.Millisecond)
-			}
+			runWithLeaderElection(ctx, s, leaseLockName, leaseLockNamespace)
 		} else {
 			runWithoutLeaderElection(ctx, s, s.Controller.URL, hostname == leader)
 		}
@@ -98,25 +85,33 @@ func main() {
 	log.Info("exiting")
 }
 
-func runWithoutLeaderElection(ctx context.Context, s *server.Server, leaderURL string, isLeading bool) {
-	s.Controller.SetLeader(leaderURL)
-
-	if isLeading {
-		s.Controller.Lead(ctx)
-	}
+func startServer(ctx context.Context, hostname string, port int, rotation time.Duration, alternate bool, ledPath string) (s *server.Server, wg sync.WaitGroup) {
+	s = server.New(hostname, port, rotation, alternate, ledPath)
+	wg = sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		err := s.Run(ctx)
+		if err != nil {
+			log.WithError(err).Fatal("failed to run ledswitcher server")
+		}
+		wg.Done()
+	}()
+	return
 }
 
-func runWithLeaderElection(_ context.Context, leaseLockName, leaseLockNamespace string, s *server.Server) {
-	var (
-		err error
-		cfg *rest.Config
-	)
+func runWithoutLeaderElection(ctx context.Context, s *server.Server, leaderURL string, isLeading bool) {
+	s.Broker.SetLeading(isLeading)
+	s.Controller.SetLeader(leaderURL)
+	<-ctx.Done()
+}
 
-	if cfg, err = rest.InClusterConfig(); err != nil {
+func runWithLeaderElection(ctx context.Context, s *server.Server, leaseLockName, leaseLockNamespace string) {
+	cfg, err := rest.InClusterConfig()
+	if err != nil {
 		log.WithField("err", err).Fatal("rest.InClusterConfig failed")
 	}
-	client := clientset.NewForConfigOrDie(cfg)
 
+	client := clientset.NewForConfigOrDie(cfg)
 	lock := &resourcelock.LeaseLock{
 		LeaseMeta: metav1.ObjectMeta{
 			Name:      leaseLockName,
@@ -128,7 +123,7 @@ func runWithLeaderElection(_ context.Context, leaseLockName, leaseLockNamespace 
 		},
 	}
 
-	leaderelection.RunOrDie(context.TODO(), leaderelection.LeaderElectionConfig{
+	leaderelection.RunOrDie(ctx, leaderelection.LeaderElectionConfig{
 		Lock:            lock,
 		ReleaseOnCancel: true,
 		LeaseDuration:   60 * time.Second,
@@ -137,9 +132,11 @@ func runWithLeaderElection(_ context.Context, leaseLockName, leaseLockNamespace 
 		Callbacks: leaderelection.LeaderCallbacks{
 			OnStartedLeading: func(ctx context.Context) {
 				log.Info("leading")
-				s.Controller.Lead(ctx)
+				s.Broker.SetLeading(true)
+				<-ctx.Done()
 			},
 			OnStoppedLeading: func() {
+				s.Broker.SetLeading(false)
 				log.Info("leader lost")
 			},
 			OnNewLeader: func(identity string) {

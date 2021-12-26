@@ -12,9 +12,9 @@ func (server *Server) handleLED(w http.ResponseWriter, req *http.Request) {
 		state = true
 	case http.MethodDelete:
 		state = false
-		//default:
-		//	http.Error(w, "unexpected http method: "+req.Method, http.StatusBadRequest)
-		//	return
+	default:
+		http.Error(w, "unexpected http method: "+req.Method, http.StatusBadRequest)
+		return
 	}
 
 	err := server.LEDSetter.SetLED(state)
@@ -23,5 +23,5 @@ func (server *Server) handleLED(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, "failed to set led state: "+err.Error(), http.StatusInternalServerError)
 	}
 
-	log.WithError(err).WithField("state", state).Debug("/led")
+	log.WithField("state", state).Debug("/led")
 }

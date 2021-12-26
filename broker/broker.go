@@ -13,8 +13,11 @@ type Broker interface {
 	SetClientStatus(clientURL string, success bool)
 	NextClient() (ch <-chan string)
 	SetLeading(leading bool)
+	IsLeading() (leading bool)
 	Run(ctx context.Context)
 	GetClients() (clients []string)
+	GetCurrentClient() (current string)
+	Health() (health Health)
 }
 
 type clientEntry struct {
@@ -25,6 +28,7 @@ type clientEntry struct {
 type LEDBroker struct {
 	nextClient chan string
 	clients    map[string]clientEntry
+	current    string
 	leading    bool
 	interval   time.Duration
 	alternate  bool
@@ -88,7 +92,7 @@ func (lb *LEDBroker) SetLeading(leading bool) {
 	lb.leading = leading
 }
 
-func (lb *LEDBroker) isLeading() bool {
+func (lb *LEDBroker) IsLeading() bool {
 	lb.lock.RLock()
 	defer lb.lock.RUnlock()
 	return lb.leading
@@ -96,7 +100,6 @@ func (lb *LEDBroker) isLeading() bool {
 
 // Run starts the Broker
 func (lb *LEDBroker) Run(ctx context.Context) {
-	var current string
 	ticker := time.NewTicker(lb.interval)
 
 	for running := true; running; {
@@ -104,10 +107,11 @@ func (lb *LEDBroker) Run(ctx context.Context) {
 		case <-ctx.Done():
 			running = false
 		case <-ticker.C:
-			if lb.isLeading() {
-				current = lb.advance(current)
-				if current != "" {
-					lb.nextClient <- current
+			if lb.IsLeading() {
+				next := lb.advance(lb.GetCurrentClient())
+				if next != "" {
+					lb.nextClient <- next
+					lb.setCurrentClient(next)
 				}
 			}
 		}
@@ -125,6 +129,19 @@ func (lb *LEDBroker) GetClients() (clients []string) {
 	}
 	sort.Strings(clients)
 	return
+}
+
+// GetCurrentClient returns the client whose led is currently on
+func (lb *LEDBroker) GetCurrentClient() string {
+	lb.lock.RLock()
+	defer lb.lock.RUnlock()
+	return lb.current
+}
+
+func (lb *LEDBroker) setCurrentClient(client string) {
+	lb.lock.Lock()
+	defer lb.lock.Unlock()
+	lb.current = client
 }
 
 func (lb *LEDBroker) advance(current string) (next string) {

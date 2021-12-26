@@ -2,7 +2,9 @@ package controller_test
 
 import (
 	"context"
+	"github.com/clambin/ledswitcher/broker"
 	"github.com/clambin/ledswitcher/controller"
+	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"sort"
@@ -13,27 +15,33 @@ import (
 )
 
 func TestController(t *testing.T) {
-	c := controller.New("localhost", 10000, 20*time.Millisecond, true)
-	assert.Equal(t, "http://localhost:10000", c.URL)
-
+	b := broker.New(20*time.Millisecond, true)
+	c := controller.New("localhost", 10000, b)
 	mock := NewMockAPIClient(c)
 	c.Caller = mock
 
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		b.Run(ctx)
+		wg.Done()
+	}()
 	wg.Add(1)
 	go func() {
 		c.Run(ctx)
 		wg.Done()
 	}()
-	go c.Lead(ctx)
-
-	c.SetLeader("http://localhost:10000")
+	log.SetLevel(log.DebugLevel)
+	b.SetLeading(true)
+	c.SetLeader("http://localhost:1000")
 	assert.True(t, c.IsRegistered())
 
-	c.RegisterClient("http://localhost:10001")
-	c.RegisterClient("http://localhost:10002")
-	c.RegisterClient("http://localhost:10003")
+	b.RegisterClient("http://localhost:10000")
+	b.RegisterClient("http://localhost:10001")
+	b.RegisterClient("http://localhost:10002")
+	b.RegisterClient("http://localhost:10003")
 
 	for _, pattern := range []string{"1000", "0100", "0010", "0001", "0010", "0100", "1000", "0100"} {
 		require.Eventually(t, func() bool {
@@ -46,26 +54,29 @@ func TestController(t *testing.T) {
 }
 
 func TestSwitchingLeader(t *testing.T) {
-	c := controller.New("localhost", 10000, 20*time.Millisecond, true)
+	b := broker.New(20*time.Millisecond, true)
+	c := controller.New("localhost", 10000, b)
 	mock := NewMockAPIClient(c)
 	c.Caller = mock
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	go b.Run(ctx)
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
 		c.Run(ctx)
 		wg.Done()
 	}()
-	go c.Lead(ctx)
+	b.SetLeading(true)
+
+	b.RegisterClient("http://localhost:10000")
+	b.RegisterClient("http://localhost:10001")
+	b.RegisterClient("http://localhost:10002")
+	b.RegisterClient("http://localhost:10003")
 
 	c.SetLeader("http://localhost:10001")
 	c.SetLeader("http://localhost:10000")
-
-	c.RegisterClient("http://localhost:10001")
-	c.RegisterClient("http://localhost:10002")
-	c.RegisterClient("http://localhost:10003")
 
 	initState := mock.GetStates()
 

@@ -5,6 +5,8 @@ import (
 	"github.com/clambin/ledswitcher/server"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"net/http"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -19,23 +21,23 @@ func NewTestServer(hostname string, port int, alternate bool) (s *server.Server)
 func TestServer(t *testing.T) {
 	servers := make([]*server.Server, 0)
 
-	servers = append(servers, NewTestServer("localhost", 0, false))
-	servers = append(servers, NewTestServer("localhost", 0, false))
-	servers = append(servers, NewTestServer("localhost", 0, false))
+	servers = append(servers, NewTestServer("127.0.0.1", 0, false))
+	servers = append(servers, NewTestServer("127.0.0.1", 0, false))
+	servers = append(servers, NewTestServer("127.0.0.1", 0, false))
 
-	wg := sync.WaitGroup{}
 	ctx, cancel := context.WithCancel(context.Background())
-	for _, s := range servers {
-		wg.Add(1)
+	wg := sync.WaitGroup{}
+	wg.Add(len(servers))
+	for index, s := range servers {
 		go func(srv *server.Server) {
 			err := srv.Run(ctx)
 			require.NoError(t, err)
 			wg.Done()
 		}(s)
 		// elect first server as the master
+		s.Broker.SetLeading(index == 0)
 		s.Controller.SetLeader(servers[0].Controller.URL)
 	}
-	go servers[0].Controller.Lead(ctx)
 
 	require.Eventually(t, func() bool {
 		for _, s := range servers {
@@ -67,16 +69,17 @@ func TestServer_Alternate(t *testing.T) {
 	wg := sync.WaitGroup{}
 	wg.Add(len(servers))
 	ctx, cancel := context.WithCancel(context.Background())
-	for _, s := range servers {
+	for index, s := range servers {
 		go func(srv *server.Server) {
 			err := srv.Run(ctx)
 			wg.Done()
 			require.NoError(t, err)
 		}(s)
 		// elect first server as the master
+		s.Broker.SetLeading(index == 0)
 		s.Controller.SetLeader(servers[0].Controller.URL)
 	}
-	go servers[0].Controller.Lead(ctx)
+	servers[0].Broker.SetLeading(true)
 
 	require.Eventually(t, func() bool {
 		for _, s := range servers {
@@ -98,6 +101,30 @@ func TestServer_Alternate(t *testing.T) {
 	wg.Wait()
 
 	assert.Equal(t, "111", getLEDs(servers))
+}
+
+func TestServer_NotLeading(t *testing.T) {
+	s := server.New("127.0.0.1", 10000, time.Second, false, "")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		require.NoError(t, s.Run(ctx))
+	}()
+
+	require.Eventually(t, func() bool {
+		_, err := http.Get("http://127.0.0.1:10000/metrics")
+		return err == nil
+	}, 500*time.Millisecond, 10*time.Millisecond)
+
+	req, err := http.Post("http://127.0.0.1:10000/register", "application/json", nil)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusMethodNotAllowed, req.StatusCode)
+
+	s.Broker.SetLeading(true)
+
+	req, err = http.Post("http://127.0.0.1:10000/register", "application/json", strings.NewReader(`{"client": "http://127.0.0.1:10000"}`))
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, req.StatusCode)
 }
 
 func getLEDs(servers []*server.Server) (leds string) {

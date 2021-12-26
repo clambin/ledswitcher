@@ -2,7 +2,7 @@ package broker_test
 
 import (
 	"context"
-	"github.com/clambin/ledswitcher/controller/broker"
+	"github.com/clambin/ledswitcher/broker"
 	"github.com/stretchr/testify/assert"
 	"sync"
 	"testing"
@@ -113,7 +113,7 @@ func TestBroker_Cleanup(t *testing.T) {
 }
 
 func TestBroker_Leading(t *testing.T) {
-	b := broker.New(10*time.Millisecond, false)
+	b := broker.New(50*time.Millisecond, false)
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := sync.WaitGroup{}
 	wg.Add(1)
@@ -130,6 +130,7 @@ func TestBroker_Leading(t *testing.T) {
 
 	b.SetLeading(true)
 	assert.Equal(t, "client1", <-b.NextClient())
+	assert.Equal(t, "client1", b.GetCurrentClient())
 
 	b.SetLeading(false)
 	assert.Never(t, func() bool {
