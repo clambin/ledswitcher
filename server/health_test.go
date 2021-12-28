@@ -21,7 +21,7 @@ func TestServer_Health(t *testing.T) {
 		_ = os.RemoveAll(tmpDir)
 	}()
 
-	s := server.New("localhost", 0, time.Second, false, tmpDir)
+	s := server.New("127.0.0.1", 0, time.Second, false, tmpDir)
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := sync.WaitGroup{}
 	wg.Add(1)
@@ -31,16 +31,16 @@ func TestServer_Health(t *testing.T) {
 		require.NoError(t, err2)
 	}()
 	s.Broker.SetLeading(true)
-	s.Controller.SetLeader(fmt.Sprintf("http://localhost:%d", s.HTTPServer.Port))
+	s.Controller.SetLeader(fmt.Sprintf("http://127.0.0.1:%d", s.HTTPServer.Port))
 
-	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/health", s.HTTPServer.Port))
+	resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/health", s.HTTPServer.Port))
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 
 	body, _ := io.ReadAll(resp.Body)
 	assert.Contains(t, string(body), `"Leader": true,
 	"Endpoints": [
-		"http://localhost:`)
+		"http://127.0.0.1:`)
 
 	_ = resp.Body.Close()
 

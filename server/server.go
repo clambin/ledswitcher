@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 	"github.com/clambin/gotools/metrics"
-	"github.com/clambin/ledswitcher/broker"
-	"github.com/clambin/ledswitcher/controller"
-	"github.com/clambin/ledswitcher/led"
+	"github.com/clambin/ledswitcher/server/broker"
+	"github.com/clambin/ledswitcher/server/controller"
+	"github.com/clambin/ledswitcher/server/led"
 	log "github.com/sirupsen/logrus"
 	"net/http"
+	"sync"
 	"time"
 )
 
@@ -58,11 +59,22 @@ func (server *Server) Run(ctx context.Context) (err error) {
 		}
 	}()
 
-	go server.Broker.Run(ctx)
-	server.Controller.Run(ctx)
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+	go func() {
+		server.Broker.Run(ctx)
+		wg.Done()
+	}()
+
+	go func() {
+		server.Controller.Run(ctx)
+		wg.Done()
+	}()
+
+	wg.Wait()
 
 	err = server.HTTPServer.Shutdown(30 * time.Second)
-	err = server.LEDSetter.SetLED(true)
+	_ = server.LEDSetter.SetLED(true)
 
 	log.Info("server stopped")
 	return

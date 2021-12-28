@@ -21,6 +21,7 @@ func (server *Server) handleRegisterClient(w http.ResponseWriter, req *http.Requ
 	}
 
 	server.Broker.RegisterClient(clientURL)
+	w.WriteHeader(http.StatusCreated)
 	log.WithField("url", clientURL).Debug("/register")
 }
 

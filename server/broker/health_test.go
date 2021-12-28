@@ -3,7 +3,7 @@ package broker_test
 import (
 	"context"
 	"encoding/json"
-	"github.com/clambin/ledswitcher/broker"
+	"github.com/clambin/ledswitcher/server/broker"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"sync"

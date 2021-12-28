@@ -3,8 +3,8 @@ package controller
 import (
 	"context"
 	"fmt"
-	"github.com/clambin/ledswitcher/broker"
-	"github.com/clambin/ledswitcher/controller/caller"
+	"github.com/clambin/ledswitcher/server/broker"
+	"github.com/clambin/ledswitcher/server/controller/caller"
 	log "github.com/sirupsen/logrus"
 	"net/http"
 	"sync"

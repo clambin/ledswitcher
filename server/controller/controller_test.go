@@ -2,8 +2,8 @@ package controller_test
 
 import (
 	"context"
-	"github.com/clambin/ledswitcher/broker"
-	"github.com/clambin/ledswitcher/controller"
+	"github.com/clambin/ledswitcher/server/broker"
+	"github.com/clambin/ledswitcher/server/controller"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

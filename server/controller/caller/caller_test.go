@@ -1,7 +1,7 @@
 package caller_test
 
 import (
-	"github.com/clambin/ledswitcher/controller/caller"
+	"github.com/clambin/ledswitcher/server/controller/caller"
 	"github.com/stretchr/testify/require"
 	"io"
 	"net/http"
@@ -20,6 +20,7 @@ func TestHTTPCaller_SetLEDOn(t *testing.T) {
 			http.Error(w, "path should be /register", http.StatusBadRequest)
 			return
 		}
+		w.WriteHeader(http.StatusCreated)
 	}))
 	defer server.Close()
 
@@ -41,6 +42,7 @@ func TestHTTPCaller_SetLEDOff(t *testing.T) {
 			http.Error(w, "path should be /register", http.StatusBadRequest)
 			return
 		}
+		w.WriteHeader(http.StatusNoContent)
 	}))
 	defer server.Close()
 
@@ -78,6 +80,7 @@ func TestHTTPCaller_Register(t *testing.T) {
 			http.Error(w, "incorrect body in request", http.StatusInternalServerError)
 			return
 		}
+		w.WriteHeader(http.StatusCreated)
 	}))
 	defer server.Close()
 

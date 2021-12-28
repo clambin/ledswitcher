@@ -12,18 +12,18 @@ import (
 	"time"
 )
 
-func NewTestServer(hostname string, port int, alternate bool) (s *server.Server) {
+func newTestServer(hostname string, port int, alternate bool) (s *server.Server) {
 	s = server.New(hostname, port, 50*time.Millisecond, alternate, "")
-	s.LEDSetter = &MockLEDSetter{}
+	s.LEDSetter = &FakeLEDSetter{}
 	return
 }
 
 func TestServer(t *testing.T) {
 	servers := make([]*server.Server, 0)
 
-	servers = append(servers, NewTestServer("127.0.0.1", 0, false))
-	servers = append(servers, NewTestServer("127.0.0.1", 0, false))
-	servers = append(servers, NewTestServer("127.0.0.1", 0, false))
+	servers = append(servers, newTestServer("127.0.0.1", 0, false))
+	servers = append(servers, newTestServer("127.0.0.1", 0, false))
+	servers = append(servers, newTestServer("127.0.0.1", 0, false))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := sync.WaitGroup{}
@@ -62,9 +62,9 @@ func TestServer(t *testing.T) {
 func TestServer_Alternate(t *testing.T) {
 	servers := make([]*server.Server, 0)
 
-	servers = append(servers, NewTestServer("localhost", 0, true))
-	servers = append(servers, NewTestServer("localhost", 0, true))
-	servers = append(servers, NewTestServer("localhost", 0, true))
+	servers = append(servers, newTestServer("127.0.0.1", 0, true))
+	servers = append(servers, newTestServer("127.0.0.1", 0, true))
+	servers = append(servers, newTestServer("127.0.0.1", 0, true))
 
 	wg := sync.WaitGroup{}
 	wg.Add(len(servers))
@@ -124,7 +124,7 @@ func TestServer_NotLeading(t *testing.T) {
 
 	req, err = http.Post("http://127.0.0.1:10000/register", "application/json", strings.NewReader(`{"client": "http://127.0.0.1:10000"}`))
 	require.NoError(t, err)
-	assert.Equal(t, http.StatusOK, req.StatusCode)
+	assert.Equal(t, http.StatusCreated, req.StatusCode)
 }
 
 func getLEDs(servers []*server.Server) (leds string) {
@@ -140,12 +140,12 @@ func getLEDs(servers []*server.Server) (leds string) {
 
 // Unittest mock of LEDSetter
 
-type MockLEDSetter struct {
+type FakeLEDSetter struct {
 	lock  sync.Mutex
 	state bool
 }
 
-func (setter *MockLEDSetter) SetLED(state bool) error {
+func (setter *FakeLEDSetter) SetLED(state bool) error {
 	setter.lock.Lock()
 	defer setter.lock.Unlock()
 
@@ -153,7 +153,7 @@ func (setter *MockLEDSetter) SetLED(state bool) error {
 	return nil
 }
 
-func (setter *MockLEDSetter) GetLED() bool {
+func (setter *FakeLEDSetter) GetLED() bool {
 	setter.lock.Lock()
 	defer setter.lock.Unlock()
 

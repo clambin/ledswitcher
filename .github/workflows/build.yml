@@ -5,6 +5,7 @@ on:
     branches:
     - master
     - refactor
+    - httpcode
 
 jobs:
   test:
