@@ -1,11 +1,9 @@
-package controller_test
+package driver_test
 
 import (
 	"context"
-	"github.com/clambin/ledswitcher/server/broker"
-	"github.com/clambin/ledswitcher/server/controller"
-	log "github.com/sirupsen/logrus"
-	"github.com/stretchr/testify/assert"
+	"github.com/clambin/ledswitcher/broker"
+	"github.com/clambin/ledswitcher/driver"
 	"github.com/stretchr/testify/require"
 	"sort"
 	"strings"
@@ -15,8 +13,8 @@ import (
 )
 
 func TestController(t *testing.T) {
-	b := broker.New(20*time.Millisecond, true)
-	c := controller.New("localhost", 10000, b)
+	b := broker.New(20*time.Millisecond, false)
+	c := driver.New(b)
 	mock := NewMockAPIClient(c)
 	c.Caller = mock
 
@@ -33,11 +31,44 @@ func TestController(t *testing.T) {
 		c.Run(ctx)
 		wg.Done()
 	}()
-	log.SetLevel(log.DebugLevel)
-	b.SetLeading(true)
-	c.SetLeader("http://localhost:1000")
-	assert.True(t, c.IsRegistered())
 
+	b.SetLeading(true)
+	b.RegisterClient("http://localhost:10000")
+	b.RegisterClient("http://localhost:10001")
+	b.RegisterClient("http://localhost:10002")
+	b.RegisterClient("http://localhost:10003")
+
+	for _, pattern := range []string{"1000", "0100", "0010", "0001", "1000"} {
+		require.Eventually(t, func() bool {
+			return mock.GetStates() == pattern
+		}, time.Second, 10*time.Millisecond, pattern)
+	}
+
+	cancel()
+	wg.Wait()
+}
+
+func TestController_Alternate(t *testing.T) {
+	b := broker.New(20*time.Millisecond, true)
+	c := driver.New(b)
+	mock := NewMockAPIClient(c)
+	c.Caller = mock
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		b.Run(ctx)
+		wg.Done()
+	}()
+	wg.Add(1)
+	go func() {
+		c.Run(ctx)
+		wg.Done()
+	}()
+
+	b.SetLeading(true)
 	b.RegisterClient("http://localhost:10000")
 	b.RegisterClient("http://localhost:10001")
 	b.RegisterClient("http://localhost:10002")
@@ -46,55 +77,20 @@ func TestController(t *testing.T) {
 	for _, pattern := range []string{"1000", "0100", "0010", "0001", "0010", "0100", "1000", "0100"} {
 		require.Eventually(t, func() bool {
 			return mock.GetStates() == pattern
-		}, 1*time.Second, 10*time.Millisecond, pattern)
+		}, time.Second, 10*time.Millisecond, pattern)
 	}
 
 	cancel()
 	wg.Wait()
 }
 
-func TestSwitchingLeader(t *testing.T) {
-	b := broker.New(20*time.Millisecond, true)
-	c := controller.New("localhost", 10000, b)
-	mock := NewMockAPIClient(c)
-	c.Caller = mock
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	go b.Run(ctx)
-	wg := sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
-		c.Run(ctx)
-		wg.Done()
-	}()
-	b.SetLeading(true)
-
-	b.RegisterClient("http://localhost:10000")
-	b.RegisterClient("http://localhost:10001")
-	b.RegisterClient("http://localhost:10002")
-	b.RegisterClient("http://localhost:10003")
-
-	c.SetLeader("http://localhost:10001")
-	c.SetLeader("http://localhost:10000")
-
-	initState := mock.GetStates()
-
-	require.Eventually(t, func() bool {
-		return mock.GetStates() != initState
-	}, 1*time.Second, 10*time.Millisecond)
-
-	cancel()
-	wg.Wait()
-}
-
 type MockAPIClient struct {
-	controllr *controller.Controller
+	controllr *driver.Driver
 	States    map[string]bool
 	lock      sync.RWMutex
 }
 
-func NewMockAPIClient(c *controller.Controller) *MockAPIClient {
+func NewMockAPIClient(c *driver.Driver) *MockAPIClient {
 	return &MockAPIClient{
 		controllr: c,
 		States:    make(map[string]bool),

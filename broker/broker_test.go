@@ -2,7 +2,7 @@ package broker_test
 
 import (
 	"context"
-	"github.com/clambin/ledswitcher/server/broker"
+	"github.com/clambin/ledswitcher/broker"
 	"github.com/stretchr/testify/assert"
 	"sync"
 	"testing"

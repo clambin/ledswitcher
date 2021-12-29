@@ -1,4 +1,4 @@
-package server
+package endpoint
 
 import (
 	"encoding/json"
@@ -7,8 +7,8 @@ import (
 	"net/http"
 )
 
-func (server *Server) handleRegisterClient(w http.ResponseWriter, req *http.Request) {
-	if server.Broker.IsLeading() == false {
+func (endpoint *Endpoint) handleRegisterClient(w http.ResponseWriter, req *http.Request) {
+	if endpoint.Broker.IsLeading() == false {
 		http.Error(w, "not leading", http.StatusMethodNotAllowed)
 		return
 	}
@@ -20,7 +20,7 @@ func (server *Server) handleRegisterClient(w http.ResponseWriter, req *http.Requ
 		return
 	}
 
-	server.Broker.RegisterClient(clientURL)
+	endpoint.Broker.RegisterClient(clientURL)
 	w.WriteHeader(http.StatusCreated)
 	log.WithField("url", clientURL).Debug("/register")
 }

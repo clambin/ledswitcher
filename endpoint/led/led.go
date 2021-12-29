@@ -6,6 +6,7 @@ import (
 )
 
 // Setter interface used for unit testing
+//go:generate mockery --name Setter
 type Setter interface {
 	SetLED(state bool) error
 	GetLED() bool

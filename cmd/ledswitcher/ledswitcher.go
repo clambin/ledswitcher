@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"github.com/clambin/ledswitcher/endpoint"
 	"github.com/clambin/ledswitcher/server"
 	"github.com/clambin/ledswitcher/version"
 	log "github.com/sirupsen/logrus"
@@ -14,7 +15,6 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	"sync"
 	"syscall"
 	"time"
 )
@@ -39,7 +39,7 @@ func main() {
 	a.HelpFlag.Short('h')
 	a.VersionFlag.Short('v')
 	a.Flag("debug", "Log debug messages").Short('d').Default("false").BoolVar(&debug)
-	a.Flag("rotation", "Delay of led switching to the next controller").Default("1s").DurationVar(&rotation)
+	a.Flag("rotation", "Delay of led switching to the next driver").Default("1s").DurationVar(&rotation)
 	a.Flag("alternate", "Alternate direction").Short('a').Default("false").BoolVar(&alternate)
 	a.Flag("port", "Controller listener port").Default("8080").IntVar(&port)
 	a.Flag("led-path", "path name to the sysfs directory for the LED").Default("/sys/class/leds/led1").StringVar(&ledPath)
@@ -62,50 +62,28 @@ func main() {
 		log.WithField("err", err).Fatal("unable to determine hostname")
 	}
 
+	s := server.New(hostname, port, ledPath, rotation, alternate, leader)
+
 	ctx, cancel := context.WithCancel(context.Background())
-	s, wg := startServer(ctx, hostname, port, rotation, alternate, ledPath)
+
+	s.Start(ctx)
 
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
-	go func() {
-		if leader == "" {
-			runWithLeaderElection(ctx, s, leaseLockName, leaseLockNamespace)
-		} else {
-			runWithoutLeaderElection(ctx, s, s.Controller.URL, hostname == leader)
-		}
-		interrupt <- syscall.SIGTERM
-	}()
+	if leader == "" {
+		go runWithLeaderElection(ctx, s.Endpoint, hostname, leaseLockName, leaseLockNamespace)
+	}
 
 	<-interrupt
 
 	log.Info("shutting down")
 	cancel()
-	wg.Wait()
+	s.Wait()
 	log.Info("exiting")
 }
 
-func startServer(ctx context.Context, hostname string, port int, rotation time.Duration, alternate bool, ledPath string) (s *server.Server, wg sync.WaitGroup) {
-	s = server.New(hostname, port, rotation, alternate, ledPath)
-	wg = sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
-		err := s.Run(ctx)
-		if err != nil {
-			log.WithError(err).Fatal("failed to run ledswitcher server")
-		}
-		wg.Done()
-	}()
-	return
-}
-
-func runWithoutLeaderElection(ctx context.Context, s *server.Server, leaderURL string, isLeading bool) {
-	s.Broker.SetLeading(isLeading)
-	s.Controller.SetLeader(leaderURL)
-	<-ctx.Done()
-}
-
-func runWithLeaderElection(ctx context.Context, s *server.Server, leaseLockName, leaseLockNamespace string) {
+func runWithLeaderElection(ctx context.Context, s *endpoint.Endpoint, hostname, leaseLockName, leaseLockNamespace string) {
 	cfg, err := rest.InClusterConfig()
 	if err != nil {
 		log.WithField("err", err).Fatal("rest.InClusterConfig failed")
@@ -119,7 +97,7 @@ func runWithLeaderElection(ctx context.Context, s *server.Server, leaseLockName,
 		},
 		Client: client.CoordinationV1(),
 		LockConfig: resourcelock.ResourceLockConfig{
-			Identity: s.Controller.URL,
+			Identity: hostname,
 		},
 	}
 
@@ -131,17 +109,14 @@ func runWithLeaderElection(ctx context.Context, s *server.Server, leaseLockName,
 		RetryPeriod:     5 * time.Second,
 		Callbacks: leaderelection.LeaderCallbacks{
 			OnStartedLeading: func(ctx context.Context) {
-				log.Info("leading")
-				s.Broker.SetLeading(true)
 				<-ctx.Done()
 			},
 			OnStoppedLeading: func() {
-				s.Broker.SetLeading(false)
 				log.Info("leader lost")
 			},
 			OnNewLeader: func(identity string) {
 				log.WithField("id", identity).Info("new leader elected")
-				s.Controller.SetLeader(identity)
+				s.SetLeader(identity)
 			},
 		},
 	})

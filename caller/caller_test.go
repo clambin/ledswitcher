@@ -1,7 +1,7 @@
 package caller_test
 
 import (
-	"github.com/clambin/ledswitcher/server/controller/caller"
+	"github.com/clambin/ledswitcher/caller"
 	"github.com/stretchr/testify/require"
 	"io"
 	"net/http"

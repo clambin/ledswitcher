@@ -2,6 +2,7 @@ package broker
 
 import (
 	"context"
+	log "github.com/sirupsen/logrus"
 	"sort"
 	"sync"
 	"time"
@@ -39,7 +40,7 @@ type LEDBroker struct {
 // New creates a new LEDBroker
 func New(interval time.Duration, alternate bool) *LEDBroker {
 	return &LEDBroker{
-		nextClient: make(chan string),
+		nextClient: make(chan string, 1),
 		clients:    make(map[string]clientEntry),
 		interval:   interval,
 		alternate:  alternate,
@@ -100,8 +101,8 @@ func (lb *LEDBroker) IsLeading() bool {
 
 // Run starts the Broker
 func (lb *LEDBroker) Run(ctx context.Context) {
+	log.Info("broker started")
 	ticker := time.NewTicker(lb.interval)
-
 	for running := true; running; {
 		select {
 		case <-ctx.Done():
@@ -116,8 +117,8 @@ func (lb *LEDBroker) Run(ctx context.Context) {
 			}
 		}
 	}
-
 	ticker.Stop()
+	log.Info("broker stopped")
 }
 
 // GetClients returns the list of currently registered clients.

@@ -59,17 +59,10 @@ func (caller *HTTPCaller) call(target, path, method string, body *string) (err e
 
 	if err == nil {
 		status = strconv.Itoa(resp.StatusCode)
-		var ok bool
-		switch method {
-		case http.MethodGet:
-			ok = resp.StatusCode == http.StatusOK
-		case http.MethodPost:
-			ok = resp.StatusCode == http.StatusCreated
-		case http.MethodDelete:
-			ok = resp.StatusCode == http.StatusNoContent
-		}
+		ok := (method == http.MethodPost && resp.StatusCode == http.StatusCreated) ||
+			(method == http.MethodDelete && resp.StatusCode == http.StatusNoContent)
 		if ok == false {
-			err = fmt.Errorf("%s", resp.Status)
+			err = fmt.Errorf("unexpected HTTP response: %s", resp.Status)
 		}
 		_ = resp.Body.Close()
 	}

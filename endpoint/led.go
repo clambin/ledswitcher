@@ -1,13 +1,16 @@
-package server
+package endpoint
 
 import (
 	log "github.com/sirupsen/logrus"
 	"net/http"
 )
 
-func (server *Server) handleLED(w http.ResponseWriter, req *http.Request) {
-	var state bool
-	status := http.StatusOK
+func (endpoint *Endpoint) handleLED(w http.ResponseWriter, req *http.Request) {
+	var (
+		state  bool
+		status int
+	)
+
 	switch req.Method {
 	case http.MethodPost:
 		state = true
@@ -15,12 +18,9 @@ func (server *Server) handleLED(w http.ResponseWriter, req *http.Request) {
 	case http.MethodDelete:
 		state = false
 		status = http.StatusNoContent
-	default:
-		http.Error(w, "unexpected http method: "+req.Method, http.StatusBadRequest)
-		return
 	}
 
-	err := server.LEDSetter.SetLED(state)
+	err := endpoint.LEDSetter.SetLED(state)
 	if err != nil {
 		log.WithError(err).Warning("failed to set LED state")
 		http.Error(w, "failed to set led state: "+err.Error(), http.StatusInternalServerError)
