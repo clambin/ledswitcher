@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"github.com/clambin/ledswitcher/broker/scheduler"
 	"github.com/clambin/ledswitcher/endpoint"
 	"github.com/clambin/ledswitcher/server"
 	"github.com/clambin/ledswitcher/version"
@@ -24,6 +25,7 @@ func main() {
 		hostname           string
 		err                error
 		rotation           time.Duration
+		mode               string
 		alternate          bool
 		port               int
 		ledPath            string
@@ -40,6 +42,7 @@ func main() {
 	a.VersionFlag.Short('v')
 	a.Flag("debug", "Log debug messages").Short('d').Default("false").BoolVar(&debug)
 	a.Flag("rotation", "Delay of led switching to the next driver").Default("1s").DurationVar(&rotation)
+	a.Flag("mode", "LED pattern mode (linear or alternating").Short('m').Default("linear").StringVar(&mode)
 	a.Flag("alternate", "Alternate direction").Short('a').Default("false").BoolVar(&alternate)
 	a.Flag("port", "Controller listener port").Default("8080").IntVar(&port)
 	a.Flag("led-path", "path name to the sysfs directory for the LED").Default("/sys/class/leds/led1").StringVar(&ledPath)
@@ -62,24 +65,34 @@ func main() {
 		log.WithField("err", err).Fatal("unable to determine hostname")
 	}
 
-	s := server.New(hostname, port, ledPath, rotation, alternate, leader)
+	// fallback to previous options
+	if alternate {
+		mode = "alternating"
+	}
+
+	s, ok := scheduler.New(mode)
+	if ok == false {
+		log.Fatalf("invalid mode: %s", mode)
+	}
+
+	srv := server.New(hostname, port, ledPath, rotation, s, leader)
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	s.Start(ctx)
+	srv.Start(ctx)
 
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	if leader == "" {
-		go runWithLeaderElection(ctx, s.Endpoint, hostname, leaseLockName, leaseLockNamespace)
+		go runWithLeaderElection(ctx, srv.Endpoint, hostname, leaseLockName, leaseLockNamespace)
 	}
 
 	<-interrupt
 
 	log.Info("shutting down")
 	cancel()
-	s.Wait()
+	srv.Wait()
 	log.Info("exiting")
 }
 

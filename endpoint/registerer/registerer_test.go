@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/clambin/ledswitcher/broker"
+	"github.com/clambin/ledswitcher/broker/scheduler"
 	"github.com/clambin/ledswitcher/caller"
 	"github.com/clambin/ledswitcher/endpoint/registerer"
 	"github.com/stretchr/testify/require"
@@ -20,7 +21,7 @@ func TestRegisterer_Run(t *testing.T) {
 	testServer := httptest.NewServer(http.HandlerFunc(registryStub))
 	defer testServer.Close()
 
-	b := broker.New(time.Second, false)
+	b := broker.New(time.Second, &scheduler.LinearScheduler{})
 	r := registerer.Registerer{
 		Caller:      &caller.HTTPCaller{HTTPClient: &http.Client{}},
 		Broker:      b,
@@ -42,7 +43,7 @@ func TestRegisterer_Run(t *testing.T) {
 }
 
 func TestRegisterer_Run_Retry(t *testing.T) {
-	b := broker.New(time.Second, false)
+	b := broker.New(time.Second, &scheduler.LinearScheduler{})
 	r := registerer.Registerer{
 		Caller:      &caller.HTTPCaller{HTTPClient: &http.Client{}},
 		Broker:      b,

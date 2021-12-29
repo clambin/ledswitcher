@@ -3,6 +3,7 @@ package broker_test
 import (
 	"context"
 	"github.com/clambin/ledswitcher/broker"
+	"github.com/clambin/ledswitcher/broker/scheduler"
 	"github.com/stretchr/testify/assert"
 	"sync"
 	"testing"
@@ -10,7 +11,7 @@ import (
 )
 
 func TestBroker_Run(t *testing.T) {
-	b := broker.New(10*time.Millisecond, false)
+	b := broker.New(10*time.Millisecond, &scheduler.LinearScheduler{})
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := sync.WaitGroup{}
 	wg.Add(1)
@@ -46,7 +47,7 @@ func TestBroker_Run(t *testing.T) {
 }
 
 func TestBroker_RunAlternate(t *testing.T) {
-	b := broker.New(10*time.Millisecond, true)
+	b := broker.New(10*time.Millisecond, &scheduler.AlternatingScheduler{})
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := sync.WaitGroup{}
 	wg.Add(1)
@@ -79,7 +80,7 @@ func TestBroker_RunAlternate(t *testing.T) {
 }
 
 func TestBroker_Cleanup(t *testing.T) {
-	b := broker.New(10*time.Millisecond, false)
+	b := broker.New(10*time.Millisecond, &scheduler.LinearScheduler{})
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := sync.WaitGroup{}
 	wg.Add(1)
@@ -113,7 +114,7 @@ func TestBroker_Cleanup(t *testing.T) {
 }
 
 func TestBroker_Leading(t *testing.T) {
-	b := broker.New(50*time.Millisecond, false)
+	b := broker.New(50*time.Millisecond, &scheduler.LinearScheduler{})
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := sync.WaitGroup{}
 	wg.Add(1)

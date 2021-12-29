@@ -2,6 +2,7 @@ package broker
 
 import (
 	"context"
+	"github.com/clambin/ledswitcher/broker/scheduler"
 	log "github.com/sirupsen/logrus"
 	"sort"
 	"sync"
@@ -32,19 +33,17 @@ type LEDBroker struct {
 	current    string
 	leading    bool
 	interval   time.Duration
-	alternate  bool
-	direction  int
+	scheduler  scheduler.Scheduler
 	lock       sync.RWMutex
 }
 
 // New creates a new LEDBroker
-func New(interval time.Duration, alternate bool) *LEDBroker {
+func New(interval time.Duration, scheduler scheduler.Scheduler) *LEDBroker {
 	return &LEDBroker{
 		nextClient: make(chan string, 1),
 		clients:    make(map[string]clientEntry),
 		interval:   interval,
-		alternate:  alternate,
-		direction:  1,
+		scheduler:  scheduler,
 	}
 }
 
@@ -164,18 +163,10 @@ func (lb *LEDBroker) advance(current string) (next string) {
 		return clients[0]
 	}
 
-	// next
-	if len(clients) > 1 {
-		if lb.alternate == false {
-			index = (index + 1) % len(clients)
-		} else {
-			index += lb.direction
+	index = lb.scheduler.Next(len(clients))
 
-			if index == -1 || index == len(clients) {
-				lb.direction = -lb.direction
-				index += 2 * lb.direction
-			}
-		}
+	if index == -1 {
+		return clients[0]
 	}
 
 	return clients[index]

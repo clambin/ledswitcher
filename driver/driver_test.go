@@ -3,6 +3,7 @@ package driver_test
 import (
 	"context"
 	"github.com/clambin/ledswitcher/broker"
+	"github.com/clambin/ledswitcher/broker/scheduler"
 	"github.com/clambin/ledswitcher/driver"
 	"github.com/stretchr/testify/require"
 	"sort"
@@ -13,7 +14,7 @@ import (
 )
 
 func TestController(t *testing.T) {
-	b := broker.New(20*time.Millisecond, false)
+	b := broker.New(20*time.Millisecond, &scheduler.LinearScheduler{})
 	c := driver.New(b)
 	mock := NewMockAPIClient(c)
 	c.Caller = mock
@@ -49,7 +50,7 @@ func TestController(t *testing.T) {
 }
 
 func TestController_Alternate(t *testing.T) {
-	b := broker.New(20*time.Millisecond, true)
+	b := broker.New(20*time.Millisecond, &scheduler.AlternatingScheduler{})
 	c := driver.New(b)
 	mock := NewMockAPIClient(c)
 	c.Caller = mock

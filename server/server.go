@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"github.com/clambin/ledswitcher/broker"
+	"github.com/clambin/ledswitcher/broker/scheduler"
 	"github.com/clambin/ledswitcher/driver"
 	"github.com/clambin/ledswitcher/endpoint"
 	log "github.com/sirupsen/logrus"
@@ -26,8 +27,8 @@ type Server struct {
 }
 
 // New creates a new Server
-func New(hostname string, port int, ledPath string, rotation time.Duration, alternate bool, leader string) (server *Server) {
-	b := broker.New(rotation, alternate)
+func New(hostname string, port int, ledPath string, rotation time.Duration, scheduler scheduler.Scheduler, leader string) (server *Server) {
+	b := broker.New(rotation, scheduler)
 	server = &Server{
 		Broker:   b,
 		Driver:   driver.New(b),

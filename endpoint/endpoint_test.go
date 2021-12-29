@@ -3,6 +3,7 @@ package endpoint_test
 import (
 	"context"
 	"github.com/clambin/ledswitcher/broker"
+	"github.com/clambin/ledswitcher/broker/scheduler"
 	"github.com/clambin/ledswitcher/endpoint"
 	"github.com/clambin/ledswitcher/endpoint/led/mocks"
 	"github.com/stretchr/testify/assert"
@@ -43,7 +44,7 @@ func startEndpoint(ctx context.Context, port int) (ep *endpoint.Endpoint, ledSet
 }
 
 func startEndpointWithLeaderPort(ctx context.Context, port int, leaderPort int) (ep *endpoint.Endpoint, ledSetter *mocks.Setter, wg *sync.WaitGroup) {
-	b := broker.New(10*time.Millisecond, false)
+	b := broker.New(10*time.Millisecond, &scheduler.LinearScheduler{})
 	ep = endpoint.New("127.0.0.1", port, "", b)
 	ledSetter = &mocks.Setter{}
 	ep.LEDSetter = ledSetter

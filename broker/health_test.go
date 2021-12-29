@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/clambin/ledswitcher/broker"
+	"github.com/clambin/ledswitcher/broker/scheduler"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"sync"
@@ -12,7 +13,7 @@ import (
 )
 
 func TestBroker_Health(t *testing.T) {
-	b := broker.New(20*time.Millisecond, true)
+	b := broker.New(20*time.Millisecond, &scheduler.AlternatingScheduler{})
 
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := sync.WaitGroup{}

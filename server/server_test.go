@@ -2,6 +2,7 @@ package server_test
 
 import (
 	"context"
+	"github.com/clambin/ledswitcher/broker/scheduler"
 	"github.com/clambin/ledswitcher/endpoint/led/mocks"
 	"github.com/clambin/ledswitcher/server"
 	"github.com/stretchr/testify/mock"
@@ -11,7 +12,7 @@ import (
 )
 
 func TestServer(t *testing.T) {
-	s := server.New("127.0.0.1", 0, "", 10*time.Millisecond, false, "127.0.0.1")
+	s := server.New("127.0.0.1", 0, "", 10*time.Millisecond, &scheduler.LinearScheduler{}, "127.0.0.1")
 	ledSetter := &mocks.Setter{}
 	s.Endpoint.LEDSetter = ledSetter
 
