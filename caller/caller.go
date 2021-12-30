@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-// Caller interface contains the Controller functions
+// Caller interface for a Driver
 type Caller interface {
 	SetLEDOn(targetURL string) error
 	SetLEDOff(targetURL string) error
@@ -22,14 +22,17 @@ type HTTPCaller struct {
 	HTTPClient *http.Client
 }
 
+// SetLEDOn performs an HTTP request to switch on the LED at the specified host
 func (caller *HTTPCaller) SetLEDOn(targetURL string) (err error) {
 	return caller.call(targetURL, "/led", http.MethodPost, nil)
 }
 
+// SetLEDOff performs an HTTP request to switch off the LED at the specified host
 func (caller *HTTPCaller) SetLEDOff(targetURL string) (err error) {
 	return caller.call(targetURL, "/led", http.MethodDelete, nil)
 }
 
+// Register performs an HTTP request to register the host with the Broker
 func (caller *HTTPCaller) Register(leaderURL, clientURL string) (err error) {
 	body := fmt.Sprintf(`{ "url": "%s" }`, clientURL)
 	return caller.call(leaderURL, "/register", http.MethodPost, &body)

@@ -44,7 +44,8 @@ func startEndpoint(ctx context.Context, port int) (ep *endpoint.Endpoint, ledSet
 }
 
 func startEndpointWithLeaderPort(ctx context.Context, port int, leaderPort int) (ep *endpoint.Endpoint, ledSetter *mocks.Setter, wg *sync.WaitGroup) {
-	b := broker.New(10*time.Millisecond, &scheduler.LinearScheduler{})
+	s, _ := scheduler.New("linear")
+	b := broker.New(time.Second, s)
 	ep = endpoint.New("127.0.0.1", port, "", b)
 	ledSetter = &mocks.Setter{}
 	ep.LEDSetter = ledSetter

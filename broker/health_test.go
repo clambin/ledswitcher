@@ -13,7 +13,8 @@ import (
 )
 
 func TestBroker_Health(t *testing.T) {
-	b := broker.New(20*time.Millisecond, &scheduler.AlternatingScheduler{})
+	s, _ := scheduler.New("alternating")
+	b := broker.New(10*time.Millisecond, s)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := sync.WaitGroup{}
@@ -36,10 +37,11 @@ func TestBroker_Health(t *testing.T) {
 
 	health := b.Health()
 	assert.True(t, health.Leader)
-	assert.Contains(t, health.Endpoints, "http://localhost:10000")
-	assert.Contains(t, health.Endpoints, "http://localhost:10001")
-	assert.Contains(t, health.Endpoints, "http://localhost:10002")
-	assert.Contains(t, health.Endpoints, "http://localhost:10003")
+	require.Len(t, health.Endpoints, 4)
+	assert.Equal(t, "http://localhost:10000", health.Endpoints[0].Name)
+	assert.Equal(t, "http://localhost:10001", health.Endpoints[1].Name)
+	assert.Equal(t, "http://localhost:10002", health.Endpoints[2].Name)
+	assert.Equal(t, "http://localhost:10003", health.Endpoints[3].Name)
 
 	assert.Eventually(t, func() bool {
 		return <-b.NextClient() != ""
@@ -47,6 +49,9 @@ func TestBroker_Health(t *testing.T) {
 
 	_, err := json.MarshalIndent(health, "", "\t")
 	assert.NoError(t, err)
+
+	health = b.Health()
+	assert.NotEmpty(t, health.Current)
 
 	cancel()
 	wg.Wait()

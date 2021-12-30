@@ -12,11 +12,12 @@ type Setter interface {
 	GetLED() bool
 }
 
-// RealSetter structure
+// RealSetter implements the Setter interface for LEDs
 type RealSetter struct {
 	LEDPath string
 }
 
+// SetLED switches a LED on or off
 func (setter *RealSetter) SetLED(state bool) error {
 	data := "0"
 	if state == true {
@@ -27,6 +28,7 @@ func (setter *RealSetter) SetLED(state bool) error {
 	return os.WriteFile(fullPath, []byte(data), 0640)
 }
 
+// GetLED returns the current status of the LED
 func (setter *RealSetter) GetLED() (state bool) {
 	fullPath := path.Join(setter.LEDPath, "brightness")
 	if content, err := os.ReadFile(fullPath); err == nil {

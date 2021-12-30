@@ -75,9 +75,10 @@ func main() {
 		log.WithField("err", err).Fatal("unable to determine hostname")
 	}
 
-	s, ok := scheduler.New(mode)
-	if ok == false {
-		log.Fatalf("invalid mode: %s", mode)
+	var s *scheduler.Scheduler
+	s, err = scheduler.New(mode)
+	if err != nil {
+		log.WithError(err).Fatalf("invalid mode: %s", mode)
 	}
 
 	srv := server.New(hostname, port, ledPath, rotation, s, leader)

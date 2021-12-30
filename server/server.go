@@ -27,7 +27,7 @@ type Server struct {
 }
 
 // New creates a new Server
-func New(hostname string, port int, ledPath string, rotation time.Duration, scheduler scheduler.Scheduler, leader string) (server *Server) {
+func New(hostname string, port int, ledPath string, rotation time.Duration, scheduler *scheduler.Scheduler, leader string) (server *Server) {
 	b := broker.New(rotation, scheduler)
 	server = &Server{
 		Broker:   b,

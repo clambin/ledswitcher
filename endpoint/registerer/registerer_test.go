@@ -21,7 +21,8 @@ func TestRegisterer_Run(t *testing.T) {
 	testServer := httptest.NewServer(http.HandlerFunc(registryStub))
 	defer testServer.Close()
 
-	b := broker.New(time.Second, &scheduler.LinearScheduler{})
+	s, _ := scheduler.New("linear")
+	b := broker.New(time.Second, s)
 	r := registerer.Registerer{
 		Caller:      &caller.HTTPCaller{HTTPClient: &http.Client{}},
 		Broker:      b,
@@ -43,7 +44,8 @@ func TestRegisterer_Run(t *testing.T) {
 }
 
 func TestRegisterer_Run_Retry(t *testing.T) {
-	b := broker.New(time.Second, &scheduler.LinearScheduler{})
+	s, _ := scheduler.New("linear")
+	b := broker.New(time.Second, s)
 	r := registerer.Registerer{
 		Caller:      &caller.HTTPCaller{HTTPClient: &http.Client{}},
 		Broker:      b,

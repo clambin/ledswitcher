@@ -13,8 +13,9 @@ import (
 	"time"
 )
 
-func TestController(t *testing.T) {
-	b := broker.New(20*time.Millisecond, &scheduler.LinearScheduler{})
+func TestDriver(t *testing.T) {
+	s, _ := scheduler.New("linear")
+	b := broker.New(20*time.Millisecond, s)
 	c := driver.New(b)
 	mock := NewMockAPIClient(c)
 	c.Caller = mock
@@ -49,8 +50,9 @@ func TestController(t *testing.T) {
 	wg.Wait()
 }
 
-func TestController_Alternate(t *testing.T) {
-	b := broker.New(20*time.Millisecond, &scheduler.AlternatingScheduler{})
+func TestDriver_Alternate(t *testing.T) {
+	s, _ := scheduler.New("alternating")
+	b := broker.New(20*time.Millisecond, s)
 	c := driver.New(b)
 	mock := NewMockAPIClient(c)
 	c.Caller = mock

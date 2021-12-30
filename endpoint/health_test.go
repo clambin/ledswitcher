@@ -2,7 +2,8 @@ package endpoint_test
 
 import (
 	"context"
-	"fmt"
+	"encoding/json"
+	"github.com/clambin/ledswitcher/broker"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -13,7 +14,7 @@ import (
 	"time"
 )
 
-func TestServer_Health(t *testing.T) {
+func TestEndpoint_Health(t *testing.T) {
 	log.SetLevel(log.DebugLevel)
 	ctx, cancel := context.WithCancel(context.Background())
 	ep, ledSetter, wg := startEndpoint(ctx, 0)
@@ -31,13 +32,13 @@ func TestServer_Health(t *testing.T) {
 	body, err = io.ReadAll(resp.Body)
 	require.NoError(t, err)
 
-	assert.Equal(t, fmt.Sprintf(`{
-	"Leader": true,
-	"Endpoints": [
-		"http://127.0.0.1:%d"
-	],
-	"Current": ""
-}`, ep.HTTPServer.Port), string(body))
+	var health broker.Health
+	err = json.Unmarshal(body, &health)
+	require.NoError(t, err)
+
+	assert.True(t, health.Leader)
+	require.Len(t, health.Endpoints, 1)
+	assert.Equal(t, ep.MakeURL("127.0.0.1"), health.Endpoints[0].Name)
 
 	ledSetter.On("SetLED", true).Return(nil)
 	cancel()
