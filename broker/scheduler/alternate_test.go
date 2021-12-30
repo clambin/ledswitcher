@@ -14,12 +14,11 @@ func TestAlternatingScheduler_Schedule(t *testing.T) {
 		{count: 4, next: 1},
 		{count: 4, next: 2},
 		{count: 4, next: 3},
-		{count: 4, next: 2},
+		{count: 3, next: 2},
+		{count: 3, next: 1},
+		{count: 3, next: 0},
 		{count: 4, next: 1},
-		{count: 4, next: 0},
-		{count: 4, next: 1},
-		{count: 0, next: -1},
-		{count: 1, next: 0},
+		{count: 3, next: 2},
 		{count: 1, next: 0},
 	}
 

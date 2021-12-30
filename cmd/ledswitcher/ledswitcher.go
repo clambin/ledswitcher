@@ -55,7 +55,17 @@ func main() {
 		os.Exit(1)
 	}
 
-	log.WithField("version", version.BuildVersion).Info("starting")
+	// fallback to previous options
+	if alternate {
+		mode = "alternating"
+	}
+
+	log.WithFields(log.Fields{
+		"version":  version.BuildVersion,
+		"mode":     mode,
+		"interval": rotation,
+	}).Info("starting")
+
 	if debug {
 		log.SetLevel(log.DebugLevel)
 	}
@@ -63,11 +73,6 @@ func main() {
 	// Where are we?
 	if hostname, err = os.Hostname(); err != nil {
 		log.WithField("err", err).Fatal("unable to determine hostname")
-	}
-
-	// fallback to previous options
-	if alternate {
-		mode = "alternating"
 	}
 
 	s, ok := scheduler.New(mode)

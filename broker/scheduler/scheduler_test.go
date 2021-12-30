@@ -7,10 +7,10 @@ import (
 )
 
 func TestNew(t *testing.T) {
-	_, ok := scheduler.New("linear")
-	assert.True(t, ok)
-	_, ok = scheduler.New("alternating")
-	assert.True(t, ok)
-	_, ok = scheduler.New("invalid")
+	for _, mode := range scheduler.Modes {
+		_, ok := scheduler.New(mode)
+		assert.True(t, ok, mode)
+	}
+	_, ok := scheduler.New("invalid")
 	assert.False(t, ok)
 }

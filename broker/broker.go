@@ -108,10 +108,9 @@ func (lb *LEDBroker) Run(ctx context.Context) {
 			running = false
 		case <-ticker.C:
 			if lb.IsLeading() {
-				next := lb.advance(lb.GetCurrentClient())
+				next := lb.advance()
 				if next != "" {
 					lb.nextClient <- next
-					lb.setCurrentClient(next)
 				}
 			}
 		}
@@ -144,30 +143,31 @@ func (lb *LEDBroker) setCurrentClient(client string) {
 	lb.current = client
 }
 
-func (lb *LEDBroker) advance(current string) (next string) {
+func (lb *LEDBroker) advance() (next string) {
+	current := lb.GetCurrentClient()
 	clients := lb.GetClients()
+
 	if len(clients) == 0 {
 		return ""
 	}
 
-	// find position of current active client
-	index := -1
+	var index int
+	if findClient(current, clients) != -1 {
+		index = lb.scheduler.Next(len(clients))
+	}
+
+	next = clients[index]
+	lb.setCurrentClient(next)
+	return
+}
+
+func findClient(current string, clients []string) (index int) {
+	index = -1
 	for i, client := range clients {
 		if client == current {
 			index = i
 			break
 		}
 	}
-
-	if index == -1 {
-		return clients[0]
-	}
-
-	index = lb.scheduler.Next(len(clients))
-
-	if index == -1 {
-		return clients[0]
-	}
-
-	return clients[index]
+	return
 }
