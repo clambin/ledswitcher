@@ -5,16 +5,16 @@ import (
 	"time"
 )
 
-// RandomScheduler switches on a LED at random
-type RandomScheduler struct {
+// RandomSchedule switches on a LED at random
+type RandomSchedule struct {
 	seeded bool
 	last   int
 }
 
-var _ Schedule = &AlternatingScheduler{}
+var _ Schedule = &AlternatingSchedule{}
 
 // Next returns the index of the next host whose LED should be switched on
-func (s *RandomScheduler) Next(count int) int {
+func (s *RandomSchedule) Next(count int) int {
 	if s.seeded == false {
 		rand.Seed(time.Now().UnixNano())
 		s.seeded = true

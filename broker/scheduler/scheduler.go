@@ -32,11 +32,11 @@ func New(name string) (s *Scheduler, err error) {
 	var schedule Schedule
 	switch name {
 	case "linear":
-		schedule = &LinearScheduler{}
+		schedule = &LinearSchedule{}
 	case "alternating":
-		schedule = &AlternatingScheduler{}
+		schedule = &AlternatingSchedule{}
 	case "random":
-		schedule = &RandomScheduler{}
+		schedule = &RandomSchedule{}
 	default:
 		return nil, fmt.Errorf("invalid name: %s", err)
 	}

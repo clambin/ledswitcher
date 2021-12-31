@@ -8,7 +8,7 @@ import (
 )
 
 func TestLinearScheduler_Schedule(t *testing.T) {
-	s := scheduler.LinearScheduler{}
+	s := scheduler.LinearSchedule{}
 
 	testCases := []struct{ count, next int }{
 		{count: 4, next: 1},

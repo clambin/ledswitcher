@@ -8,7 +8,7 @@ import (
 )
 
 func TestAlternatingScheduler_Schedule(t *testing.T) {
-	s := scheduler.AlternatingScheduler{}
+	s := scheduler.AlternatingSchedule{}
 
 	testCases := []struct{ count, next int }{
 		{count: 4, next: 1},

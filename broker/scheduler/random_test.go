@@ -7,7 +7,7 @@ import (
 )
 
 func TestRandomScheduler_Schedule(t *testing.T) {
-	s := scheduler.RandomScheduler{}
+	s := scheduler.RandomSchedule{}
 
 	for i := 1; i < 10; i++ {
 		r := s.Next(i)

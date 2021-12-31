@@ -1,16 +1,16 @@
 package scheduler
 
-// AlternatingScheduler moves the LED from beginning to the end then moves from end to beginning again
+// AlternatingSchedule moves the LED from beginning to the end then moves from end to beginning again
 // (i.e. the Knight Rider pattern :-))
-type AlternatingScheduler struct {
+type AlternatingSchedule struct {
 	current   int
 	direction int
 }
 
-var _ Schedule = &AlternatingScheduler{}
+var _ Schedule = &AlternatingSchedule{}
 
 // Next returns the index of the next host whose LED should be switched on
-func (s *AlternatingScheduler) Next(count int) int {
+func (s *AlternatingSchedule) Next(count int) int {
 	if count == 1 {
 		return 0
 	}
