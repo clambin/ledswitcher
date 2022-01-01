@@ -5,7 +5,7 @@ on:
     branches-ignore:
       - master
       - refactor
-      - brokers
+      - multiled
   pull_request_target:
 
 jobs:

@@ -26,54 +26,43 @@ func TestBroker_Run(t *testing.T) {
 	b.RegisterClient("client2")
 	b.RegisterClient("client3")
 
-	assert.Equal(t, "client2", <-b.NextClient())
-	assert.Equal(t, "client3", <-b.NextClient())
-	assert.Equal(t, "client1", <-b.NextClient())
+	assert.Equal(t, []scheduler.Action{
+		{Host: "client2", State: true},
+	}, <-b.Next())
+
+	assert.Equal(t, []scheduler.Action{
+		{Host: "client2", State: false},
+		{Host: "client3", State: true},
+	}, <-b.Next())
+	assert.Equal(t, []scheduler.Action{
+		{Host: "client1", State: true},
+		{Host: "client3", State: false},
+	}, <-b.Next())
+
 	b.RegisterClient("client4")
-	assert.Equal(t, "client2", <-b.NextClient())
-	assert.Equal(t, "client3", <-b.NextClient())
-	assert.Equal(t, "client4", <-b.NextClient())
-	assert.Equal(t, "client1", <-b.NextClient())
+
+	assert.Equal(t, []scheduler.Action{
+		{Host: "client1", State: false},
+		{Host: "client2", State: true},
+	}, <-b.Next())
+	assert.Equal(t, []scheduler.Action{
+		{Host: "client2", State: false},
+		{Host: "client3", State: true},
+	}, <-b.Next())
+	assert.Equal(t, []scheduler.Action{
+		{Host: "client3", State: false},
+		{Host: "client4", State: true},
+	}, <-b.Next())
+	assert.Equal(t, []scheduler.Action{
+		{Host: "client1", State: true},
+		{Host: "client4", State: false},
+	}, <-b.Next())
 
 	cancel()
 	wg.Wait()
 }
 
-func TestBroker_RunAlternate(t *testing.T) {
-	s, _ := scheduler.New("alternating")
-	b := broker.New(10*time.Millisecond, s)
-	ctx, cancel := context.WithCancel(context.Background())
-	wg := sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
-		b.Run(ctx)
-		wg.Done()
-	}()
-
-	b.SetLeading(true)
-	b.RegisterClient("client1")
-	assert.Equal(t, "client1", <-b.NextClient())
-	assert.Equal(t, "client1", <-b.NextClient())
-
-	b.RegisterClient("client2")
-	b.RegisterClient("client3")
-
-	assert.Equal(t, "client2", <-b.NextClient())
-	assert.Equal(t, "client3", <-b.NextClient())
-	assert.Equal(t, "client2", <-b.NextClient())
-	b.RegisterClient("client4")
-	assert.Equal(t, "client1", <-b.NextClient())
-	assert.Equal(t, "client2", <-b.NextClient())
-	assert.Equal(t, "client3", <-b.NextClient())
-	assert.Equal(t, "client4", <-b.NextClient())
-	assert.Equal(t, "client3", <-b.NextClient())
-
-	cancel()
-	wg.Wait()
-
-}
-
-func TestBroker_Leading(t *testing.T) {
+func TestBroker_SetLeading(t *testing.T) {
 	s, _ := scheduler.New("linear")
 	b := broker.New(10*time.Millisecond, s)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -86,16 +75,19 @@ func TestBroker_Leading(t *testing.T) {
 	b.RegisterClient("client1")
 
 	assert.Never(t, func() bool {
-		_ = <-b.NextClient()
+		_ = <-b.Next()
 		return true
 	}, 100*time.Millisecond, 10*time.Millisecond)
 
 	b.SetLeading(true)
-	assert.Equal(t, "client1", <-b.NextClient())
+	assert.Eventually(t, func() bool {
+		_ = <-b.Next()
+		return true
+	}, 100*time.Millisecond, 10*time.Millisecond)
 
 	b.SetLeading(false)
 	assert.Never(t, func() bool {
-		_ = <-b.NextClient()
+		_ = <-b.Next()
 		return true
 	}, 100*time.Millisecond, 10*time.Millisecond)
 
@@ -123,12 +115,20 @@ func TestBroker_SetLEDStatus(t *testing.T) {
 		b.SetClientStatus("client2", false)
 	}
 
-	assert.Equal(t, "client3", <-b.NextClient())
-	assert.Equal(t, "client1", <-b.NextClient())
+	assert.Equal(t, []scheduler.Action{
+		{Host: "client3", State: true},
+	}, <-b.Next())
+	assert.Equal(t, []scheduler.Action{
+		{Host: "client1", State: true},
+		{Host: "client3", State: false},
+	}, <-b.Next())
+
 	b.SetClientStatus("client2", true)
-	assert.Equal(t, "client2", <-b.NextClient())
-	assert.Equal(t, "client3", <-b.NextClient())
-	assert.Equal(t, "client1", <-b.NextClient())
+
+	assert.Equal(t, []scheduler.Action{
+		{Host: "client1", State: false},
+		{Host: "client2", State: true},
+	}, <-b.Next())
 
 	cancel()
 	wg.Wait()

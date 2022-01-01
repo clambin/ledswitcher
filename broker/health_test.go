@@ -44,14 +44,20 @@ func TestBroker_Health(t *testing.T) {
 	assert.Equal(t, "http://localhost:10003", health.Endpoints[3].Name)
 
 	assert.Eventually(t, func() bool {
-		return <-b.NextClient() != ""
+		return len(<-b.Next()) != 0
 	}, 500*time.Millisecond, 10*time.Millisecond)
 
 	_, err := json.MarshalIndent(health, "", "\t")
 	assert.NoError(t, err)
 
 	health = b.Health()
-	assert.NotEmpty(t, health.Current)
+	count := 0
+	for _, entry := range health.Endpoints {
+		if entry.State {
+			count++
+		}
+	}
+	assert.NotZero(t, count)
 
 	cancel()
 	wg.Wait()

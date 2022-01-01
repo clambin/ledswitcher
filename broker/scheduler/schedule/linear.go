@@ -1,4 +1,4 @@
-package scheduler
+package schedule
 
 // LinearSchedule moves the active LED from first to last and then starts from the beginning again
 type LinearSchedule struct {
@@ -7,8 +7,8 @@ type LinearSchedule struct {
 
 var _ Schedule = &LinearSchedule{}
 
-// Next returns the index of the next host whose LED should be switched on
-func (ls *LinearSchedule) Next(count int) int {
+// Next returns the next pattern
+func (ls *LinearSchedule) Next(count int) []bool {
 	ls.current = (ls.current + 1) % count
-	return ls.current
+	return fillPattern(ls.current, count)
 }

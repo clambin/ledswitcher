@@ -16,75 +16,6 @@ func TestNew(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestScheduler_Next(t *testing.T) {
-	s, err := scheduler.New("linear")
-	require.NoError(t, err)
-
-	assert.Zero(t, "", s.Next())
-
-	s.Register("host1")
-	assert.Equal(t, "host1", s.Next())
-	assert.Equal(t, "host1", s.Next())
-
-	s.Register("host2")
-	assert.Equal(t, "host2", s.Next())
-	assert.Equal(t, "host1", s.Next())
-
-	s.Register("host3")
-	assert.Equal(t, "host2", s.Next())
-	assert.Equal(t, "host3", s.Next())
-	assert.Equal(t, "host1", s.Next())
-}
-
-func TestScheduler_UpdateStatus(t *testing.T) {
-	s, err := scheduler.New("linear")
-	require.NoError(t, err)
-
-	s.Register("host1")
-	assert.Equal(t, "host1", s.Next())
-	assert.Equal(t, "host1", s.Next())
-
-	s.Register("host2")
-	assert.Equal(t, "host2", s.Next())
-	assert.Equal(t, "host1", s.Next())
-
-	for i := 0; i < 5; i++ {
-		s.UpdateStatus("host2", false)
-	}
-
-	s.Register("host3")
-	assert.Equal(t, "host3", s.Next())
-	assert.Equal(t, "host1", s.Next())
-
-	s.UpdateStatus("host2", true)
-	assert.Equal(t, "host2", s.Next())
-	assert.Equal(t, "host3", s.Next())
-	assert.Equal(t, "host1", s.Next())
-
-	for _, h := range []string{"host2", "host3"} {
-		for i := 0; i < 5; i++ {
-			s.UpdateStatus(h, false)
-		}
-	}
-
-	assert.Equal(t, "host1", s.Next())
-
-	for _, h := range []string{"host2", "host3"} {
-		s.UpdateStatus(h, true)
-	}
-
-	assert.Equal(t, "host2", s.Next())
-	assert.Equal(t, "host3", s.Next())
-
-	for _, h := range []string{"host1", "host2", "host3"} {
-		for i := 0; i < 5; i++ {
-			s.UpdateStatus(h, false)
-		}
-	}
-
-	assert.Equal(t, "", s.Next())
-}
-
 func TestScheduler_UpdateStatus_NoRegister(t *testing.T) {
 	// normally will never happen: broker will never call a host that didn't register first, so UpdateStatus for
 	// an unregistered host is impossible. Just implementing this for code coverage
@@ -92,7 +23,9 @@ func TestScheduler_UpdateStatus_NoRegister(t *testing.T) {
 	require.NoError(t, err)
 
 	s.UpdateStatus("host1", true)
-	assert.Equal(t, "host1", s.Next())
+	assert.Equal(t, []scheduler.Action{
+		{Host: "host1", State: true},
+	}, s.Next())
 }
 
 func TestScheduler_GetHosts(t *testing.T) {
@@ -109,24 +42,6 @@ func TestScheduler_GetHosts(t *testing.T) {
 	require.Len(t, hosts, 2)
 	assert.Equal(t, "host1", hosts[0].Name)
 	assert.Equal(t, "host2", hosts[1].Name)
-}
-
-func TestScheduler_GetCurrentHost(t *testing.T) {
-	s, err := scheduler.New("linear")
-	require.NoError(t, err)
-
-	assert.Empty(t, s.GetCurrentHost())
-
-	s.Register("host1")
-	assert.Equal(t, "host1", s.Next())
-	assert.Equal(t, "host1", s.GetCurrentHost())
-
-	s.Register("host2")
-	assert.Equal(t, "host1", s.GetCurrentHost())
-	assert.Equal(t, "host2", s.Next())
-	assert.Equal(t, "host2", s.GetCurrentHost())
-	assert.Equal(t, "host1", s.Next())
-	assert.Equal(t, "host1", s.GetCurrentHost())
 }
 
 func TestScheduler_Register(t *testing.T) {

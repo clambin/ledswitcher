@@ -5,6 +5,7 @@ import "time"
 // RegisteredHost holds the state of a registered host
 type RegisteredHost struct {
 	Name        string
+	State       bool
 	Failures    int
 	LastUpdated time.Time
 }

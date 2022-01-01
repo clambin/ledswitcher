@@ -12,7 +12,7 @@ import (
 type Broker interface {
 	RegisterClient(clientURL string)
 	SetClientStatus(clientURL string, success bool)
-	NextClient() (ch <-chan string)
+	Next() (ch <-chan []scheduler.Action)
 	SetLeading(leading bool)
 	IsLeading() (leading bool)
 	Run(ctx context.Context)
@@ -21,7 +21,7 @@ type Broker interface {
 
 // LEDBroker implements the Broker interface
 type LEDBroker struct {
-	nextClient chan string
+	nextClient chan []scheduler.Action
 	scheduler  *scheduler.Scheduler
 	leading    bool
 	interval   time.Duration
@@ -31,11 +31,11 @@ type LEDBroker struct {
 var _ Broker = &LEDBroker{}
 
 // New creates a new LEDBroker
-func New(interval time.Duration, scheduler *scheduler.Scheduler) *LEDBroker {
+func New(interval time.Duration, s *scheduler.Scheduler) *LEDBroker {
 	return &LEDBroker{
-		nextClient: make(chan string, 1),
+		nextClient: make(chan []scheduler.Action, 1),
 		interval:   interval,
-		scheduler:  scheduler,
+		scheduler:  s,
 	}
 }
 
@@ -49,8 +49,8 @@ func (lb *LEDBroker) SetClientStatus(clientURL string, success bool) {
 	lb.scheduler.UpdateStatus(clientURL, success)
 }
 
-// NextClient returns the channel where Broker will send the next client
-func (lb *LEDBroker) NextClient() (ch <-chan string) {
+// Next returns the channel to receive the actions required for the next state
+func (lb *LEDBroker) Next() (ch <-chan []scheduler.Action) {
 	return lb.nextClient
 }
 
@@ -78,10 +78,7 @@ func (lb *LEDBroker) Run(ctx context.Context) {
 			running = false
 		case <-ticker.C:
 			if lb.IsLeading() {
-				next := lb.scheduler.Next()
-				if next != "" {
-					lb.nextClient <- next
-				}
+				lb.nextClient <- lb.scheduler.Next()
 			}
 		}
 	}

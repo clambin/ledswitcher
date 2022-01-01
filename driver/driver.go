@@ -3,14 +3,15 @@ package driver
 import (
 	"context"
 	"github.com/clambin/ledswitcher/broker"
+	"github.com/clambin/ledswitcher/broker/scheduler"
 	"github.com/clambin/ledswitcher/caller"
 	log "github.com/sirupsen/logrus"
 	"net/http"
 	"sync"
 )
 
-// Driver controls the state of all registered LEDs: if it is the leader, it will send requests to the registered
-// endpoints as determined by the Broker.
+// Driver controls the state of all registered LEDs: it receives the required actions from the Broker (if the latter is leading)
+// and sends the requests to the registered endpoints.
 type Driver struct {
 	caller.Caller
 	broker     broker.Broker
@@ -29,31 +30,43 @@ func New(broker broker.Broker) *Driver {
 // Run start the driver
 func (c *Driver) Run(ctx context.Context) {
 	log.Info("driver started")
-	var current string
 	for running := true; running; {
 		select {
 		case <-ctx.Done():
 			running = false
-		case next := <-c.broker.NextClient():
-			c.advance(current, next)
-			current = next
+		case next := <-c.broker.Next():
+			c.advance(next)
 		}
 	}
 	log.Info("driver stopped")
 }
 
-func (c *Driver) advance(current, next string) {
-	// switch off the active client
-	if current != "" {
-		err := c.Caller.SetLEDOff(current)
-		c.broker.SetClientStatus(current, err == nil)
-		log.WithError(err).WithField("client", current).Debug("OFF")
+func (c *Driver) advance(next []scheduler.Action) {
+	wg := sync.WaitGroup{}
+	for _, action := range next {
+		wg.Add(1)
+		go func(target string, state bool) {
+			c.setState(target, state)
+			wg.Done()
+		}(action.Host, action.State)
+	}
+	wg.Wait()
+}
+
+func (c *Driver) setState(target string, state bool) {
+	var (
+		err         error
+		stateString string
+	)
+	switch state {
+	case false:
+		err = c.Caller.SetLEDOff(target)
+		stateString = "OFF"
+	case true:
+		err = c.Caller.SetLEDOn(target)
+		stateString = "ON"
 	}
 
-	// switch on the next active client
-	if next != "" {
-		err := c.Caller.SetLEDOn(next)
-		c.broker.SetClientStatus(next, err == nil)
-		log.WithError(err).WithField("client", next).Debug("ON")
-	}
+	c.broker.SetClientStatus(target, err == nil)
+	log.WithError(err).WithField("client", target).Debug(stateString)
 }

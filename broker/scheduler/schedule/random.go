@@ -1,7 +1,7 @@
-package scheduler
+package schedule
 
 import (
-	"k8s.io/apimachinery/pkg/util/rand"
+	"math/rand"
 	"time"
 )
 
@@ -11,10 +11,10 @@ type RandomSchedule struct {
 	last   int
 }
 
-var _ Schedule = &AlternatingSchedule{}
+var _ Schedule = &RandomSchedule{}
 
-// Next returns the index of the next host whose LED should be switched on
-func (s *RandomSchedule) Next(count int) int {
+// Next returns the next pattern
+func (s *RandomSchedule) Next(count int) []bool {
 	if s.seeded == false {
 		rand.Seed(time.Now().UnixNano())
 		s.seeded = true
@@ -29,5 +29,5 @@ func (s *RandomSchedule) Next(count int) int {
 		}
 	}
 	s.last = next
-	return s.last
+	return fillPattern(s.last, count)
 }

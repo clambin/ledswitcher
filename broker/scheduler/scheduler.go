@@ -2,51 +2,48 @@ package scheduler
 
 import (
 	"fmt"
+	"github.com/clambin/ledswitcher/broker/scheduler/schedule"
 	"sort"
 	"sync"
 )
-
-// Schedule interface to determine the next LED to switch on
-type Schedule interface {
-	Next(count int) int
-}
 
 // Modes contains all supported modes
 var Modes = []string{
 	"linear",
 	"alternating",
 	"random",
+	"binary",
 }
 
 // Scheduler records the list of hosts and calculated the next host whose LED should be switched on
 type Scheduler struct {
-	Schedule
+	schedule.Schedule
 	hosts     map[string]RegisteredHost
 	hostNames []string
-	current   int
 	lock      sync.RWMutex
 }
 
 // New creates a Scheduler based on the provided pattern name
-func New(name string) (s *Scheduler, err error) {
-	var schedule Schedule
+func New(name string) (scheduler *Scheduler, err error) {
+	var s schedule.Schedule
 	switch name {
 	case "linear":
-		schedule = &LinearSchedule{}
+		s = &schedule.LinearSchedule{}
 	case "alternating":
-		schedule = &AlternatingSchedule{}
+		s = &schedule.AlternatingSchedule{}
 	case "random":
-		schedule = &RandomSchedule{}
+		s = &schedule.RandomSchedule{}
+	case "binary":
+		s = &schedule.BinarySchedule{}
 	default:
 		return nil, fmt.Errorf("invalid name: %s", err)
 	}
 
-	s = &Scheduler{
-		Schedule:  schedule,
+	return &Scheduler{
+		Schedule:  s,
 		hosts:     make(map[string]RegisteredHost),
 		hostNames: make([]string, 0),
-	}
-	return
+	}, nil
 }
 
 // Register registers the provided host
@@ -70,12 +67,6 @@ func (s *Scheduler) UpdateStatus(name string, alive bool) {
 }
 
 func (s *Scheduler) register(name string) {
-	var currentName string
-	if len(s.hosts) > 0 {
-		currentName = s.hostNames[s.current]
-	}
-
-	// is it already registered?
 	entry, ok := s.hosts[name]
 	if ok {
 		entry.UpdateStatus(true)
@@ -87,37 +78,6 @@ func (s *Scheduler) register(name string) {
 	s.hosts[name] = RegisteredHost{Name: name}
 	s.hostNames = append(s.hostNames, name)
 	sort.Strings(s.hostNames)
-
-	// find the new index of the current host
-	if currentName != "" {
-		for index, entry := range s.hostNames {
-			if entry == currentName {
-				s.current = index
-			}
-		}
-	}
-}
-
-// Next advances the LED to the next host, based on the configured Scheduler
-func (s *Scheduler) Next() (name string) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	count := len(s.hosts)
-	if count == 0 {
-		return ""
-	}
-
-	next := -1
-	for next != s.current {
-		next = s.Schedule.Next(count)
-		name = s.hostNames[next]
-		if s.hosts[name].IsAlive() {
-			s.current = next
-			return
-		}
-	}
-	return ""
 }
 
 // GetHosts returns all registered hosts (regardless of their state)
@@ -128,14 +88,4 @@ func (s *Scheduler) GetHosts() (hosts []RegisteredHost) {
 		hosts = append(hosts, s.hosts[hostName])
 	}
 	return
-}
-
-// GetCurrentHost returns the host whose LED is currently on
-func (s *Scheduler) GetCurrentHost() (hostName string) {
-	s.lock.RLock()
-	defer s.lock.RUnlock()
-	if len(s.hostNames) == 0 {
-		return ""
-	}
-	return s.hostNames[s.current]
 }
