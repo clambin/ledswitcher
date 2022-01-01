@@ -1,5 +1,6 @@
 package scheduler
 
+// Action represents a state change for a host
 type Action struct {
 	Host  string
 	State bool
