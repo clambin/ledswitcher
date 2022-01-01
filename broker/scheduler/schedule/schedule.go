@@ -5,9 +5,9 @@ type Schedule interface {
 	Next(count int) []bool
 }
 
-func fillPattern(index, count int) (pattern []bool) {
-	for i := 0; i < count; i++ {
-		pattern = append(pattern, i == index)
+func intToBits(val, count int) (bits []bool) {
+	for bit := 1 << (count - 1); bit > 0; bit = bit >> 1 {
+		bits = append(bits, val&bit != 0)
 	}
 	return
 }

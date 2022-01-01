@@ -17,11 +17,12 @@ func TestAlternatingScheduler_Schedule(t *testing.T) {
 		{count: 4, next: "0100"},
 		{count: 4, next: "0010"},
 		{count: 4, next: "0001"},
-		{count: 3, next: "001"},
+		{count: 4, next: "0010"},
 		{count: 3, next: "010"},
 		{count: 3, next: "100"},
 		{count: 4, next: "0100"},
 		{count: 3, next: "001"},
+		{count: 4, next: "0001"},
 		{count: 1, next: "1"},
 	}
 

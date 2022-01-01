@@ -29,5 +29,5 @@ func (s *RandomSchedule) Next(count int) []bool {
 		}
 	}
 	s.last = next
-	return fillPattern(s.last, count)
+	return intToBits(1<<s.last, count)
 }
