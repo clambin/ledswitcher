@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/clambin/gotools/metrics"
+	"github.com/clambin/go-metrics"
 	"github.com/clambin/ledswitcher/broker"
 	"github.com/clambin/ledswitcher/caller"
 	"github.com/clambin/ledswitcher/endpoint/led"
