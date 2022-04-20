@@ -1,14 +1,11 @@
 package endpoint
 
-import (
-	"encoding/json"
-	log "github.com/sirupsen/logrus"
-	"net/http"
-)
+import "net/http"
 
-func (endpoint *Endpoint) handleHealth(w http.ResponseWriter, _ *http.Request) {
-	body, _ := json.MarshalIndent(endpoint.Broker.Health(), "", "\t")
+func (ep *Endpoint) handleHealth(w http.ResponseWriter, _ *http.Request) {
+	if ep.Health.IsHealthy() == false {
+		http.Error(w, "endpoint not healthy", http.StatusServiceUnavailable)
+		return
+	}
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(body)
-	log.Debug("/health")
 }

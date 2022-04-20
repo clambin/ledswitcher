@@ -6,7 +6,9 @@ import (
 	"github.com/clambin/ledswitcher/broker"
 	"github.com/clambin/ledswitcher/broker/scheduler"
 	"github.com/clambin/ledswitcher/caller"
+	"github.com/clambin/ledswitcher/endpoint/health"
 	"github.com/clambin/ledswitcher/endpoint/registerer"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
 	"net/http"
@@ -46,11 +48,13 @@ func TestRegisterer_Run(t *testing.T) {
 func TestRegisterer_Run_Retry(t *testing.T) {
 	s, _ := scheduler.New("linear")
 	b := broker.New(time.Second, s)
+	h := health.Health{}
 	r := registerer.Registerer{
 		Caller:      &caller.HTTPCaller{HTTPClient: &http.Client{}},
 		Broker:      b,
 		EndPointURL: "http://127.0.0.1:8080",
 		Interval:    150 * time.Millisecond,
+		Health:      &h,
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := sync.WaitGroup{}
@@ -62,14 +66,17 @@ func TestRegisterer_Run_Retry(t *testing.T) {
 	testServer := httptest.NewServer(http.HandlerFunc(registryStub))
 	r.SetLeaderURL(testServer.URL)
 	require.Eventually(t, func() bool { return r.IsRegistered() }, time.Minute, 100*time.Millisecond)
+	assert.True(t, h.IsHealthy())
 
 	testServer.Close()
 	require.Eventually(t, func() bool { return !r.IsRegistered() }, time.Minute, 100*time.Millisecond)
+	assert.False(t, h.IsHealthy())
 
 	testServer = httptest.NewServer(http.HandlerFunc(registryStub))
 	defer testServer.Close()
 	r.SetLeaderURL(testServer.URL)
 	require.Eventually(t, func() bool { return r.IsRegistered() }, time.Minute, 100*time.Millisecond)
+	assert.True(t, h.IsHealthy())
 
 	cancel()
 	wg.Wait()

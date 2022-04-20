@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/clambin/ledswitcher/broker"
 	"github.com/clambin/ledswitcher/caller"
+	"github.com/clambin/ledswitcher/endpoint/health"
 	log "github.com/sirupsen/logrus"
 	"sync"
 	"time"
@@ -15,6 +16,7 @@ type Registerer struct {
 	Broker      broker.Broker
 	EndPointURL string
 	Interval    time.Duration
+	Health      *health.Health
 	leaderURL   string
 	registered  bool
 	lock        sync.RWMutex
@@ -52,10 +54,16 @@ func (r *Registerer) register() {
 		return
 	}
 
-	if err := r.Caller.Register(r.leaderURL, r.EndPointURL); err == nil {
+	err := r.Caller.Register(r.leaderURL, r.EndPointURL)
+
+	if err == nil {
 		r.registered = true
 	} else {
 		log.WithError(err).WithField("leader", r.leaderURL).Warning("failed to register")
+	}
+
+	if r.Health != nil {
+		r.Health.RecordRegistryAttempt(err == nil)
 	}
 }
 

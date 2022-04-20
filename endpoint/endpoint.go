@@ -7,6 +7,7 @@ import (
 	"github.com/clambin/go-metrics"
 	"github.com/clambin/ledswitcher/broker"
 	"github.com/clambin/ledswitcher/caller"
+	"github.com/clambin/ledswitcher/endpoint/health"
 	"github.com/clambin/ledswitcher/endpoint/led"
 	"github.com/clambin/ledswitcher/endpoint/registerer"
 	log "github.com/sirupsen/logrus"
@@ -19,92 +20,99 @@ import (
 type Endpoint struct {
 	caller.Caller
 	Broker     broker.Broker
+	Health     health.Health
 	LEDSetter  led.Setter
 	HTTPServer *metrics.Server
 	registerer registerer.Registerer
 }
 
 // New creates a new Endpoint
-func New(hostname string, port int, ledPath string, broker broker.Broker) (endpoint *Endpoint) {
-	endpoint = &Endpoint{
+func New(hostname string, port int, ledPath string, broker broker.Broker) (ep *Endpoint) {
+	ep = &Endpoint{
 		Caller:    &caller.HTTPCaller{HTTPClient: &http.Client{}},
 		Broker:    broker,
 		LEDSetter: &led.RealSetter{LEDPath: ledPath},
-		registerer: registerer.Registerer{
-			Caller:      &caller.HTTPCaller{HTTPClient: &http.Client{}},
-			Broker:      broker,
-			EndPointURL: "",
-		},
 	}
-	endpoint.HTTPServer = metrics.NewServerWithHandlers(port, []metrics.Handler{
+	ep.registerer = registerer.Registerer{
+		Caller:      &caller.HTTPCaller{HTTPClient: &http.Client{}},
+		Broker:      broker,
+		EndPointURL: "",
+		Health:      &ep.Health,
+	}
+
+	ep.HTTPServer = metrics.NewServerWithHandlers(port, []metrics.Handler{
 		{
 			Path:    "/led",
-			Handler: http.HandlerFunc(endpoint.handleLED),
+			Handler: http.HandlerFunc(ep.handleLED),
 			Methods: []string{http.MethodPost, http.MethodDelete},
 		},
 		{
 			Path:    "/register",
-			Handler: http.HandlerFunc(endpoint.handleRegisterClient),
+			Handler: http.HandlerFunc(ep.handleRegisterClient),
 			Methods: []string{http.MethodPost},
 		},
 		{
+			Path:    "/stats",
+			Handler: http.HandlerFunc(ep.handleStats),
+		},
+		{
 			Path:    "/health",
-			Handler: http.HandlerFunc(endpoint.handleHealth),
+			Handler: http.HandlerFunc(ep.handleHealth),
 		},
 	})
 	// if port is zero, HTTPServer will allocate a port. So use that to construct URLs
-	endpoint.registerer.EndPointURL = endpoint.MakeURL(hostname)
+	ep.registerer.EndPointURL = ep.MakeURL(hostname)
 
 	return
 }
 
 // Run the Endpoint instance. Dispatch requests to the driver or led
-func (endpoint *Endpoint) Run(ctx context.Context) (err error) {
-	log.Infof("endpoint started. listening on port %d", endpoint.HTTPServer.Port)
+func (ep *Endpoint) Run(ctx context.Context) (err error) {
+	log.Infof("ep started. listening on port %d", ep.HTTPServer.Port)
 	go func() {
-		err2 := endpoint.HTTPServer.Run()
+		err2 := ep.HTTPServer.Run()
 		if !errors.Is(err2, http.ErrServerClosed) {
-			log.WithError(err2).Fatal("failed to start endpoint")
+			log.WithError(err2).Fatal("failed to start ep")
 		}
 	}()
 
-	endpoint.registerer.Run(ctx)
+	ep.registerer.Run(ctx)
 
-	err = endpoint.HTTPServer.Shutdown(30 * time.Second)
-	_ = endpoint.LEDSetter.SetLED(true)
+	err = ep.HTTPServer.Shutdown(30 * time.Second)
+	_ = ep.LEDSetter.SetLED(true)
 
-	log.Info("endpoint stopped")
+	log.Info("ep stopped")
 	return
 }
 
 // IsRegistered returns true if the endpoint is registered with a broker
-func (endpoint *Endpoint) IsRegistered() bool {
-	return endpoint.registerer.IsRegistered()
+func (ep *Endpoint) IsRegistered() bool {
+	return ep.registerer.IsRegistered()
 }
 
 // SetLeader sets the URL of the leader
-func (endpoint *Endpoint) SetLeader(leader string) {
-	endpoint.SetLeaderWithPort(leader, endpoint.HTTPServer.Port)
+func (ep *Endpoint) SetLeader(leader string) {
+	ep.SetLeaderWithPort(leader, ep.HTTPServer.Port)
 }
 
 // SetLeaderWithPort sets the URL of the leader
-func (endpoint *Endpoint) SetLeaderWithPort(leader string, port int) {
+func (ep *Endpoint) SetLeaderWithPort(leader string, port int) {
 	leaderURL := makeURLWithPort(leader, port)
-	endpoint.registerer.SetLeaderURL(leaderURL)
+	ep.registerer.SetLeaderURL(leaderURL)
 
-	isLeading := endpoint.registerer.EndPointURL == leaderURL
-	endpoint.Broker.SetLeading(isLeading)
+	isLeading := ep.registerer.EndPointURL == leaderURL
+	ep.Broker.SetLeading(isLeading)
 
 	var leading string
 	if isLeading == false {
 		leading = "not "
 	}
-	log.Infof("endpoint is %sleading", leading)
+	log.Infof("ep is %sleading", leading)
 }
 
 // MakeURL constructs a URL using the endpoint's listening port
-func (endpoint *Endpoint) MakeURL(target string) string {
-	return makeURLWithPort(target, endpoint.HTTPServer.Port)
+func (ep *Endpoint) MakeURL(target string) string {
+	return makeURLWithPort(target, ep.HTTPServer.Port)
 }
 
 func makeURLWithPort(target string, port int) string {

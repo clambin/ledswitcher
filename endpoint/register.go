@@ -7,8 +7,8 @@ import (
 	"net/http"
 )
 
-func (endpoint *Endpoint) handleRegisterClient(w http.ResponseWriter, req *http.Request) {
-	if endpoint.Broker.IsLeading() == false {
+func (ep *Endpoint) handleRegisterClient(w http.ResponseWriter, req *http.Request) {
+	if ep.Broker.IsLeading() == false {
 		http.Error(w, "not leading", http.StatusMethodNotAllowed)
 		return
 	}
@@ -20,7 +20,7 @@ func (endpoint *Endpoint) handleRegisterClient(w http.ResponseWriter, req *http.
 		return
 	}
 
-	endpoint.Broker.RegisterClient(clientURL)
+	ep.Broker.RegisterClient(clientURL)
 	w.WriteHeader(http.StatusCreated)
 	log.WithField("url", clientURL).Debug("/register")
 }

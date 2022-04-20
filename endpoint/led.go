@@ -5,7 +5,7 @@ import (
 	"net/http"
 )
 
-func (endpoint *Endpoint) handleLED(w http.ResponseWriter, req *http.Request) {
+func (ep *Endpoint) handleLED(w http.ResponseWriter, req *http.Request) {
 	var (
 		state  bool
 		status int
@@ -20,7 +20,7 @@ func (endpoint *Endpoint) handleLED(w http.ResponseWriter, req *http.Request) {
 		status = http.StatusNoContent
 	}
 
-	err := endpoint.LEDSetter.SetLED(state)
+	err := ep.LEDSetter.SetLED(state)
 	if err != nil {
 		log.WithError(err).Warning("failed to set LED state")
 		http.Error(w, "failed to set led state: "+err.Error(), http.StatusInternalServerError)

@@ -16,7 +16,7 @@ type Broker interface {
 	SetLeading(leading bool)
 	IsLeading() (leading bool)
 	Run(ctx context.Context)
-	Health() (health Health)
+	Stats() (health Stats)
 }
 
 // LEDBroker implements the Broker interface

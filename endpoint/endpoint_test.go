@@ -25,10 +25,10 @@ func TestEndpoints(t *testing.T) {
 	ep2, ledSetter2, wg2 := startEndpointWithLeaderPort(ctx, 8081, 8080)
 	require.Eventually(t, func() bool { return ep2.IsRegistered() }, time.Second, 10*time.Millisecond)
 
-	health := ep1.Broker.Health()
+	health := ep1.Broker.Stats()
 	assert.Len(t, health.Endpoints, 2)
 
-	health = ep2.Broker.Health()
+	health = ep2.Broker.Stats()
 	assert.Len(t, health.Endpoints, 0)
 
 	ledSetter1.On("SetLED", true).Return(nil).Once()
