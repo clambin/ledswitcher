@@ -15,10 +15,7 @@ require (
 	k8s.io/client-go v0.24.0
 )
 
-require (
-	github.com/clambin/go-metrics v0.3.0
-	github.com/prometheus/client_golang v1.12.2
-)
+require github.com/prometheus/client_golang v1.12.2
 
 require (
 	github.com/PuerkitoBio/purell v1.1.1 // indirect
@@ -36,7 +33,6 @@ require (
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/gnostic v0.5.7-v3refs // indirect
 	github.com/google/go-cmp v0.5.6 // indirect
-	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/mailru/easyjson v0.7.6 // indirect
