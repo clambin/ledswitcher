@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/clambin/go-metrics"
+	"github.com/clambin/go-metrics/server"
 	"github.com/clambin/ledswitcher/broker"
 	"github.com/clambin/ledswitcher/caller"
 	"github.com/clambin/ledswitcher/endpoint/health"
@@ -22,7 +22,7 @@ type Endpoint struct {
 	Broker     broker.Broker
 	Health     health.Health
 	LEDSetter  led.Setter
-	HTTPServer *metrics.Server
+	HTTPServer *server.Server
 	registerer registerer.Registerer
 }
 
@@ -40,7 +40,7 @@ func New(hostname string, port int, ledPath string, broker broker.Broker) (ep *E
 		Health:      &ep.Health,
 	}
 
-	ep.HTTPServer = metrics.NewServerWithHandlers(port, []metrics.Handler{
+	ep.HTTPServer = server.NewWithHandlers(port, []server.Handler{
 		{
 			Path:    "/led",
 			Handler: http.HandlerFunc(ep.handleLED),
