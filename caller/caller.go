@@ -44,7 +44,6 @@ var (
 		Name: "ledswitcher_http_duration_seconds",
 		Help: "Duration of Ledswitcher HTTP requests",
 	}, []string{"path", "method", "status_code"})
-	//}, []string{"path", "method"})
 )
 
 func (caller *HTTPCaller) call(target, path, method string, body *string) (err error) {

@@ -61,3 +61,32 @@ func TestEndpoint_Register_NotLeading(t *testing.T) {
 	wg.Wait()
 	mock.AssertExpectationsForObjects(t, ledSetter)
 }
+
+func TestEndpoint_Register_Errors(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	ep, ledSetter, wg := startEndpoint(ctx, 0)
+
+	require.Eventually(t, func() bool { return ep.IsRegistered() }, time.Second, 10*time.Millisecond)
+
+	statusCode, err := doHTTPCall(
+		ep.MakeURL("127.0.0.1")+"/register",
+		http.MethodPost,
+		nil,
+	)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusBadRequest, statusCode)
+
+	statusCode, err = doHTTPCall(
+		ep.MakeURL("127.0.0.1")+"/register",
+		http.MethodPost,
+		bytes.NewBufferString(`{"url": "not a host"}`),
+	)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusBadRequest, statusCode)
+
+	ledSetter.On("SetLED", true).Return(nil).Once()
+
+	cancel()
+	wg.Wait()
+	mock.AssertExpectationsForObjects(t, ledSetter)
+}

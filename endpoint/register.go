@@ -2,13 +2,14 @@ package endpoint
 
 import (
 	"encoding/json"
+	"fmt"
 	log "github.com/sirupsen/logrus"
-	"io"
 	"net/http"
+	"net/url"
 )
 
 func (ep *Endpoint) handleRegisterClient(w http.ResponseWriter, req *http.Request) {
-	if ep.Broker.IsLeading() == false {
+	if !ep.Broker.IsLeading() {
 		http.Error(w, "not leading", http.StatusMethodNotAllowed)
 		return
 	}
@@ -26,17 +27,21 @@ func (ep *Endpoint) handleRegisterClient(w http.ResponseWriter, req *http.Reques
 }
 
 func parseRegisterRequest(req *http.Request) (clientURL string, err error) {
-	var body []byte
-	if body, err = io.ReadAll(req.Body); err == nil {
-		var request struct {
-			ClientURL string `json:"url"`
-		}
-
-		if err = json.Unmarshal(body, &request); err == nil {
-			clientURL = request.ClientURL
-		}
+	var request struct {
+		ClientURL string `json:"url"`
 	}
-	_ = req.Body.Close()
 
+	if err = json.NewDecoder(req.Body).Decode(&request); err != nil {
+		err = fmt.Errorf("invalid request: %w", err)
+		return
+	}
+
+	var client *url.URL
+	if client, err = url.ParseRequestURI(request.ClientURL); err != nil {
+		err = fmt.Errorf("invalid url in request: %w", err)
+		return
+	}
+
+	clientURL = client.String()
 	return
 }
