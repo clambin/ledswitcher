@@ -6,6 +6,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"net/http"
 	"net/url"
+	"strings"
 )
 
 func (ep *Endpoint) handleRegisterClient(w http.ResponseWriter, req *http.Request) {
@@ -23,7 +24,10 @@ func (ep *Endpoint) handleRegisterClient(w http.ResponseWriter, req *http.Reques
 
 	ep.Broker.RegisterClient(clientURL)
 	w.WriteHeader(http.StatusCreated)
-	log.WithField("url", clientURL).Debug("/register")
+
+	cleanURL := strings.Replace(clientURL, "\n", "", -1)
+	cleanURL = strings.Replace(cleanURL, "\r", "", -1)
+	log.WithField("url", cleanURL).Debug("/register")
 }
 
 func parseRegisterRequest(req *http.Request) (clientURL string, err error) {
@@ -41,6 +45,7 @@ func parseRegisterRequest(req *http.Request) (clientURL string, err error) {
 		err = fmt.Errorf("invalid url in request: %w", err)
 		return
 	}
+	_ = req.Body.Close()
 
 	clientURL = client.String()
 	return
