@@ -3,11 +3,8 @@ package caller
 import (
 	"bytes"
 	"fmt"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/clambin/go-metrics/client"
 	"net/http"
-	"strconv"
-	"time"
 )
 
 // Caller interface for a Driver
@@ -19,55 +16,62 @@ type Caller interface {
 
 // HTTPCaller implements Caller over HTTP
 type HTTPCaller struct {
-	HTTPClient *http.Client
+	client.Caller
+}
+
+func New() *HTTPCaller {
+	return &HTTPCaller{
+		Caller: &client.InstrumentedClient{
+			Options:     client.Options{PrometheusMetrics: metrics},
+			Application: "ledswitcher",
+		},
+	}
 }
 
 // SetLEDOn performs an HTTP request to switch on the LED at the specified host
 func (caller *HTTPCaller) SetLEDOn(targetURL string) (err error) {
-	return caller.call(targetURL, "/led", http.MethodPost, nil)
+	req, _ := http.NewRequest(http.MethodPost, targetURL+"/led", nil)
+	var resp *http.Response
+	resp, err = caller.Caller.Do(req)
+	if err == nil {
+		_ = resp.Body.Close()
+		if resp.StatusCode != http.StatusCreated {
+			err = fmt.Errorf("SetLEDOn failed: %s", resp.Status)
+		}
+	}
+	return
 }
 
 // SetLEDOff performs an HTTP request to switch off the LED at the specified host
 func (caller *HTTPCaller) SetLEDOff(targetURL string) (err error) {
-	return caller.call(targetURL, "/led", http.MethodDelete, nil)
+	req, _ := http.NewRequest(http.MethodDelete, targetURL+"/led", nil)
+	var resp *http.Response
+	resp, err = caller.Caller.Do(req)
+	if err == nil {
+		_ = resp.Body.Close()
+		if resp.StatusCode != http.StatusNoContent {
+			err = fmt.Errorf("SetLEDOn failed: %s", resp.Status)
+		}
+	}
+	return
 }
 
 // Register performs an HTTP request to register the host with the Broker
 func (caller *HTTPCaller) Register(leaderURL, clientURL string) (err error) {
 	body := fmt.Sprintf(`{ "url": "%s" }`, clientURL)
-	return caller.call(leaderURL, "/register", http.MethodPost, &body)
+	req, _ := http.NewRequest(http.MethodPost, leaderURL+"/register", bytes.NewBufferString(body))
+	var resp *http.Response
+	resp, err = caller.Caller.Do(req)
+	if err == nil {
+		_ = resp.Body.Close()
+		if resp.StatusCode != http.StatusCreated {
+			err = fmt.Errorf("SetLEDOn failed: %s", resp.Status)
+		}
+	}
+	return
 }
 
 // Prometheus metrics
 var (
-	httpDuration = promauto.NewSummaryVec(prometheus.SummaryOpts{
-		Name: "ledswitcher_http_duration_seconds",
-		Help: "Duration of Ledswitcher HTTP requests",
-	}, []string{"path", "method", "status_code"})
+	metrics = client.NewMetrics("ledswitcher", "")
 )
-
-func (caller *HTTPCaller) call(target, path, method string, body *string) (err error) {
-	start := time.Now()
-	var req *http.Request
-	if body != nil {
-		req, _ = http.NewRequest(method, target+path, bytes.NewBufferString(*body))
-	} else {
-		req, _ = http.NewRequest(method, target+path, nil)
-	}
-
-	status := "ERROR"
-	var resp *http.Response
-	resp, err = caller.HTTPClient.Do(req)
-
-	if err == nil {
-		status = strconv.Itoa(resp.StatusCode)
-		ok := (method == http.MethodPost && resp.StatusCode == http.StatusCreated) ||
-			(method == http.MethodDelete && resp.StatusCode == http.StatusNoContent)
-		if ok == false {
-			err = fmt.Errorf("unexpected HTTP response: %s", resp.Status)
-		}
-		_ = resp.Body.Close()
-	}
-	httpDuration.WithLabelValues(path, method, status).Observe(time.Since(start).Seconds())
-	return
-}

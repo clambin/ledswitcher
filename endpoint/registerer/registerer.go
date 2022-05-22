@@ -13,7 +13,7 @@ import (
 // A Registerer attempts to register the instance with the leader on a regular basis
 type Registerer struct {
 	caller.Caller
-	Broker      broker.Broker
+	broker.Broker
 	EndPointURL string
 	Interval    time.Duration
 	Health      *health.Health

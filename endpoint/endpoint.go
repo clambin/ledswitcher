@@ -29,15 +29,14 @@ type Endpoint struct {
 // New creates a new Endpoint
 func New(hostname string, port int, ledPath string, broker broker.Broker) (ep *Endpoint) {
 	ep = &Endpoint{
-		Caller:    &caller.HTTPCaller{HTTPClient: &http.Client{}},
+		Caller:    caller.New(),
 		Broker:    broker,
 		LEDSetter: &led.RealSetter{LEDPath: ledPath},
 	}
 	ep.registerer = registerer.Registerer{
-		Caller:      &caller.HTTPCaller{HTTPClient: &http.Client{}},
-		Broker:      broker,
-		EndPointURL: "",
-		Health:      &ep.Health,
+		Caller: caller.New(),
+		Broker: broker,
+		Health: &ep.Health,
 	}
 
 	ep.HTTPServer = server.NewWithHandlers(port, []server.Handler{
@@ -104,7 +103,7 @@ func (ep *Endpoint) SetLeaderWithPort(leader string, port int) {
 	ep.Broker.SetLeading(isLeading)
 
 	var leading string
-	if isLeading == false {
+	if !isLeading {
 		leading = "not "
 	}
 	log.Infof("ep is %sleading", leading)

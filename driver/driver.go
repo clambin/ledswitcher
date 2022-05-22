@@ -6,7 +6,6 @@ import (
 	"github.com/clambin/ledswitcher/broker/scheduler"
 	"github.com/clambin/ledswitcher/caller"
 	log "github.com/sirupsen/logrus"
-	"net/http"
 	"sync"
 )
 
@@ -20,7 +19,7 @@ type Driver struct {
 // New creates a new driver
 func New(broker broker.Broker) *Driver {
 	return &Driver{
-		Caller: &caller.HTTPCaller{HTTPClient: &http.Client{}},
+		Caller: caller.New(),
 		broker: broker,
 	}
 }

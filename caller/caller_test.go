@@ -24,9 +24,7 @@ func TestHTTPCaller_SetLEDOn(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := caller.HTTPCaller{
-		HTTPClient: &http.Client{},
-	}
+	client := caller.New()
 
 	err := client.SetLEDOn(server.URL)
 	require.NoError(t, err)
@@ -46,9 +44,7 @@ func TestHTTPCaller_SetLEDOff(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := caller.HTTPCaller{
-		HTTPClient: &http.Client{},
-	}
+	client := caller.New()
 
 	err := client.SetLEDOff(server.URL)
 	require.NoError(t, err)
@@ -84,9 +80,7 @@ func TestHTTPCaller_Register(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := caller.HTTPCaller{
-		HTTPClient: &http.Client{},
-	}
+	client := caller.New()
 
 	err := client.Register(server.URL, "http://localhost:10000")
 	require.NoError(t, err)

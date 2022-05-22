@@ -26,7 +26,7 @@ func TestRegisterer_Run(t *testing.T) {
 	s, _ := scheduler.New("linear")
 	b := broker.New(time.Second, s)
 	r := registerer.Registerer{
-		Caller:      &caller.HTTPCaller{HTTPClient: &http.Client{}},
+		Caller:      caller.New(),
 		Broker:      b,
 		EndPointURL: "http://127.0.0.1:8080",
 	}
@@ -50,7 +50,7 @@ func TestRegisterer_Run_Retry(t *testing.T) {
 	b := broker.New(time.Second, s)
 	h := health.Health{}
 	r := registerer.Registerer{
-		Caller:      &caller.HTTPCaller{HTTPClient: &http.Client{}},
+		Caller:      caller.New(),
 		Broker:      b,
 		EndPointURL: "http://127.0.0.1:8080",
 		Interval:    150 * time.Millisecond,
