@@ -75,19 +75,19 @@ func TestBroker_SetLeading(t *testing.T) {
 	b.RegisterClient("client1")
 
 	assert.Never(t, func() bool {
-		_ = <-b.Next()
+		<-b.Next()
 		return true
 	}, 100*time.Millisecond, 10*time.Millisecond)
 
 	b.SetLeading(true)
 	assert.Eventually(t, func() bool {
-		_ = <-b.Next()
+		<-b.Next()
 		return true
 	}, 100*time.Millisecond, 10*time.Millisecond)
 
 	b.SetLeading(false)
 	assert.Never(t, func() bool {
-		_ = <-b.Next()
+		<-b.Next()
 		return true
 	}, 100*time.Millisecond, 10*time.Millisecond)
 

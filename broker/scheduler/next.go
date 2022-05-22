@@ -21,7 +21,7 @@ func (s *Scheduler) Next() (actions []Action) {
 	// get the next state and, for each host that is not in the desired state, create an action
 	for index, state := range s.Schedule.Next(count) {
 		host := hosts[index]
-		registeredHost, _ := s.hosts[host]
+		registeredHost := s.hosts[host]
 		if registeredHost.State != state {
 			registeredHost.State = state
 			s.hosts[host] = registeredHost

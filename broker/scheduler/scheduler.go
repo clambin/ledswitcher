@@ -58,10 +58,10 @@ func (s *Scheduler) UpdateStatus(name string, alive bool) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	if _, ok := s.hosts[name]; ok == false {
+	if _, ok := s.hosts[name]; !ok {
 		s.register(name)
 	}
-	entry, _ := s.hosts[name]
+	entry := s.hosts[name]
 	entry.UpdateStatus(alive)
 	s.hosts[name] = entry
 }

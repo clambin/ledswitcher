@@ -131,7 +131,7 @@ func (api *MockAPIClient) GetStates() (states string) {
 	sort.Strings(clients)
 
 	for _, client := range clients {
-		if state, _ := api.States[client]; state == true {
+		if state := api.States[client]; state == true {
 			states += "1"
 		} else {
 			states += "0"

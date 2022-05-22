@@ -15,7 +15,7 @@ var _ Schedule = &RandomSchedule{}
 
 // Next returns the next pattern
 func (s *RandomSchedule) Next(count int) []bool {
-	if s.seeded == false {
+	if !s.seeded {
 		rand.Seed(time.Now().UnixNano())
 		s.seeded = true
 		s.last = -1

@@ -20,7 +20,7 @@ type RealSetter struct {
 // SetLED switches a LED on or off
 func (setter *RealSetter) SetLED(state bool) error {
 	data := "0"
-	if state == true {
+	if state {
 		data = "255"
 	}
 

@@ -61,8 +61,6 @@ func (s *Server) Start(ctx context.Context) {
 		}
 		s.wg.Done()
 	}()
-
-	return
 }
 
 // Wait waits for a server to shut down
