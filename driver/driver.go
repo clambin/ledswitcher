@@ -14,9 +14,7 @@ import (
 // and sends the requests to the registered endpoints.
 type Driver struct {
 	caller.Caller
-	broker     broker.Broker
-	lock       sync.RWMutex
-	registered bool
+	broker broker.Broker
 }
 
 // New creates a new driver
