@@ -3,7 +3,10 @@
     "list": [
       {
         "builtIn": 1,
-        "datasource": "-- Grafana --",
+        "datasource": {
+          "type": "datasource",
+          "uid": "grafana"
+        },
         "enable": true,
         "hide": true,
         "iconColor": "rgba(0, 211, 255, 1)",
@@ -21,7 +24,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 454,
+  "id": 1073,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -96,7 +99,8 @@
           "placement": "bottom"
         },
         "tooltip": {
-          "mode": "multi"
+          "mode": "multi",
+          "sort": "none"
         }
       },
       "pluginVersion": "8.3.3",
@@ -148,13 +152,15 @@
       },
       "gridPos": {
         "h": 9,
-        "w": 6,
+        "w": 9,
         "x": 12,
         "y": 0
       },
       "id": 7,
       "options": {
         "displayMode": "lcd",
+        "minVizHeight": 10,
+        "minVizWidth": 0,
         "orientation": "auto",
         "reduceOptions": {
           "calcs": [
@@ -165,7 +171,7 @@
         },
         "showUnfilled": false
       },
-      "pluginVersion": "8.3.3",
+      "pluginVersion": "8.5.3",
       "targets": [
         {
           "datasource": {
@@ -182,94 +188,6 @@
       ],
       "title": "LED Request Rate",
       "type": "bargauge"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 9,
-        "w": 6,
-        "x": 18,
-        "y": 0
-      },
-      "id": 6,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "single"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
-          },
-          "exemplar": true,
-          "expr": "avg by (path,status_code) (rate(ledswitcher_http_duration_seconds_count{status_code!~\"2.*\"}[2m]))",
-          "interval": "",
-          "legendFormat": "{{path}} - {{status_code}}",
-          "refId": "A"
-        }
-      ],
-      "title": "Errors",
-      "type": "timeseries"
     },
     {
       "datasource": {
@@ -343,7 +261,8 @@
           "placement": "bottom"
         },
         "tooltip": {
-          "mode": "single"
+          "mode": "single",
+          "sort": "none"
         }
       },
       "pluginVersion": "8.3.3",
@@ -353,46 +272,126 @@
             "type": "prometheus",
             "uid": "PBFA97CFB590B2093"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "avg by (method) (ledswitcher_http_duration_seconds_sum{path=\"/led\"} / ledswitcher_http_duration_seconds_count{path=\"/led\"})",
+          "expr": "avg by (endpoint, method) (ledswitcher_api_latency_sum{endpoint=~\"/led|/register\"} / ledswitcher_api_latency_count{endpoint=~\"/led|/register\"})",
           "interval": "",
-          "legendFormat": "led - {{method}}",
+          "legendFormat": "{{endpoint}} - {{method}}",
           "queryType": "randomWalk",
+          "range": true,
           "refId": "A"
+        }
+      ],
+      "title": "Latency",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
         },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 9,
+        "x": 12,
+        "y": 9
+      },
+      "id": 6,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "PBFA97CFB590B2093"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "avg(ledswitcher_http_duration_seconds_sum{path=\"/register\"} / ledswitcher_http_duration_seconds_count{path=\"/register\"})",
-          "hide": false,
+          "expr": "avg by (instance, endpoint) (rate(ledswitcher_api_errors_total[$__rate_interval]))",
           "interval": "",
-          "legendFormat": "register",
-          "queryType": "randomWalk",
-          "refId": "B"
+          "legendFormat": "{{instance}} - {{endpoint}}",
+          "range": true,
+          "refId": "A"
         }
       ],
-      "title": "Latency (client-side)",
+      "title": "Errors",
       "type": "timeseries"
     }
   ],
   "refresh": false,
-  "schemaVersion": 34,
+  "schemaVersion": 36,
   "style": "dark",
   "tags": [],
   "templating": {
     "list": []
   },
   "time": {
-    "from": "now-1h",
+    "from": "now-24h",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "",
   "title": "led switcher",
   "uid": "fEQJy2gRz",
-  "version": 11,
+  "version": 2,
   "weekStart": ""
 }
