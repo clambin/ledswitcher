@@ -55,15 +55,14 @@ func (r *Registerer) register() {
 	}
 
 	err := r.Caller.Register(r.leaderURL, r.EndPointURL)
+	r.registered = err == nil
 
-	if err == nil {
-		r.registered = true
-	} else {
+	if !r.registered {
 		log.WithError(err).WithField("leader", r.leaderURL).Warning("failed to register")
 	}
 
 	if r.Health != nil {
-		r.Health.RecordRegistryAttempt(err == nil)
+		r.Health.RecordRegistryAttempt(r.registered)
 	}
 }
 

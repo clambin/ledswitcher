@@ -131,7 +131,7 @@ func runWithLeaderElection(ctx context.Context, s *endpoint.Endpoint, hostname, 
 				<-ctx.Done()
 			},
 			OnStoppedLeading: func() {
-				log.Info("leader lost")
+				log.Fatal("leader lost")
 			},
 			OnNewLeader: func(identity string) {
 				log.WithField("id", identity).Info("new leader elected")

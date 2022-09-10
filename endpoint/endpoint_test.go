@@ -20,10 +20,12 @@ func TestEndpoints(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	ep1, ledSetter1, wg1 := startEndpoint(ctx, 8080)
-	require.Eventually(t, func() bool { return ep1.IsRegistered() }, time.Second, 10*time.Millisecond)
+	//TODO: race condition: if endpoint tries to register before the HTTP server is up, it will take 30 sec to register
+	require.Eventually(t, func() bool { return ep1.IsRegistered() }, time.Minute, time.Second)
 
 	ep2, ledSetter2, wg2 := startEndpointWithLeaderPort(ctx, 8081, 8080)
-	require.Eventually(t, func() bool { return ep2.IsRegistered() }, time.Second, 10*time.Millisecond)
+	//TODO: race condition: if endpoint tries to register before the HTTP server is up, it will take 30 sec to register
+	require.Eventually(t, func() bool { return ep2.IsRegistered() }, time.Minute, time.Second)
 
 	health := ep1.Broker.Stats()
 	assert.Len(t, health.Endpoints, 2)
@@ -45,8 +47,7 @@ func startEndpoint(ctx context.Context, port int) (ep *endpoint.Endpoint, ledSet
 
 func startEndpointWithLeaderPort(ctx context.Context, port int, leaderPort int) (ep *endpoint.Endpoint, ledSetter *mocks.Setter, wg *sync.WaitGroup) {
 	s, _ := scheduler.New("linear")
-	b := broker.New(time.Second, s)
-	ep = endpoint.New("127.0.0.1", port, "", b)
+	ep = endpoint.New("127.0.0.1", port, "", broker.New(time.Second, s))
 	ledSetter = &mocks.Setter{}
 	ep.LEDSetter = ledSetter
 	if leaderPort == 0 {
