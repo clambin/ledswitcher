@@ -42,19 +42,15 @@ func New(hostname string, port int, ledPath string, rotation time.Duration, sche
 
 // Start starts a Server
 func (s *Server) Start(ctx context.Context) {
-	s.wg.Add(1)
+	s.wg.Add(3)
 	go func() {
 		s.Broker.Run(ctx)
 		s.wg.Done()
 	}()
-
-	s.wg.Add(1)
 	go func() {
 		s.Driver.Run(ctx)
 		s.wg.Done()
 	}()
-
-	s.wg.Add(1)
 	go func() {
 		if err := s.Endpoint.Run(ctx); err != nil {
 			log.WithError(err).Fatal("failed to start endpoint")
