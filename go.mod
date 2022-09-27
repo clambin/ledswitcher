@@ -15,7 +15,7 @@ require (
 	k8s.io/client-go v0.25.2
 )
 
-require github.com/clambin/go-metrics v0.5.1
+require github.com/clambin/go-metrics v0.6.0
 
 require (
 	github.com/PuerkitoBio/purell v1.1.1 // indirect
