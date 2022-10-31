@@ -3,7 +3,7 @@ package caller
 import (
 	"bytes"
 	"fmt"
-	"github.com/clambin/go-metrics/client"
+	"github.com/clambin/httpclient"
 	"net/http"
 )
 
@@ -16,13 +16,13 @@ type Caller interface {
 
 // HTTPCaller implements Caller over HTTP
 type HTTPCaller struct {
-	client.Caller
+	httpclient.Caller
 }
 
 func New() *HTTPCaller {
 	return &HTTPCaller{
-		Caller: &client.InstrumentedClient{
-			Options:     client.Options{PrometheusMetrics: metrics},
+		Caller: &httpclient.InstrumentedClient{
+			Options:     httpclient.Options{PrometheusMetrics: metrics},
 			Application: "ledswitcher",
 		},
 	}
@@ -73,5 +73,5 @@ func (caller *HTTPCaller) Register(leaderURL, clientURL string) (err error) {
 
 // Prometheus metrics
 var (
-	metrics = client.NewMetrics("ledswitcher", "")
+	metrics = httpclient.NewMetrics("ledswitcher", "")
 )
