@@ -73,7 +73,7 @@ func (s *Switcher) handleRegisterClient(w http.ResponseWriter, req *http.Request
 	s.Leader.RegisterClient(clientURL)
 	w.WriteHeader(http.StatusCreated)
 
-	// TODO: why did I do this?
+	// clean URL to avoid logfile injection
 	cleanURL := strings.Replace(clientURL, "\n", "", -1)
 	cleanURL = strings.Replace(cleanURL, "\r", "", -1)
 	log.WithField("url", cleanURL).Debug("/register")

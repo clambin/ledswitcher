@@ -2,15 +2,20 @@ package main
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"github.com/clambin/ledswitcher/configuration"
 	"github.com/clambin/ledswitcher/switcher"
 	"github.com/clambin/ledswitcher/version"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
+	"net/http"
 	"os"
 	"os/signal"
 	"sync"
@@ -32,7 +37,9 @@ func main() {
 		log.SetLevel(log.DebugLevel)
 	}
 
-	srv, err := switcher.New(cfg)
+	go runPrometheusServer(cfg.PrometheusPort)
+
+	srv, err := switcher.New(cfg, prometheus.DefaultRegisterer)
 	if err != nil {
 		log.WithError(err).Fatal("failed to create Switcher")
 	}
@@ -107,4 +114,11 @@ func runWithLeaderElection(ctx context.Context, srv *switcher.Switcher, cfg conf
 			},
 		},
 	})
+}
+
+func runPrometheusServer(port int) {
+	http.Handle("/metrics", promhttp.Handler())
+	if err := http.ListenAndServe(fmt.Sprintf(":%d", port), nil); !errors.Is(err, http.ErrServerClosed) {
+		log.WithError(err).Fatal("failed to start Prometheus listener")
+	}
 }

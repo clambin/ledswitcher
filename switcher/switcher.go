@@ -9,10 +9,10 @@ import (
 	"github.com/clambin/ledswitcher/switcher/leader"
 	"github.com/clambin/ledswitcher/switcher/led"
 	"github.com/clambin/ledswitcher/switcher/registerer"
+	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"net/http"
 	"os"
-	"strings"
 	"sync"
 	"time"
 )
@@ -27,63 +27,62 @@ import (
 type Switcher struct {
 	Leader     *leader.Leader
 	Registerer registerer.Registerer
-	Server     httpserver.Server
-	appPort    int
+	Server     *httpserver.Server
 	setter     led.Setter
 }
 
 // New creates a new Switcher
-func New(cfg configuration.Configuration) (*Switcher, error) {
+func New(cfg configuration.Configuration, r prometheus.Registerer) (*Switcher, error) {
 	hostname, err := os.Hostname()
 	if err != nil {
 		return nil, fmt.Errorf("unable to determine hostname: %w", err)
 	}
 
-	s := &Switcher{
-		Registerer: registerer.Registerer{
-			Caller:      caller.New(),
-			EndPointURL: fmt.Sprintf("http://%s:%d", hostname, cfg.ServerPort),
-			Interval:    time.Minute,
-		},
-		setter:  &led.RealSetter{LEDPath: cfg.LedPath},
-		appPort: cfg.ServerPort,
-	}
-	s.Registerer.SetLeaderURL(fmt.Sprintf("http://%s:%d", cfg.Leader, cfg.ServerPort))
+	s := &Switcher{setter: &led.RealSetter{LEDPath: cfg.LedPath}}
 
 	if s.Leader, err = leader.New(cfg.LeaderConfiguration); err != nil {
 		return nil, fmt.Errorf("invalid config: %w", err)
 	}
 
-	s.Server = httpserver.Server{
-		Prometheus: httpserver.Prometheus{
-			Port: cfg.PrometheusPort,
-		},
-		Application: httpserver.Application{
-			Port: cfg.ServerPort,
-			Handlers: []httpserver.Handler{
-				{
-					Path:    "/led",
-					Handler: http.HandlerFunc(s.handleLED),
-					Methods: []string{http.MethodPost, http.MethodDelete},
-				},
-				{
-					Path:    "/register",
-					Handler: http.HandlerFunc(s.handleRegisterClient),
-					Methods: []string{http.MethodPost},
-				},
-				{
-					Path:    "/stats",
-					Handler: http.HandlerFunc(s.handleStats),
-				},
-				{
-					Path:    "/health",
-					Handler: http.HandlerFunc(s.handleHealth),
-				},
-			},
-		},
+	if r == nil {
+		r = prometheus.DefaultRegisterer
 	}
+	metrics := httpserver.NewMetrics("ledswitcher")
+	metrics.Register(r)
 
-	return s, nil
+	s.Server, err = httpserver.New(
+		httpserver.WithPort{Port: cfg.ServerPort},
+		httpserver.WithMetrics{Metrics: metrics},
+		httpserver.WithHandlers{Handlers: []httpserver.Handler{
+			{
+				Path:    "/led",
+				Handler: http.HandlerFunc(s.handleLED),
+				Methods: []string{http.MethodPost, http.MethodDelete},
+			},
+			{
+				Path:    "/register",
+				Handler: http.HandlerFunc(s.handleRegisterClient),
+				Methods: []string{http.MethodPost},
+			},
+			{
+				Path:    "/stats",
+				Handler: http.HandlerFunc(s.handleStats),
+			},
+			{
+				Path:    "/health",
+				Handler: http.HandlerFunc(s.handleHealth),
+			},
+		}},
+	)
+
+	s.Registerer = registerer.Registerer{
+		Caller:      caller.New(),
+		EndPointURL: fmt.Sprintf("http://%s:%d", hostname, s.Server.GetPort()),
+		Interval:    time.Minute,
+	}
+	s.Registerer.SetLeaderURL(fmt.Sprintf("http://%s:%d", cfg.Leader, s.Server.GetPort()))
+
+	return s, err
 }
 
 // Run starts a Switcher and waits for the context to be canceled
@@ -101,17 +100,13 @@ func (s *Switcher) Run(ctx context.Context) {
 	}()
 	wg.Add(1)
 	go func() {
-		if err := s.Server.Run(); len(err) > 0 {
-			var errs []string
-			for _, e := range err {
-				errs = append(errs, e.Error())
-			}
-			log.Fatalf("failed to start endpoint: %s", strings.Join(errs, ","))
+		if err := s.Server.Run(); err != nil {
+			log.WithError(err).Fatalf("failed to start server")
 		}
 		wg.Done()
 	}()
 	<-ctx.Done()
-	s.Server.Shutdown(5 * time.Second)
+	_ = s.Server.Shutdown(5 * time.Second)
 	wg.Wait()
 }
 
@@ -120,5 +115,5 @@ func (s *Switcher) SetLeader(leader string) {
 	hostname, _ := os.Hostname()
 	leading := hostname == leader
 	s.Leader.SetLeading(leading)
-	s.Registerer.SetLeaderURL(fmt.Sprintf("http://%s:%d", leader, s.appPort))
+	s.Registerer.SetLeaderURL(fmt.Sprintf("http://%s:%d", leader, s.Server.GetPort()))
 }

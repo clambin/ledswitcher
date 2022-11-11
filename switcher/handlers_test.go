@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/clambin/ledswitcher/configuration"
 	"github.com/clambin/ledswitcher/switcher/led/mocks"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -29,7 +30,7 @@ var (
 )
 
 func TestHealth(t *testing.T) {
-	s, err := New(testConfig)
+	s, err := New(testConfig, prometheus.NewRegistry())
 	require.NoError(t, err)
 
 	resp := httptest.NewRecorder()
@@ -46,7 +47,7 @@ func TestHealth(t *testing.T) {
 }
 
 func TestStats(t *testing.T) {
-	s, _ := New(leaderConfig())
+	s, _ := New(leaderConfig(), prometheus.NewRegistry())
 	s.Leader.RegisterClient("http://host1:8080")
 	s.Leader.RegisterClient("http://host2:8080")
 
@@ -90,7 +91,7 @@ func TestLED(t *testing.T) {
 		{name: "error", method: http.MethodPost, err: errors.New("fail"), statusCode: http.StatusInternalServerError, action: &True},
 	}
 
-	s, _ := New(leaderConfig())
+	s, _ := New(leaderConfig(), prometheus.NewRegistry())
 	setter := mocks.NewSetter(t)
 	s.setter = setter
 
@@ -122,10 +123,16 @@ func TestRegisterClient(t *testing.T) {
 	}
 
 	cfg := leaderConfig()
-	s, _ := New(cfg)
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			body := fmt.Sprintf(`{ "url": "%s" }`, tt.target)
+			s, err := New(cfg, prometheus.NewRegistry())
+			require.NoError(t, err)
+
+			var target string
+			if tt.target != "" {
+				target = fmt.Sprintf("%s:%d", tt.target, s.Server.GetPort())
+			}
+			body := fmt.Sprintf(`{ "url": "%s" }`, target)
 			req, _ := http.NewRequest(http.MethodPost, "/register", bytes.NewBufferString(body))
 			resp := httptest.NewRecorder()
 
@@ -139,9 +146,8 @@ func TestRegisterClient(t *testing.T) {
 
 			if tt.leading && tt.code == http.StatusCreated {
 				require.Len(t, s.Leader.Stats().Endpoints, 1)
-				assert.Equal(t, tt.target, s.Leader.Stats().Endpoints[0].Name)
+				assert.Equal(t, target, s.Leader.Stats().Endpoints[0].Name)
 			}
 		})
 	}
-
 }

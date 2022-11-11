@@ -2,8 +2,10 @@ package switcher
 
 import (
 	"context"
+	"fmt"
 	"github.com/clambin/ledswitcher/configuration"
 	"github.com/clambin/ledswitcher/switcher/led"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"net/http"
@@ -16,7 +18,7 @@ import (
 func TestServer_Run(t *testing.T) {
 	cfg := leaderConfig()
 	cfg.Scheduler.Mode = "binary"
-	s, err := New(cfg)
+	s, err := New(cfg, prometheus.NewRegistry())
 	require.NoError(t, err)
 	require.NotNil(t, s.Leader)
 
@@ -39,8 +41,9 @@ func TestServer_Run(t *testing.T) {
 	}, time.Second, 20*time.Millisecond)
 
 	assert.Eventually(t, func() bool {
-		resp, err := http.Get("http://127.0.0.1:9090/metrics")
-		if err != nil {
+		var resp *http.Response
+		resp, err = http.Get(fmt.Sprintf("http://127.0.0.1:%d/health", s.Server.GetPort()))
+		if err == nil {
 			_ = resp.Body.Close()
 		}
 		return err == nil && resp.StatusCode == http.StatusOK
@@ -93,8 +96,6 @@ func leaderConfig() configuration.Configuration {
 				Mode: "linear",
 			},
 		},
-		ServerPort:     8080,
-		PrometheusPort: 9090,
-		LedPath:        "/foo",
+		LedPath: "/foo",
 	}
 }
