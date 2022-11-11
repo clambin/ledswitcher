@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - master
-      - health
+      - refactor
 jobs:
   test:
     uses: clambin/workflows/.github/workflows/test.yaml@main
