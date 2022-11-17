@@ -47,12 +47,10 @@ func New(cfg configuration.Configuration, r prometheus.Registerer) (*Switcher, e
 	if r == nil {
 		r = prometheus.DefaultRegisterer
 	}
-	metrics := httpserver.NewMetrics("ledswitcher")
-	metrics.Register(r)
 
 	s.Server, err = httpserver.New(
 		httpserver.WithPort{Port: cfg.ServerPort},
-		httpserver.WithMetrics{Metrics: metrics},
+		httpserver.WithMetrics{Metrics: httpserver.NewAvgMetrics("ledswitcher", r)},
 		httpserver.WithHandlers{Handlers: []httpserver.Handler{
 			{
 				Path:    "/led",
@@ -78,7 +76,7 @@ func New(cfg configuration.Configuration, r prometheus.Registerer) (*Switcher, e
 	s.Registerer = registerer.Registerer{
 		Caller:      caller.New(),
 		EndPointURL: fmt.Sprintf("http://%s:%d", hostname, s.Server.GetPort()),
-		Interval:    time.Minute,
+		Interval:    5 * time.Minute,
 	}
 	s.Registerer.SetLeaderURL(fmt.Sprintf("http://%s:%d", cfg.Leader, s.Server.GetPort()))
 
