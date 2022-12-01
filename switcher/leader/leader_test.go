@@ -12,12 +12,11 @@ import (
 )
 
 func TestLeader_Run(t *testing.T) {
+	c := mocks.NewCaller(t)
 	l, _ := leader.New(configuration.LeaderConfiguration{
 		Rotation:  100 * time.Millisecond,
 		Scheduler: configuration.SchedulerConfiguration{Mode: "linear"},
-	})
-	c := mocks.NewCaller(t)
-	l.Caller = c
+	}, c)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	var wg sync.WaitGroup

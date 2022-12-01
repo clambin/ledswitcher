@@ -40,7 +40,9 @@ func New(cfg configuration.Configuration, r prometheus.Registerer) (*Switcher, e
 
 	s := &Switcher{setter: &led.RealSetter{LEDPath: cfg.LedPath}}
 
-	if s.Leader, err = leader.New(cfg.LeaderConfiguration); err != nil {
+	c := caller.New(r)
+
+	if s.Leader, err = leader.New(cfg.LeaderConfiguration, c); err != nil {
 		return nil, fmt.Errorf("invalid config: %w", err)
 	}
 
@@ -74,7 +76,7 @@ func New(cfg configuration.Configuration, r prometheus.Registerer) (*Switcher, e
 	)
 
 	s.Registerer = registerer.Registerer{
-		Caller:      caller.New(),
+		Caller:      c,
 		EndPointURL: fmt.Sprintf("http://%s:%d", hostname, s.Server.GetPort()),
 		Interval:    5 * time.Minute,
 	}

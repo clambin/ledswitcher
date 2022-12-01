@@ -22,7 +22,7 @@ type Leader struct {
 }
 
 // New creates a new LEDBroker
-func New(cfg configuration.LeaderConfiguration) (*Leader, error) {
+func New(cfg configuration.LeaderConfiguration, c caller.Caller) (*Leader, error) {
 	s, err := scheduler.New(cfg.Scheduler)
 	if err != nil {
 		return nil, fmt.Errorf("scheduler: %w", err)
@@ -32,7 +32,7 @@ func New(cfg configuration.LeaderConfiguration) (*Leader, error) {
 		return nil, fmt.Errorf("hostname: %w", err)
 	}
 	return &Leader{
-		Caller:    caller.New(),
+		Caller:    c,
 		interval:  cfg.Rotation,
 		scheduler: s,
 		leading:   hostname == cfg.Leader,

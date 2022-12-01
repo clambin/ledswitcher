@@ -14,8 +14,7 @@ func TestLeader_Advance(t *testing.T) {
 	c := mocks.NewCaller(t)
 	l, _ := New(configuration.LeaderConfiguration{
 		Scheduler: configuration.SchedulerConfiguration{Mode: "linear"},
-	})
-	l.Caller = c
+	}, c)
 
 	type action struct {
 		a   scheduler.Action

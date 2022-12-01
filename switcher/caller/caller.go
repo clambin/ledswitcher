@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/clambin/httpclient"
+	"github.com/prometheus/client_golang/prometheus"
 	"net/http"
 )
 
@@ -21,10 +22,12 @@ type HTTPCaller struct {
 	httpclient.Caller
 }
 
-func New() *HTTPCaller {
+func New(r prometheus.Registerer) *HTTPCaller {
 	return &HTTPCaller{
 		Caller: &httpclient.InstrumentedClient{
-			Options:     httpclient.Options{PrometheusMetrics: metrics},
+			Options: httpclient.Options{
+				PrometheusMetrics: httpclient.NewMetrics("ledswitcher", "", r),
+			},
 			Application: "ledswitcher",
 		},
 	}
@@ -72,8 +75,3 @@ func (caller *HTTPCaller) Register(leaderURL, clientURL string) (err error) {
 	}
 	return
 }
-
-// Prometheus metrics
-var (
-	metrics = httpclient.NewMetrics("ledswitcher", "")
-)
