@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/clambin/ledswitcher/configuration"
 	"github.com/clambin/ledswitcher/switcher/led"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"net/http"
@@ -18,7 +17,7 @@ import (
 func TestServer_Run(t *testing.T) {
 	cfg := leaderConfig()
 	cfg.Scheduler.Mode = "binary"
-	s, err := New(cfg, prometheus.NewRegistry())
+	s, err := New(cfg, Options{})
 	require.NoError(t, err)
 	require.NotNil(t, s.Leader)
 

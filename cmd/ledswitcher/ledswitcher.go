@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/clambin/httpclient"
+	"github.com/clambin/httpserver"
 	"github.com/clambin/ledswitcher/configuration"
 	"github.com/clambin/ledswitcher/switcher"
 	"github.com/clambin/ledswitcher/version"
@@ -39,7 +41,13 @@ func main() {
 
 	go runPrometheusServer(cfg.PrometheusPort)
 
-	srv, err := switcher.New(cfg, prometheus.DefaultRegisterer)
+	options := switcher.Options{
+		ClientMetrics: httpclient.NewMetrics("ledswitcher", ""),
+		ServerMetrics: httpserver.NewAvgMetrics("ledswitcher)"),
+	}
+	prometheus.DefaultRegisterer.MustRegister(options.ClientMetrics, options.ServerMetrics)
+
+	srv, err := switcher.New(cfg, options)
 	if err != nil {
 		log.WithError(err).Fatal("failed to create Switcher")
 	}

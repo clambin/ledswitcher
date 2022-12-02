@@ -3,13 +3,13 @@ package switcher
 import (
 	"context"
 	"fmt"
+	"github.com/clambin/httpclient"
 	"github.com/clambin/httpserver"
 	"github.com/clambin/ledswitcher/configuration"
 	"github.com/clambin/ledswitcher/switcher/caller"
 	"github.com/clambin/ledswitcher/switcher/leader"
 	"github.com/clambin/ledswitcher/switcher/led"
 	"github.com/clambin/ledswitcher/switcher/registerer"
-	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"net/http"
 	"os"
@@ -31,8 +31,13 @@ type Switcher struct {
 	setter     led.Setter
 }
 
+type Options struct {
+	ClientMetrics *httpclient.Metrics
+	ServerMetrics httpserver.Metrics
+}
+
 // New creates a new Switcher
-func New(cfg configuration.Configuration, r prometheus.Registerer) (*Switcher, error) {
+func New(cfg configuration.Configuration, options Options) (*Switcher, error) {
 	hostname, err := os.Hostname()
 	if err != nil {
 		return nil, fmt.Errorf("unable to determine hostname: %w", err)
@@ -40,19 +45,15 @@ func New(cfg configuration.Configuration, r prometheus.Registerer) (*Switcher, e
 
 	s := &Switcher{setter: &led.RealSetter{LEDPath: cfg.LedPath}}
 
-	c := caller.New(r)
+	c := caller.New(options.ClientMetrics)
 
 	if s.Leader, err = leader.New(cfg.LeaderConfiguration, c); err != nil {
 		return nil, fmt.Errorf("invalid config: %w", err)
 	}
 
-	if r == nil {
-		r = prometheus.DefaultRegisterer
-	}
-
 	s.Server, err = httpserver.New(
 		httpserver.WithPort{Port: cfg.ServerPort},
-		httpserver.WithMetrics{Metrics: httpserver.NewAvgMetrics("ledswitcher", r)},
+		httpserver.WithMetrics{Metrics: options.ServerMetrics},
 		httpserver.WithHandlers{Handlers: []httpserver.Handler{
 			{
 				Path:    "/led",

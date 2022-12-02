@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/clambin/ledswitcher/configuration"
 	"github.com/clambin/ledswitcher/switcher/led/mocks"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -30,7 +29,7 @@ var (
 )
 
 func TestHealth(t *testing.T) {
-	s, err := New(testConfig, prometheus.NewRegistry())
+	s, err := New(testConfig, Options{})
 	require.NoError(t, err)
 
 	resp := httptest.NewRecorder()
@@ -47,7 +46,7 @@ func TestHealth(t *testing.T) {
 }
 
 func TestStats(t *testing.T) {
-	s, _ := New(leaderConfig(), prometheus.NewRegistry())
+	s, _ := New(leaderConfig(), Options{})
 	s.Leader.RegisterClient("http://host1:8080")
 	s.Leader.RegisterClient("http://host2:8080")
 
@@ -91,7 +90,7 @@ func TestLED(t *testing.T) {
 		{name: "error", method: http.MethodPost, err: errors.New("fail"), statusCode: http.StatusInternalServerError, action: &True},
 	}
 
-	s, _ := New(leaderConfig(), prometheus.NewRegistry())
+	s, _ := New(leaderConfig(), Options{})
 	setter := mocks.NewSetter(t)
 	s.setter = setter
 
@@ -125,7 +124,7 @@ func TestRegisterClient(t *testing.T) {
 	cfg := leaderConfig()
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			s, err := New(cfg, prometheus.NewRegistry())
+			s, err := New(cfg, Options{})
 			require.NoError(t, err)
 
 			var target string

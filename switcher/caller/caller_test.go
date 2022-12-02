@@ -2,7 +2,6 @@ package caller_test
 
 import (
 	"github.com/clambin/ledswitcher/switcher/caller"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 	"io"
 	"net/http"
@@ -25,7 +24,7 @@ func TestHTTPCaller_SetLEDOn(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := caller.New(prometheus.NewRegistry())
+	client := caller.New(nil)
 
 	err := client.SetLEDOn(server.URL)
 	require.NoError(t, err)
@@ -45,7 +44,7 @@ func TestHTTPCaller_SetLEDOff(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := caller.New(prometheus.NewRegistry())
+	client := caller.New(nil)
 
 	err := client.SetLEDOff(server.URL)
 	require.NoError(t, err)
@@ -81,7 +80,7 @@ func TestHTTPCaller_Register(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := caller.New(prometheus.NewRegistry())
+	client := caller.New(nil)
 
 	err := client.Register(server.URL, "http://localhost:10000")
 	require.NoError(t, err)
