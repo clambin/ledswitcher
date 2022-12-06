@@ -3,7 +3,7 @@ package caller
 import (
 	"bytes"
 	"fmt"
-	"github.com/clambin/httpclient"
+	"github.com/clambin/go-common/httpclient"
 	"net/http"
 )
 
