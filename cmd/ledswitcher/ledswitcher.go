@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/clambin/go-common/httpclient"
-	"github.com/clambin/httpserver"
+	"github.com/clambin/go-common/httpserver"
 	"github.com/clambin/ledswitcher/configuration"
 	"github.com/clambin/ledswitcher/switcher"
 	"github.com/clambin/ledswitcher/version"
