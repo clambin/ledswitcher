@@ -1,22 +1,43 @@
 package registerer
 
 import (
+	"bytes"
 	"context"
-	"github.com/clambin/ledswitcher/switcher/caller"
+	"fmt"
+	"github.com/clambin/go-common/httpclient"
+	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
+	"net/http"
 	"sync"
 	"time"
 )
 
 // A Registerer attempts to register the instance with the leader on a regular basis
 type Registerer struct {
-	caller.Caller
 	EndPointURL string
 	Interval    time.Duration
+	client      *http.Client
+	transport   *httpclient.RoundTripper
 	leaderURL   string
 	registered  bool
 	lock        sync.RWMutex
 }
+
+func New(endpointURL string, interval time.Duration) *Registerer {
+	transport := httpclient.NewRoundTripper(httpclient.WithRoundTripperMetrics{
+		Namespace:   "ledswitcher",
+		Subsystem:   "registerer",
+		Application: "ledswitcher",
+	})
+	return &Registerer{
+		EndPointURL: endpointURL,
+		Interval:    interval,
+		client:      &http.Client{Transport: transport},
+		transport:   transport,
+	}
+}
+
+var _ prometheus.Collector = &Registerer{}
 
 const preRegistrationInterval = 100 * time.Millisecond
 const registrationInterval = time.Minute
@@ -57,7 +78,16 @@ func (r *Registerer) register() {
 		return
 	}
 
-	err := r.Caller.Register(r.leaderURL, r.EndPointURL)
+	body := fmt.Sprintf(`{ "url": "%s" }`, r.EndPointURL)
+	req, _ := http.NewRequest(http.MethodPost, r.leaderURL+"/register", bytes.NewBufferString(body))
+
+	resp, err := r.client.Do(req)
+	if err == nil {
+		_ = resp.Body.Close()
+		if resp.StatusCode != http.StatusCreated {
+			err = fmt.Errorf("register: %s", resp.Status)
+		}
+	}
 	r.registered = err == nil
 
 	if !r.registered {
@@ -86,4 +116,14 @@ func (r *Registerer) SetLeaderURL(leaderURL string) {
 		r.registered = false
 	}
 	r.leaderURL = leaderURL
+}
+
+// Describe implements the prometheus.Collector interface
+func (r *Registerer) Describe(descs chan<- *prometheus.Desc) {
+	r.transport.Describe(descs)
+}
+
+// Collect implements the prometheus.Collector interface
+func (r *Registerer) Collect(metrics chan<- prometheus.Metric) {
+	r.transport.Collect(metrics)
 }

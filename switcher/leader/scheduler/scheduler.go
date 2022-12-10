@@ -1,7 +1,6 @@
 package scheduler
 
 import (
-	"fmt"
 	"github.com/clambin/ledswitcher/configuration"
 	"github.com/clambin/ledswitcher/switcher/leader/scheduler/schedule"
 	"sort"
@@ -19,13 +18,10 @@ type Scheduler struct {
 // New creates a Scheduler based on the provided pattern name
 func New(cfg configuration.SchedulerConfiguration) (*Scheduler, error) {
 	s, err := schedule.New(cfg.Mode)
-	if err != nil {
-		return nil, fmt.Errorf("invalid schedule: %w", err)
-	}
 	return &Scheduler{
 		Schedule: s,
 		hosts:    make(map[string]RegisteredHost),
-	}, nil
+	}, err
 }
 
 // Register registers the provided host

@@ -20,7 +20,7 @@ func New(mode string) (Schedule, error) {
 	case "binary":
 		s = &BinarySchedule{}
 	default:
-		return nil, fmt.Errorf("invalid name: %s", mode)
+		return nil, fmt.Errorf("invalid schedule: %s", mode)
 	}
 	return s, nil
 }

@@ -3,10 +3,12 @@ package leader
 import (
 	"context"
 	"fmt"
+	"github.com/clambin/go-common/httpclient"
 	"github.com/clambin/ledswitcher/configuration"
-	"github.com/clambin/ledswitcher/switcher/caller"
 	"github.com/clambin/ledswitcher/switcher/leader/scheduler"
+	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
+	"net/http"
 	"os"
 	"sync"
 	"time"
@@ -14,15 +16,18 @@ import (
 
 // Leader implements the Leader interface
 type Leader struct {
-	caller.Caller
 	scheduler *scheduler.Scheduler
+	client    *http.Client
+	transport *httpclient.RoundTripper
 	interval  time.Duration
 	leading   bool
 	lock      sync.RWMutex
 }
 
+var _ prometheus.Collector = &Leader{}
+
 // New creates a new LEDBroker
-func New(cfg configuration.LeaderConfiguration, c caller.Caller) (*Leader, error) {
+func New(cfg configuration.LeaderConfiguration) (*Leader, error) {
 	s, err := scheduler.New(cfg.Scheduler)
 	if err != nil {
 		return nil, fmt.Errorf("scheduler: %w", err)
@@ -31,10 +36,16 @@ func New(cfg configuration.LeaderConfiguration, c caller.Caller) (*Leader, error
 	if err != nil {
 		return nil, fmt.Errorf("hostname: %w", err)
 	}
+	transport := httpclient.NewRoundTripper(httpclient.WithRoundTripperMetrics{
+		Namespace:   "ledswitcher",
+		Subsystem:   "leader",
+		Application: "ledswitcher",
+	})
 	return &Leader{
-		Caller:    c,
-		interval:  cfg.Rotation,
 		scheduler: s,
+		client:    &http.Client{Transport: transport},
+		transport: transport,
+		interval:  cfg.Rotation,
 		leading:   hostname == cfg.Leader,
 	}, nil
 }
@@ -90,19 +101,54 @@ func (l *Leader) advance(next []scheduler.Action) {
 
 func (l *Leader) setState(target string, state bool) {
 	var (
-		setter      func(string) error
+		err         error
 		stateString string
 	)
 	switch state {
 	case false:
-		setter = l.Caller.SetLEDOff
+		err = l.SetLEDOff(target)
 		stateString = "OFF"
 	case true:
-		setter = l.Caller.SetLEDOn
+		err = l.SetLEDOn(target)
 		stateString = "ON"
 	}
 
-	err := setter(target)
 	l.scheduler.UpdateStatus(target, err == nil)
 	log.WithError(err).WithField("client", target).Debug(stateString)
+}
+
+// SetLEDOn performs an HTTP request to switch on the LED at the specified host
+func (l *Leader) SetLEDOn(targetURL string) (err error) {
+	req, _ := http.NewRequest(http.MethodPost, targetURL+"/led", nil)
+	var resp *http.Response
+	resp, err = l.client.Do(req)
+	if err == nil {
+		_ = resp.Body.Close()
+		if resp.StatusCode != http.StatusCreated {
+			err = fmt.Errorf("SetLEDOn: %s", resp.Status)
+		}
+	}
+	return
+}
+
+// SetLEDOff performs an HTTP request to switch off the LED at the specified host
+func (l *Leader) SetLEDOff(targetURL string) (err error) {
+	req, _ := http.NewRequest(http.MethodDelete, targetURL+"/led", nil)
+	var resp *http.Response
+	resp, err = l.client.Do(req)
+	if err == nil {
+		_ = resp.Body.Close()
+		if resp.StatusCode != http.StatusNoContent {
+			err = fmt.Errorf("SetLEDOn: %s", resp.Status)
+		}
+	}
+	return
+}
+
+func (l *Leader) Describe(descs chan<- *prometheus.Desc) {
+	l.transport.Describe(descs)
+}
+
+func (l *Leader) Collect(metrics chan<- prometheus.Metric) {
+	l.transport.Collect(metrics)
 }

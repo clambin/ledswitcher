@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/clambin/ledswitcher/configuration"
 	"github.com/clambin/ledswitcher/switcher/led"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"net/http"
@@ -50,6 +51,13 @@ func TestServer_Run(t *testing.T) {
 
 	cancel()
 	wg.Wait()
+
+	r := prometheus.NewPedanticRegistry()
+	r.MustRegister(s)
+
+	metrics, err := r.Gather()
+	require.NoError(t, err)
+	assert.Len(t, metrics, 4)
 }
 
 type FakeSetter struct {

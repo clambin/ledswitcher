@@ -3,13 +3,12 @@ package switcher
 import (
 	"context"
 	"fmt"
-	"github.com/clambin/go-common/httpclient"
-	"github.com/clambin/httpserver"
+	"github.com/clambin/go-common/httpserver"
 	"github.com/clambin/ledswitcher/configuration"
-	"github.com/clambin/ledswitcher/switcher/caller"
 	"github.com/clambin/ledswitcher/switcher/leader"
 	"github.com/clambin/ledswitcher/switcher/led"
 	"github.com/clambin/ledswitcher/switcher/registerer"
+	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"net/http"
 	"os"
@@ -26,13 +25,14 @@ import (
 // Each Switcher contains all three components. the Configuration's Leader field determines if the switcher is the Leader.
 type Switcher struct {
 	Leader     *leader.Leader
-	Registerer registerer.Registerer
+	Registerer *registerer.Registerer
 	Server     *httpserver.Server
 	setter     led.Setter
 }
 
+var _ prometheus.Collector = &Switcher{}
+
 type Options struct {
-	ClientMetrics *httpclient.Metrics
 	ServerMetrics httpserver.Metrics
 }
 
@@ -45,9 +45,7 @@ func New(cfg configuration.Configuration, options Options) (*Switcher, error) {
 
 	s := &Switcher{setter: &led.RealSetter{LEDPath: cfg.LedPath}}
 
-	c := caller.New(options.ClientMetrics)
-
-	if s.Leader, err = leader.New(cfg.LeaderConfiguration, c); err != nil {
+	if s.Leader, err = leader.New(cfg.LeaderConfiguration); err != nil {
 		return nil, fmt.Errorf("invalid config: %w", err)
 	}
 
@@ -76,11 +74,7 @@ func New(cfg configuration.Configuration, options Options) (*Switcher, error) {
 		}},
 	)
 
-	s.Registerer = registerer.Registerer{
-		Caller:      c,
-		EndPointURL: fmt.Sprintf("http://%s:%d", hostname, s.Server.GetPort()),
-		Interval:    5 * time.Minute,
-	}
+	s.Registerer = registerer.New(fmt.Sprintf("http://%s:%d", hostname, s.Server.GetPort()), 5*time.Minute)
 	s.Registerer.SetLeaderURL(fmt.Sprintf("http://%s:%d", cfg.Leader, s.Server.GetPort()))
 
 	return s, err
@@ -117,4 +111,16 @@ func (s *Switcher) SetLeader(leader string) {
 	leading := hostname == leader
 	s.Leader.SetLeading(leading)
 	s.Registerer.SetLeaderURL(fmt.Sprintf("http://%s:%d", leader, s.Server.GetPort()))
+}
+
+// Describe implements the prometheus.Collector interface
+func (s *Switcher) Describe(descs chan<- *prometheus.Desc) {
+	s.Registerer.Describe(descs)
+	s.Leader.Describe(descs)
+}
+
+// Collect implements the prometheus.Collector interface
+func (s *Switcher) Collect(metrics chan<- prometheus.Metric) {
+	s.Registerer.Collect(metrics)
+	s.Leader.Collect(metrics)
 }
