@@ -18,7 +18,7 @@ import (
 func TestServer_Run(t *testing.T) {
 	cfg := leaderConfig()
 	cfg.Scheduler.Mode = "binary"
-	s, err := New(cfg, Options{})
+	s, err := New(cfg)
 	require.NoError(t, err)
 	require.NotNil(t, s.Leader)
 
@@ -57,7 +57,7 @@ func TestServer_Run(t *testing.T) {
 
 	metrics, err := r.Gather()
 	require.NoError(t, err)
-	assert.Len(t, metrics, 4)
+	assert.Len(t, metrics, 6)
 }
 
 type FakeSetter struct {

@@ -2,6 +2,7 @@ package switcher
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/clambin/go-common/httpserver"
 	"github.com/clambin/ledswitcher/configuration"
@@ -32,12 +33,8 @@ type Switcher struct {
 
 var _ prometheus.Collector = &Switcher{}
 
-type Options struct {
-	ServerMetrics httpserver.Metrics
-}
-
 // New creates a new Switcher
-func New(cfg configuration.Configuration, options Options) (*Switcher, error) {
+func New(cfg configuration.Configuration) (*Switcher, error) {
 	hostname, err := os.Hostname()
 	if err != nil {
 		return nil, fmt.Errorf("unable to determine hostname: %w", err)
@@ -51,7 +48,7 @@ func New(cfg configuration.Configuration, options Options) (*Switcher, error) {
 
 	s.Server, err = httpserver.New(
 		httpserver.WithPort{Port: cfg.ServerPort},
-		httpserver.WithMetrics{Metrics: options.ServerMetrics},
+		httpserver.WithMetrics{Application: "ledswitcher", MetricsType: httpserver.Summary},
 		httpserver.WithHandlers{Handlers: []httpserver.Handler{
 			{
 				Path:    "/led",
@@ -95,7 +92,7 @@ func (s *Switcher) Run(ctx context.Context) {
 	}()
 	wg.Add(1)
 	go func() {
-		if err := s.Server.Run(); err != nil {
+		if err := s.Server.Serve(); !errors.Is(err, http.ErrServerClosed) {
 			log.WithError(err).Fatalf("failed to start server")
 		}
 		wg.Done()
@@ -117,10 +114,12 @@ func (s *Switcher) SetLeader(leader string) {
 func (s *Switcher) Describe(descs chan<- *prometheus.Desc) {
 	s.Registerer.Describe(descs)
 	s.Leader.Describe(descs)
+	s.Server.Describe(descs)
 }
 
 // Collect implements the prometheus.Collector interface
 func (s *Switcher) Collect(metrics chan<- prometheus.Metric) {
 	s.Registerer.Collect(metrics)
 	s.Leader.Collect(metrics)
+	s.Server.Collect(metrics)
 }

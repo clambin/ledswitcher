@@ -29,7 +29,7 @@ var (
 )
 
 func TestHealth(t *testing.T) {
-	s, err := New(testConfig, Options{})
+	s, err := New(testConfig)
 	require.NoError(t, err)
 
 	resp := httptest.NewRecorder()
@@ -46,7 +46,7 @@ func TestHealth(t *testing.T) {
 }
 
 func TestStats(t *testing.T) {
-	s, _ := New(leaderConfig(), Options{})
+	s, _ := New(leaderConfig())
 	s.Leader.RegisterClient("http://host1:8080")
 	s.Leader.RegisterClient("http://host2:8080")
 
@@ -90,7 +90,7 @@ func TestLED(t *testing.T) {
 		{name: "error", method: http.MethodPost, err: errors.New("fail"), statusCode: http.StatusInternalServerError, action: &True},
 	}
 
-	s, _ := New(leaderConfig(), Options{})
+	s, _ := New(leaderConfig())
 	setter := mocks.NewSetter(t)
 	s.setter = setter
 
@@ -124,7 +124,7 @@ func TestRegisterClient(t *testing.T) {
 	cfg := leaderConfig()
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			s, err := New(cfg, Options{})
+			s, err := New(cfg)
 			require.NoError(t, err)
 
 			var target string
