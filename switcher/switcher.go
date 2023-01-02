@@ -10,7 +10,7 @@ import (
 	"github.com/clambin/ledswitcher/switcher/led"
 	"github.com/clambin/ledswitcher/switcher/registerer"
 	"github.com/prometheus/client_golang/prometheus"
-	log "github.com/sirupsen/logrus"
+	"golang.org/x/exp/slog"
 	"net/http"
 	"os"
 	"sync"
@@ -93,7 +93,8 @@ func (s *Switcher) Run(ctx context.Context) {
 	wg.Add(1)
 	go func() {
 		if err := s.Server.Serve(); !errors.Is(err, http.ErrServerClosed) {
-			log.WithError(err).Fatalf("failed to start server")
+			slog.Error("failed to start server", err)
+			panic(err)
 		}
 		wg.Done()
 	}()

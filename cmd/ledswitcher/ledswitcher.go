@@ -9,7 +9,7 @@ import (
 	"github.com/clambin/ledswitcher/version"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	log "github.com/sirupsen/logrus"
+	"golang.org/x/exp/slog"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -24,24 +24,26 @@ import (
 )
 
 func main() {
-	log.WithFields(log.Fields{
-		"version": version.BuildVersion,
-	}).Info("starting")
-
 	cfg, err := configuration.GetConfigFromArgs(os.Args[1:])
 	if err != nil {
-		log.WithError(err).Fatal("invalid argument(s)")
+		panic(err)
 	}
 
+	var opts slog.HandlerOptions
 	if cfg.Debug {
-		log.SetLevel(log.DebugLevel)
+		opts.Level = slog.LevelDebug
+		opts.AddSource = true
 	}
+	slog.SetDefault(slog.New(opts.NewTextHandler(os.Stdout)))
+
+	slog.Info("ledswitcher starting", "version", version.BuildVersion)
 
 	go runPrometheusServer(cfg.PrometheusPort)
 
 	srv, err := switcher.New(cfg)
 	if err != nil {
-		log.WithError(err).Fatal("failed to create Switcher")
+		slog.Error("failed to create Switcher", err)
+		panic(err)
 	}
 	prometheus.DefaultRegisterer.MustRegister(srv)
 
@@ -54,7 +56,7 @@ func main() {
 	}()
 
 	if cfg.LeaderConfiguration.Leader == "" {
-		log.Info("no leader provided. using k8s leader election instead")
+		slog.Info("no leader provided. using k8s leader election instead")
 		wg.Add(1)
 		go func() {
 			runWithLeaderElection(ctx, srv, cfg)
@@ -66,21 +68,23 @@ func main() {
 	signal.Notify(interrupt, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	<-interrupt
 
-	log.Info("shutting down")
+	slog.Info("shutting down")
 	cancel()
 	wg.Wait()
-	log.Info("exiting")
+	slog.Info("exiting")
 }
 
 func runWithLeaderElection(ctx context.Context, srv *switcher.Switcher, cfg configuration.Configuration) {
 	k8sCfg, err := rest.InClusterConfig()
 	if err != nil {
-		log.WithError(err).Fatal("rest.InClusterConfig failed")
+		slog.Error("rest.InClusterConfig failed", err)
+		panic(err)
 	}
 
 	hostname, err := os.Hostname()
 	if err != nil {
-		log.WithError(err).Fatal("unable to determine hostname")
+		slog.Error("unable to determine hostname", err)
+		panic(err)
 	}
 
 	client := clientset.NewForConfigOrDie(k8sCfg)
@@ -103,14 +107,15 @@ func runWithLeaderElection(ctx context.Context, srv *switcher.Switcher, cfg conf
 		RetryPeriod:     5 * time.Second,
 		Callbacks: leaderelection.LeaderCallbacks{
 			OnStartedLeading: func(ctx context.Context) {
-				log.Info("OnStartLeading called")
+				slog.Info("OnStartLeading called")
 				//<-ctx.Done()
 			},
 			OnStoppedLeading: func() {
-				log.Fatal("leader lost")
+				slog.Info("leader lost")
+				os.Exit(1)
 			},
 			OnNewLeader: func(identity string) {
-				log.Infof("leader elected: %s", identity)
+				slog.Info("leader elected: " + identity)
 				srv.SetLeader(identity)
 			},
 		},
@@ -120,6 +125,7 @@ func runWithLeaderElection(ctx context.Context, srv *switcher.Switcher, cfg conf
 func runPrometheusServer(port int) {
 	http.Handle("/metrics", promhttp.Handler())
 	if err := http.ListenAndServe(fmt.Sprintf(":%d", port), nil); !errors.Is(err, http.ErrServerClosed) {
-		log.WithError(err).Fatal("failed to start Prometheus listener")
+		slog.Error("failed to start Prometheus listener", err)
+		panic(err)
 	}
 }

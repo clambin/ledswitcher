@@ -3,7 +3,7 @@ package switcher
 import (
 	"encoding/json"
 	"fmt"
-	log "github.com/sirupsen/logrus"
+	"golang.org/x/exp/slog"
 	"net/http"
 	"net/url"
 	"strings"
@@ -26,7 +26,7 @@ func (s *Switcher) handleStats(w http.ResponseWriter, _ *http.Request) {
 	body, _ := json.MarshalIndent(s.Leader.Stats(), "", "\t")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(body)
-	log.Debug("/stats")
+	slog.Debug("/stats")
 }
 
 func (s *Switcher) handleLED(w http.ResponseWriter, req *http.Request) {
@@ -48,13 +48,13 @@ func (s *Switcher) handleLED(w http.ResponseWriter, req *http.Request) {
 	}
 
 	if err := s.setter.SetLED(state); err != nil {
-		log.WithError(err).Warning("failed to set LED state")
+		slog.Error("failed to set LED state", err)
 		http.Error(w, "failed to set led state: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	w.WriteHeader(status)
-	log.WithField("state", state).Debug("/led")
+	slog.Debug("/led", "state", state)
 }
 
 func (s *Switcher) handleRegisterClient(w http.ResponseWriter, req *http.Request) {
@@ -65,7 +65,7 @@ func (s *Switcher) handleRegisterClient(w http.ResponseWriter, req *http.Request
 
 	clientURL, err := parseRegisterRequest(req)
 	if err != nil {
-		log.WithField("err", err).Warning("failed to register client")
+		slog.Error("failed to register client", err)
 		http.Error(w, "failed to register client: "+err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -76,7 +76,7 @@ func (s *Switcher) handleRegisterClient(w http.ResponseWriter, req *http.Request
 	// clean URL to avoid logfile injection
 	cleanURL := strings.Replace(clientURL, "\n", "", -1)
 	cleanURL = strings.Replace(cleanURL, "\r", "", -1)
-	log.WithField("url", cleanURL).Debug("/register")
+	slog.Debug("/register", "url", cleanURL)
 }
 
 func parseRegisterRequest(req *http.Request) (string, error) {

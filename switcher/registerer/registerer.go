@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/clambin/go-common/httpclient"
 	"github.com/prometheus/client_golang/prometheus"
-	log "github.com/sirupsen/logrus"
+	"golang.org/x/exp/slog"
 	"net/http"
 	"sync"
 	"time"
@@ -91,7 +91,7 @@ func (r *Registerer) register() {
 	r.registered = err == nil
 
 	if !r.registered {
-		log.WithError(err).WithField("leader", r.leaderURL).Warning("failed to register")
+		slog.Error("failed to register", err, "leader", r.leaderURL)
 	}
 }
 

@@ -7,7 +7,7 @@ import (
 	"github.com/clambin/ledswitcher/configuration"
 	"github.com/clambin/ledswitcher/switcher/leader/scheduler"
 	"github.com/prometheus/client_golang/prometheus"
-	log "github.com/sirupsen/logrus"
+	"golang.org/x/exp/slog"
 	"net/http"
 	"os"
 	"sync"
@@ -71,20 +71,21 @@ func (l *Leader) IsLeading() bool {
 
 // Run starts the Leader
 func (l *Leader) Run(ctx context.Context) {
-	log.Info("leader started")
 	ticker := time.NewTicker(l.interval)
-	for running := true; running; {
+	defer ticker.Stop()
+
+	slog.Info("leader started")
+	for {
 		select {
 		case <-ctx.Done():
-			running = false
+			slog.Info("leader stopped")
+			return
 		case <-ticker.C:
 			if l.IsLeading() {
 				l.advance(l.scheduler.Next())
 			}
 		}
 	}
-	ticker.Stop()
-	log.Info("leader stopped")
 }
 
 func (l *Leader) advance(next []scheduler.Action) {
@@ -114,7 +115,7 @@ func (l *Leader) setState(target string, state bool) {
 	}
 
 	l.scheduler.UpdateStatus(target, err == nil)
-	log.WithError(err).WithField("client", target).Debug(stateString)
+	slog.Debug(stateString, "client", target, "err", err)
 }
 
 // SetLEDOn performs an HTTP request to switch on the LED at the specified host
