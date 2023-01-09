@@ -4,10 +4,10 @@ go 1.19
 
 require (
 	github.com/clambin/go-common/httpclient v0.3.2
-	github.com/clambin/go-common/httpserver v0.4.0
+	github.com/clambin/go-common/httpserver v0.4.1
 	github.com/prometheus/client_golang v1.14.0
 	github.com/stretchr/testify v1.8.1
-	golang.org/x/exp v0.0.0-20221230185412-738e83a70c30
+	golang.org/x/exp v0.0.0-20230105202349-8879d0199aa3
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 	k8s.io/apimachinery v0.26.0
 	k8s.io/client-go v0.26.0
@@ -22,6 +22,7 @@ require (
 	github.com/clambin/go-common/set v0.1.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/emicklei/go-restful/v3 v3.9.0 // indirect
+	github.com/go-chi/chi/v5 v5.0.8 // indirect
 	github.com/go-logr/logr v1.2.3 // indirect
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect
 	github.com/go-openapi/jsonreference v0.20.0 // indirect
