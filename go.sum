@@ -15,8 +15,12 @@ github.com/clambin/go-common/httpclient v0.3.3 h1:M3L3HsPH8Bb5m8NOIvIlhZ75Cg9Hx3
 github.com/clambin/go-common/httpclient v0.3.3/go.mod h1:w0RUxYpmTu+TiWx4F+pfeYhOcKaHxI/Q9OrAlIaz3Lk=
 github.com/clambin/go-common/httpserver v0.4.1 h1:TIHswNcj5hVbrAIrSPVvkTWqTU4M2770qZctvR6jQGE=
 github.com/clambin/go-common/httpserver v0.4.1/go.mod h1:qCWVjj3pASnqGTmLJhLrMKCxw7AcVANug3a0kC4qW6c=
+github.com/clambin/go-common/httpserver v0.4.2 h1:Q19yoJ5QaoUpBQ/27rnOpdqXcMjhoEOjpsZIIhpHhgc=
+github.com/clambin/go-common/httpserver v0.4.2/go.mod h1:f7mUBJ2XhOl36pPxLnIWr+An4zMoKfdr9DFGJVAdeGk=
 github.com/clambin/go-common/set v0.1.2 h1:Pr0FXPVJsH4dc/OelhjXYo0xVmOLIUurg3saMh8KTz8=
 github.com/clambin/go-common/set v0.1.2/go.mod h1:GFjAZynNo4BNjlx2hzDMHIU4ays7QjpJUSHXB/3b1ZE=
+github.com/clambin/go-common/set v0.2.0 h1:s4wXxKns3sb2VPCtAmmLEDs4KiHNIiot+LcKgKcdPdw=
+github.com/clambin/go-common/set v0.2.0/go.mod h1:GFjAZynNo4BNjlx2hzDMHIU4ays7QjpJUSHXB/3b1ZE=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
@@ -134,6 +138,8 @@ golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9/go.mod h1:LzIPMQfyMNhhGPh
 golang.org/x/exp v0.0.0-20190121172915-509febef88a4/go.mod h1:CJ0aWSM057203Lf6IL+f9T1iT9GByDxfZKAQTCR3kQA=
 golang.org/x/exp v0.0.0-20230105202349-8879d0199aa3 h1:fJwx88sMf5RXwDwziL0/Mn9Wqs+efMSo/RYcL+37W9c=
 golang.org/x/exp v0.0.0-20230105202349-8879d0199aa3/go.mod h1:CxIveKay+FTh1D0yPZemJVgC/95VzuuOLq5Qi4xnoYc=
+golang.org/x/exp v0.0.0-20230206171751-46f607a40771 h1:xP7rWLUr1e1n2xkK5YB4LI0hPEy3LJC6Wk+D4pGlOJg=
+golang.org/x/exp v0.0.0-20230206171751-46f607a40771/go.mod h1:CxIveKay+FTh1D0yPZemJVgC/95VzuuOLq5Qi4xnoYc=
 golang.org/x/lint v0.0.0-20181026193005-c67002cb31c3/go.mod h1:UVdnD1Gm6xHRNCYTkRU2/jEulfH38KcIWyp/GAMgvoE=
 golang.org/x/lint v0.0.0-20190227174305-5b3e6a55c961/go.mod h1:wehouNa3lNwaWXcvxsM5YxQ5yQlVC4a0KAMCusXpPoU=
 golang.org/x/lint v0.0.0-20190313153728-d0100b6bd8b3/go.mod h1:6SW0HCj/g11FgYtHlgUYUwCkIfeOF89ocIRzGO/8vkc=
@@ -165,6 +171,8 @@ golang.org/x/sys v0.0.0-20190412213103-97732733099d/go.mod h1:h1NjWce9XRLGQEsW7w
 golang.org/x/sys v0.0.0-20200930185726-fdedc70b468f/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.3.0 h1:w8ZOecv6NaNa/zC8944JTU3vz4u6Lagfk4RPQxv92NQ=
 golang.org/x/sys v0.3.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
+golang.org/x/sys v0.4.0 h1:Zr2JFtRQNX3BCZ8YtxRE9hNJYC8J6I1MVbMg6owUp18=
+golang.org/x/sys v0.4.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/term v0.3.0 h1:qoo4akIqOcDME5bhc/NgxUdovd6BSS2uMsVjB56q1xI=
 golang.org/x/term v0.3.0/go.mod h1:q750SLmJuPmVoN1blW3UFBPREJfb1KmY3vwxfr+nFDA=
 golang.org/x/text v0.3.0/go.mod h1:NqM8EUOU14njkJ3fqMW+pc6Ldnwhi/IjpwHt7yyuwOQ=
