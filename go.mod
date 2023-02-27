@@ -6,7 +6,7 @@ require (
 	github.com/clambin/go-common/httpclient v0.3.3
 	github.com/clambin/go-common/httpserver v0.4.2
 	github.com/prometheus/client_golang v1.14.0
-	github.com/stretchr/testify v1.8.1
+	github.com/stretchr/testify v1.8.2
 	golang.org/x/exp v0.0.0-20230206171751-46f607a40771
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 	k8s.io/apimachinery v0.26.1
