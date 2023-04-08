@@ -64,9 +64,9 @@ func main() {
 		}()
 	}
 
-	interrupt := make(chan os.Signal, 1)
-	signal.Notify(interrupt, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
-	<-interrupt
+	ctx2, done := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+	defer done()
+	<-ctx2.Done()
 
 	slog.Info("shutting down")
 	cancel()
