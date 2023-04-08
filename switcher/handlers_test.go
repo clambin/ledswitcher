@@ -22,8 +22,8 @@ var (
 				Mode: "linear",
 			},
 		},
-		ServerPort:     8080,
-		PrometheusPort: 9090,
+		Addr:           ":8080",
+		PrometheusAddr: ":9090",
 		LedPath:        "/foo",
 	}
 )

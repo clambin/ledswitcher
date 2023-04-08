@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
+	"flag"
 	"github.com/clambin/ledswitcher/configuration"
 	"github.com/clambin/ledswitcher/switcher"
 	"github.com/clambin/ledswitcher/version"
@@ -24,25 +24,21 @@ import (
 )
 
 func main() {
-	cfg, err := configuration.GetConfigFromArgs(os.Args[1:])
-	if err != nil {
-		panic(err)
-	}
+	cfg := getConfiguration()
 
 	var opts slog.HandlerOptions
 	if cfg.Debug {
 		opts.Level = slog.LevelDebug
-		opts.AddSource = true
 	}
 	slog.SetDefault(slog.New(opts.NewTextHandler(os.Stdout)))
 
 	slog.Info("ledswitcher starting", "version", version.BuildVersion)
 
-	go runPrometheusServer(cfg.PrometheusPort)
+	go runPrometheusServer(cfg.PrometheusAddr)
 
 	srv, err := switcher.New(cfg)
 	if err != nil {
-		slog.Error("failed to create Switcher", err)
+		slog.Error("failed to create Switcher", "err", err)
 		panic(err)
 	}
 	prometheus.DefaultRegisterer.MustRegister(srv)
@@ -77,13 +73,13 @@ func main() {
 func runWithLeaderElection(ctx context.Context, srv *switcher.Switcher, cfg configuration.Configuration) {
 	k8sCfg, err := rest.InClusterConfig()
 	if err != nil {
-		slog.Error("rest.InClusterConfig failed", err)
+		slog.Error("rest.InClusterConfig failed", "err", err)
 		panic(err)
 	}
 
 	hostname, err := os.Hostname()
 	if err != nil {
-		slog.Error("unable to determine hostname", err)
+		slog.Error("unable to determine hostname", "err", err)
 		panic(err)
 	}
 
@@ -122,10 +118,26 @@ func runWithLeaderElection(ctx context.Context, srv *switcher.Switcher, cfg conf
 	})
 }
 
-func runPrometheusServer(port int) {
+func runPrometheusServer(addr string) {
 	http.Handle("/metrics", promhttp.Handler())
-	if err := http.ListenAndServe(fmt.Sprintf(":%d", port), nil); !errors.Is(err, http.ErrServerClosed) {
-		slog.Error("failed to start Prometheus listener", err)
+	if err := http.ListenAndServe(addr, nil); !errors.Is(err, http.ErrServerClosed) {
+		slog.Error("failed to start Prometheus listener", "err", err)
 		panic(err)
 	}
+}
+
+func getConfiguration() configuration.Configuration {
+	var cfg configuration.Configuration
+	flag.BoolVar(&cfg.Debug, "debug", false, "log debug messages")
+	flag.DurationVar(&cfg.LeaderConfiguration.Rotation, "rotation", time.Second, "delay of LED switching to the next state")
+	flag.StringVar(&cfg.LeaderConfiguration.Scheduler.Mode, "mode", "linear", "LED pattern mode")
+	flag.StringVar(&cfg.Addr, "addr", ":8080", "controller address")
+	flag.StringVar(&cfg.PrometheusAddr, "prometheus", ":9090", "prometheus metrics address")
+	flag.StringVar(&cfg.LedPath, "led-path", "/sys/class/leds/led1", "path name to the sysfs directory for the LED")
+	flag.StringVar(&cfg.K8SConfiguration.LockName, "lock-name", "ledswitcher", "name of the k8s leader election lock")
+	flag.StringVar(&cfg.K8SConfiguration.Namespace, "lock-namespace", "default", "namespace of the k8s leader election lock")
+	flag.StringVar(&cfg.Leader, "leader", "", "node to act as leader (if empty, k8s leader election will be used")
+
+	flag.Parse()
+	return cfg
 }

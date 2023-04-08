@@ -91,7 +91,7 @@ func (r *Registerer) register() {
 	r.registered = err == nil
 
 	if !r.registered {
-		slog.Error("failed to register", err, "leader", r.leaderURL)
+		slog.Error("failed to register", "err", err, "leader", r.leaderURL)
 	}
 }
 

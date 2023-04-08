@@ -4,18 +4,15 @@ go 1.19
 
 require (
 	github.com/clambin/go-common/httpclient v0.3.3
-	github.com/clambin/go-common/httpserver v0.4.2
+	github.com/clambin/go-common/httpserver v0.5.0
 	github.com/prometheus/client_golang v1.14.0
 	github.com/stretchr/testify v1.8.2
-	golang.org/x/exp v0.0.0-20230206171751-46f607a40771
-	gopkg.in/alecthomas/kingpin.v2 v2.2.6
+	golang.org/x/exp v0.0.0-20230321023759-10a507213a29
 	k8s.io/apimachinery v0.26.3
 	k8s.io/client-go v0.26.3
 )
 
 require (
-	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
-	github.com/alecthomas/units v0.0.0-20211218093645-b94a6e3cc137 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/clambin/go-common/cache v0.1.1 // indirect

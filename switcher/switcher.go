@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/clambin/go-common/httpserver"
+	"github.com/clambin/go-common/httpserver/middleware"
 	"github.com/clambin/ledswitcher/configuration"
 	"github.com/clambin/ledswitcher/switcher/leader"
 	"github.com/clambin/ledswitcher/switcher/led"
@@ -47,9 +48,9 @@ func New(cfg configuration.Configuration) (*Switcher, error) {
 	}
 
 	s.Server, err = httpserver.New(
-		httpserver.WithPort{Port: cfg.ServerPort},
-		httpserver.WithMetrics{Application: "ledswitcher", MetricsType: httpserver.Summary},
-		httpserver.WithHandlers{Handlers: []httpserver.Handler{
+		httpserver.WithAddr(cfg.Addr),
+		httpserver.WithMetrics(middleware.PrometheusMetricsOptions{Application: "ledswitcher", MetricsType: middleware.Summary}),
+		httpserver.WithHandlers([]httpserver.Handler{
 			{
 				Path:    "/led",
 				Handler: http.HandlerFunc(s.handleLED),
@@ -68,7 +69,7 @@ func New(cfg configuration.Configuration) (*Switcher, error) {
 				Path:    "/health",
 				Handler: http.HandlerFunc(s.handleHealth),
 			},
-		}},
+		}),
 	)
 
 	s.Registerer = registerer.New(fmt.Sprintf("http://%s:%d", hostname, s.Server.GetPort()), 5*time.Minute)
@@ -93,7 +94,7 @@ func (s *Switcher) Run(ctx context.Context) {
 	wg.Add(1)
 	go func() {
 		if err := s.Server.Serve(); !errors.Is(err, http.ErrServerClosed) {
-			slog.Error("failed to start server", err)
+			slog.Error("failed to start server", "err", err)
 			panic(err)
 		}
 		wg.Done()

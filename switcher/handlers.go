@@ -48,7 +48,7 @@ func (s *Switcher) handleLED(w http.ResponseWriter, req *http.Request) {
 	}
 
 	if err := s.setter.SetLED(state); err != nil {
-		slog.Error("failed to set LED state", err)
+		slog.Error("failed to set LED state", "err", err)
 		http.Error(w, "failed to set led state: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -65,7 +65,7 @@ func (s *Switcher) handleRegisterClient(w http.ResponseWriter, req *http.Request
 
 	clientURL, err := parseRegisterRequest(req)
 	if err != nil {
-		slog.Error("failed to register client", err)
+		slog.Error("failed to register client", "err", err)
 		http.Error(w, "failed to register client: "+err.Error(), http.StatusBadRequest)
 		return
 	}
