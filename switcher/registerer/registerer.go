@@ -24,11 +24,7 @@ type Registerer struct {
 }
 
 func New(endpointURL string, interval time.Duration) *Registerer {
-	transport := httpclient.NewRoundTripper(httpclient.WithRoundTripperMetrics{
-		Namespace:   "ledswitcher",
-		Subsystem:   "registerer",
-		Application: "ledswitcher",
-	})
+	transport := httpclient.NewRoundTripper(httpclient.WithMetrics("ledswitcher", "registerer", "ledswitcher"))
 	return &Registerer{
 		EndPointURL: endpointURL,
 		Interval:    interval,

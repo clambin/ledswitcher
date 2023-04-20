@@ -36,11 +36,7 @@ func New(cfg configuration.LeaderConfiguration) (*Leader, error) {
 	if err != nil {
 		return nil, fmt.Errorf("hostname: %w", err)
 	}
-	transport := httpclient.NewRoundTripper(httpclient.WithRoundTripperMetrics{
-		Namespace:   "ledswitcher",
-		Subsystem:   "leader",
-		Application: "ledswitcher",
-	})
+	transport := httpclient.NewRoundTripper(httpclient.WithMetrics("ledswitcher", "leader", "ledswitcher"))
 	return &Leader{
 		scheduler: s,
 		client:    &http.Client{Transport: transport},
