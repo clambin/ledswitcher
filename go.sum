@@ -5,10 +5,10 @@ github.com/beorn7/perks v1.0.1/go.mod h1:G2ZrVWU2WbWT9wwq4/hrbKbnv/1ERSJQ0ibhJ6r
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/cespare/xxhash/v2 v2.2.0 h1:DC2CZ1Ep5Y4k3ZQ899DldepgrayRUGE6BBZ/cd9Cj44=
 github.com/cespare/xxhash/v2 v2.2.0/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
-github.com/clambin/go-common/cache v0.2.0 h1:NtG6n6oTi22HtOzHix7HYyj8lDbmbuX3Yj25hDlpB7s=
-github.com/clambin/go-common/cache v0.2.0/go.mod h1:6DMcBIPTGckXMNQTGfdEMiLAbKqIOWzgk5KNyiJK54M=
-github.com/clambin/go-common/httpclient v0.4.4 h1:weSzJMAcu1msQaN+YHYo0YrqrIgDNbrxzHDuJSjhDDA=
-github.com/clambin/go-common/httpclient v0.4.4/go.mod h1:3GAbRwbCE2ME0t1T80fi7Me+Jy+2l8c88khtg4NBDeA=
+github.com/clambin/go-common/cache v0.2.2 h1:Tjb+71+/2ckrZlSbLDYgCEpkS2HwkTRkQ/18oYG+EbE=
+github.com/clambin/go-common/cache v0.2.2/go.mod h1:6DMcBIPTGckXMNQTGfdEMiLAbKqIOWzgk5KNyiJK54M=
+github.com/clambin/go-common/httpclient v0.4.5 h1:NKsV+l4XANF3MVjoXUJT25mNpKYflNJKiJ4QBTdwLEQ=
+github.com/clambin/go-common/httpclient v0.4.5/go.mod h1:1251W6Z8+r6m1RwAyqEoI0Pmlf8VUPrgiPC2+7jV7L8=
 github.com/clambin/go-common/httpserver v0.5.0 h1:t24hD6l7sGdK+8N4TDH9i7opNBZHmO/1oI0kWy9R47s=
 github.com/clambin/go-common/httpserver v0.5.0/go.mod h1:xrvqa7N/Nn2xojPZzWlHui6PTcEybQ8uh+YGHuB38+4=
 github.com/clambin/go-common/set v0.2.0 h1:s4wXxKns3sb2VPCtAmmLEDs4KiHNIiot+LcKgKcdPdw=
