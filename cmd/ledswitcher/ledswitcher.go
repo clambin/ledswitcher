@@ -30,7 +30,7 @@ func main() {
 	if cfg.Debug {
 		opts.Level = slog.LevelDebug
 	}
-	slog.SetDefault(slog.New(opts.NewTextHandler(os.Stdout)))
+	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &opts)))
 
 	slog.Info("ledswitcher starting", "version", version.BuildVersion)
 
