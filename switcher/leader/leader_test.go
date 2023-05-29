@@ -7,7 +7,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"sync"
 	"testing"
 	"time"
 )
@@ -19,11 +18,9 @@ func TestLeader_Run(t *testing.T) {
 	})
 
 	ctx, cancel := context.WithCancel(context.Background())
-	var wg sync.WaitGroup
-	wg.Add(1)
+	ch := make(chan error)
 	go func() {
-		l.Run(ctx)
-		wg.Done()
+		ch <- l.Run(ctx)
 	}()
 
 	l.SetLeading(true)
@@ -34,7 +31,7 @@ func TestLeader_Run(t *testing.T) {
 	time.Sleep(500 * time.Millisecond)
 
 	cancel()
-	wg.Wait()
+	<-ch
 
 	stats := l.Stats()
 	assert.Len(t, stats.Endpoints, 2)

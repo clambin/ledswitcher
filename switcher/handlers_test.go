@@ -47,8 +47,8 @@ func TestHealth(t *testing.T) {
 
 func TestStats(t *testing.T) {
 	s, _ := New(leaderConfig())
-	s.Leader.RegisterClient("http://host1:8080")
-	s.Leader.RegisterClient("http://host2:8080")
+	s.leader.RegisterClient("http://host1:8080")
+	s.leader.RegisterClient("http://host2:8080")
 
 	resp := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodGet, "/stats", nil)
@@ -129,7 +129,7 @@ func TestRegisterClient(t *testing.T) {
 
 			var target string
 			if tt.target != "" {
-				target = fmt.Sprintf("%s:%d", tt.target, s.Server.GetPort())
+				target = fmt.Sprintf("%s:%s", tt.target, s.appPort)
 			}
 			body := fmt.Sprintf(`{ "url": "%s" }`, target)
 			req, _ := http.NewRequest(http.MethodPost, "/register", bytes.NewBufferString(body))
@@ -144,8 +144,8 @@ func TestRegisterClient(t *testing.T) {
 			assert.Equal(t, resp.Code, tt.code)
 
 			if tt.leading && tt.code == http.StatusCreated {
-				require.Len(t, s.Leader.Stats().Endpoints, 1)
-				assert.Equal(t, target, s.Leader.Stats().Endpoints[0].Name)
+				require.Len(t, s.leader.Stats().Endpoints, 1)
+				assert.Equal(t, target, s.leader.Stats().Endpoints[0].Name)
 			}
 		})
 	}

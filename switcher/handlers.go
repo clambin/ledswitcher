@@ -18,12 +18,12 @@ func (s *Switcher) handleHealth(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (s *Switcher) handleStats(w http.ResponseWriter, _ *http.Request) {
-	if !s.Leader.IsLeading() {
+	if !s.leader.IsLeading() {
 		http.Error(w, "switcher is not leading", http.StatusServiceUnavailable)
 		return
 	}
 
-	body, _ := json.MarshalIndent(s.Leader.Stats(), "", "\t")
+	body, _ := json.MarshalIndent(s.leader.Stats(), "", "\t")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(body)
 	slog.Debug("/stats")
@@ -58,7 +58,7 @@ func (s *Switcher) handleLED(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s *Switcher) handleRegisterClient(w http.ResponseWriter, req *http.Request) {
-	if !s.Leader.IsLeading() {
+	if !s.leader.IsLeading() {
 		http.Error(w, "not leading", http.StatusServiceUnavailable)
 		return
 	}
@@ -70,7 +70,7 @@ func (s *Switcher) handleRegisterClient(w http.ResponseWriter, req *http.Request
 		return
 	}
 
-	s.Leader.RegisterClient(clientURL)
+	s.leader.RegisterClient(clientURL)
 	w.WriteHeader(http.StatusCreated)
 
 	// clean URL to avoid logfile injection

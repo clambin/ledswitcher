@@ -5,6 +5,8 @@ go 1.19
 require (
 	github.com/clambin/go-common/httpclient v0.4.5
 	github.com/clambin/go-common/httpserver v0.5.0
+	github.com/clambin/go-common/taskmanager v0.2.0
+	github.com/go-chi/chi/v5 v5.0.8
 	github.com/prometheus/client_golang v1.15.1
 	github.com/stretchr/testify v1.8.3
 	golang.org/x/exp v0.0.0-20230510235704-dd950f8aeaea
@@ -16,10 +18,8 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/clambin/go-common/cache v0.2.2 // indirect
-	github.com/clambin/go-common/set v0.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/emicklei/go-restful/v3 v3.9.0 // indirect
-	github.com/go-chi/chi/v5 v5.0.8 // indirect
 	github.com/go-logr/logr v1.2.3 // indirect
 	github.com/go-openapi/jsonpointer v0.19.6 // indirect
 	github.com/go-openapi/jsonreference v0.20.1 // indirect

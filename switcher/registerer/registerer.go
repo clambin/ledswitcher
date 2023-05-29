@@ -40,16 +40,18 @@ const registrationInterval = time.Minute
 
 // Run implements the main loop of a Registerer. It registers with the leader on a regular basis, informing the leading
 // broker of an instance to take into account, as well as acting as a keep-alive for the leading broker.
-func (r *Registerer) Run(ctx context.Context) {
+func (r *Registerer) Run(ctx context.Context) error {
 	if r.Interval == 0 {
 		r.Interval = registrationInterval
 	}
 
 	registerTicker := time.NewTicker(preRegistrationInterval)
-	for running := true; running; {
+	defer registerTicker.Stop()
+
+	for {
 		select {
 		case <-ctx.Done():
-			running = false
+			return nil
 		case <-registerTicker.C:
 			wasRegistered := r.IsRegistered()
 			r.register()
@@ -62,7 +64,6 @@ func (r *Registerer) Run(ctx context.Context) {
 			}
 		}
 	}
-	registerTicker.Stop()
 }
 
 func (r *Registerer) register() {

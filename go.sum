@@ -11,8 +11,8 @@ github.com/clambin/go-common/httpclient v0.4.5 h1:NKsV+l4XANF3MVjoXUJT25mNpKYflN
 github.com/clambin/go-common/httpclient v0.4.5/go.mod h1:1251W6Z8+r6m1RwAyqEoI0Pmlf8VUPrgiPC2+7jV7L8=
 github.com/clambin/go-common/httpserver v0.5.0 h1:t24hD6l7sGdK+8N4TDH9i7opNBZHmO/1oI0kWy9R47s=
 github.com/clambin/go-common/httpserver v0.5.0/go.mod h1:xrvqa7N/Nn2xojPZzWlHui6PTcEybQ8uh+YGHuB38+4=
-github.com/clambin/go-common/set v0.2.0 h1:s4wXxKns3sb2VPCtAmmLEDs4KiHNIiot+LcKgKcdPdw=
-github.com/clambin/go-common/set v0.2.0/go.mod h1:GFjAZynNo4BNjlx2hzDMHIU4ays7QjpJUSHXB/3b1ZE=
+github.com/clambin/go-common/taskmanager v0.2.0 h1:kI2sXqunGV3zx1bEqqB3fl31CvzUam6YhnRVlml4Io0=
+github.com/clambin/go-common/taskmanager v0.2.0/go.mod h1:BLq8MGQZVpj16USB4pHtikOVh4cDgnSjPIhTZyosAgM=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

@@ -66,7 +66,7 @@ func (l *Leader) IsLeading() bool {
 }
 
 // Run starts the Leader
-func (l *Leader) Run(ctx context.Context) {
+func (l *Leader) Run(ctx context.Context) error {
 	ticker := time.NewTicker(l.interval)
 	defer ticker.Stop()
 
@@ -75,7 +75,7 @@ func (l *Leader) Run(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			slog.Info("leader stopped")
-			return
+			return nil
 		case <-ticker.C:
 			if l.IsLeading() {
 				l.advance(l.scheduler.Next())

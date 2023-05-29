@@ -2,19 +2,19 @@ package switcher
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"github.com/clambin/go-common/httpserver"
 	"github.com/clambin/go-common/httpserver/middleware"
+	"github.com/clambin/go-common/taskmanager"
+	"github.com/clambin/go-common/taskmanager/httpserver"
 	"github.com/clambin/ledswitcher/configuration"
 	"github.com/clambin/ledswitcher/switcher/leader"
 	"github.com/clambin/ledswitcher/switcher/led"
 	"github.com/clambin/ledswitcher/switcher/registerer"
+	"github.com/go-chi/chi/v5"
 	"github.com/prometheus/client_golang/prometheus"
-	"golang.org/x/exp/slog"
 	"net/http"
 	"os"
-	"sync"
+	"strings"
 	"time"
 )
 
@@ -26,13 +26,18 @@ import (
 //
 // Each Switcher contains all three components. the Configuration's Leader field determines if the switcher is the Leader.
 type Switcher struct {
-	Leader     *leader.Leader
+	leader     *leader.Leader
 	Registerer *registerer.Registerer
-	Server     *httpserver.Server
+	httpServer httpServer
 	setter     led.Setter
+	appPort    string
 }
 
-var _ prometheus.Collector = &Switcher{}
+type httpServer struct {
+	addr    string
+	handler http.Handler
+	metrics *middleware.PrometheusMetrics
+}
 
 // New creates a new Switcher
 func New(cfg configuration.Configuration) (*Switcher, error) {
@@ -41,87 +46,66 @@ func New(cfg configuration.Configuration) (*Switcher, error) {
 		return nil, fmt.Errorf("unable to determine hostname: %w", err)
 	}
 
-	s := &Switcher{setter: &led.RealSetter{LEDPath: cfg.LedPath}}
+	appAddrParts := strings.Split(cfg.Addr, ":")
+	if len(appAddrParts) != 2 {
+		return nil, fmt.Errorf("invalid application address: %s", cfg.Addr)
+	}
 
-	if s.Leader, err = leader.New(cfg.LeaderConfiguration); err != nil {
+	s := Switcher{
+		Registerer: registerer.New("http://"+hostname+":"+appAddrParts[1], 5*time.Minute),
+		setter:     &led.RealSetter{LEDPath: cfg.LedPath},
+		httpServer: httpServer{
+			addr:    cfg.Addr,
+			metrics: middleware.NewPrometheusMetrics(middleware.PrometheusMetricsOptions{Application: "ledswitcher", MetricsType: middleware.Summary}),
+		},
+		appPort: appAddrParts[1],
+	}
+	s.Registerer.SetLeaderURL("http://" + cfg.Leader + ":" + s.appPort)
+
+	if s.leader, err = leader.New(cfg.LeaderConfiguration); err != nil {
 		return nil, fmt.Errorf("invalid config: %w", err)
 	}
 
-	s.Server, err = httpserver.New(
-		httpserver.WithAddr(cfg.Addr),
-		httpserver.WithMetrics(middleware.PrometheusMetricsOptions{Application: "ledswitcher", MetricsType: middleware.Summary}),
-		httpserver.WithHandlers([]httpserver.Handler{
-			{
-				Path:    "/led",
-				Handler: http.HandlerFunc(s.handleLED),
-				Methods: []string{http.MethodPost, http.MethodDelete},
-			},
-			{
-				Path:    "/register",
-				Handler: http.HandlerFunc(s.handleRegisterClient),
-				Methods: []string{http.MethodPost},
-			},
-			{
-				Path:    "/stats",
-				Handler: http.HandlerFunc(s.handleStats),
-			},
-			{
-				Path:    "/health",
-				Handler: http.HandlerFunc(s.handleHealth),
-			},
-		}),
-	)
+	r := chi.NewMux()
+	r.Use(s.httpServer.metrics.Handle)
+	r.Post("/led", s.handleLED)
+	r.Delete("/led", s.handleLED)
+	r.Post("/register", s.handleRegisterClient)
+	r.Get("/stats", s.handleStats)
+	r.Get("/health", s.handleHealth)
+	s.httpServer.handler = r
 
-	s.Registerer = registerer.New(fmt.Sprintf("http://%s:%d", hostname, s.Server.GetPort()), 5*time.Minute)
-	s.Registerer.SetLeaderURL(fmt.Sprintf("http://%s:%d", cfg.Leader, s.Server.GetPort()))
-
-	return s, err
+	return &s, err
 }
 
 // Run starts a Switcher and waits for the context to be canceled
-func (s *Switcher) Run(ctx context.Context) {
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		s.Leader.Run(ctx)
-		wg.Done()
-	}()
-	wg.Add(1)
-	go func() {
-		s.Registerer.Run(ctx)
-		wg.Done()
-	}()
-	wg.Add(1)
-	go func() {
-		if err := s.Server.Serve(); !errors.Is(err, http.ErrServerClosed) {
-			slog.Error("failed to start server", "err", err)
-			panic(err)
-		}
-		wg.Done()
-	}()
-	<-ctx.Done()
-	_ = s.Server.Shutdown(5 * time.Second)
-	wg.Wait()
+func (s *Switcher) Run(ctx context.Context) error {
+	tm := taskmanager.New(
+		s.leader,
+		s.Registerer,
+		httpserver.New(s.httpServer.addr, s.httpServer.handler),
+	)
+	return tm.Run(ctx)
 }
 
 // SetLeader reconfigures the Switcher when the hostname changes
 func (s *Switcher) SetLeader(leader string) {
 	hostname, _ := os.Hostname()
 	leading := hostname == leader
-	s.Leader.SetLeading(leading)
-	s.Registerer.SetLeaderURL(fmt.Sprintf("http://%s:%d", leader, s.Server.GetPort()))
+	s.leader.SetLeading(leading)
+	s.Registerer.SetLeaderURL("http://" + leader + ":" + s.appPort)
 }
 
 // Describe implements the prometheus.Collector interface
-func (s *Switcher) Describe(descs chan<- *prometheus.Desc) {
-	s.Registerer.Describe(descs)
-	s.Leader.Describe(descs)
-	s.Server.Describe(descs)
+func (s *Switcher) Describe(ch chan<- *prometheus.Desc) {
+	s.Registerer.Describe(ch)
+	s.leader.Describe(ch)
+	s.httpServer.metrics.Describe(ch)
 }
 
 // Collect implements the prometheus.Collector interface
-func (s *Switcher) Collect(metrics chan<- prometheus.Metric) {
-	s.Registerer.Collect(metrics)
-	s.Leader.Collect(metrics)
-	s.Server.Collect(metrics)
+func (s *Switcher) Collect(ch chan<- prometheus.Metric) {
+	s.Registerer.Collect(ch)
+	s.leader.Collect(ch)
+	s.httpServer.metrics.Collect(ch)
 }

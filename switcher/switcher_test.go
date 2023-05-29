@@ -2,13 +2,13 @@ package switcher
 
 import (
 	"context"
-	"fmt"
 	"github.com/clambin/ledswitcher/configuration"
 	"github.com/clambin/ledswitcher/switcher/led"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"sync"
 	"testing"
@@ -20,18 +20,14 @@ func TestServer_Run(t *testing.T) {
 	cfg.Scheduler.Mode = "binary"
 	s, err := New(cfg)
 	require.NoError(t, err)
-	require.NotNil(t, s.Leader)
+	require.NotNil(t, s.leader)
 
 	ledSetter := &FakeSetter{}
 	s.setter = ledSetter
 
 	ctx, cancel := context.WithCancel(context.Background())
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		s.Run(ctx)
-		wg.Done()
-	}()
+	ch := make(chan error)
+	go func() { ch <- s.Run(ctx) }()
 
 	require.Eventually(t, func() bool { return s.Registerer.IsRegistered() }, 5*time.Second, 10*time.Millisecond)
 
@@ -41,16 +37,15 @@ func TestServer_Run(t *testing.T) {
 	}, time.Second, 20*time.Millisecond)
 
 	assert.Eventually(t, func() bool {
-		var resp *http.Response
-		resp, err = http.Get(fmt.Sprintf("http://127.0.0.1:%d/health", s.Server.GetPort()))
-		if err == nil {
-			_ = resp.Body.Close()
-		}
-		return err == nil && resp.StatusCode == http.StatusOK
+		req, _ := http.NewRequest(http.MethodGet, "http://127.0.0.1:"+s.appPort+"/health", nil)
+		resp := httptest.NewRecorder()
+		s.httpServer.handler.ServeHTTP(resp, req)
+		return resp.Code == http.StatusOK
 	}, time.Second, 10*time.Millisecond)
 
 	cancel()
-	wg.Wait()
+	//assert.NoError(t, <-ch)
+	<-ch
 
 	r := prometheus.NewPedanticRegistry()
 	r.MustRegister(s)
@@ -104,5 +99,6 @@ func leaderConfig() configuration.Configuration {
 			},
 		},
 		LedPath: "/foo",
+		Addr:    ":8080",
 	}
 }

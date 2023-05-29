@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - master
-      - httpclient
+      - taskmanager
 jobs:
   test:
     uses: clambin/workflows/.github/workflows/test.yaml@main

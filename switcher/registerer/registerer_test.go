@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"sync"
 	"testing"
 	"time"
 )
@@ -24,16 +23,14 @@ func TestRegisterer_Run(t *testing.T) {
 	p.MustRegister(r)
 
 	ctx, cancel := context.WithCancel(context.Background())
-	wg := sync.WaitGroup{}
+	ch := make(chan error)
 
-	go func() {
-		r.Run(ctx)
-	}()
+	go func() { ch <- r.Run(ctx) }()
 
 	require.Eventually(t, func() bool { return r.IsRegistered() }, 500*time.Millisecond, 100*time.Millisecond)
 
 	cancel()
-	wg.Wait()
+	<-ch
 
 	metrics, err := p.Gather()
 	require.NoError(t, err)

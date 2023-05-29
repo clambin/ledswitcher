@@ -2,23 +2,21 @@ package main
 
 import (
 	"context"
-	"errors"
 	"flag"
+	"github.com/clambin/go-common/taskmanager"
+	promserver "github.com/clambin/go-common/taskmanager/prometheus"
 	"github.com/clambin/ledswitcher/configuration"
 	"github.com/clambin/ledswitcher/switcher"
 	"github.com/clambin/ledswitcher/version"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"golang.org/x/exp/slog"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
-	"net/http"
 	"os"
 	"os/signal"
-	"sync"
 	"syscall"
 	"time"
 )
@@ -34,39 +32,34 @@ func main() {
 
 	slog.Info("ledswitcher starting", "version", version.BuildVersion)
 
-	go runPrometheusServer(cfg.PrometheusAddr)
-
 	srv, err := switcher.New(cfg)
 	if err != nil {
 		slog.Error("failed to create Switcher", "err", err)
-		panic(err)
+		os.Exit(1)
 	}
 	prometheus.DefaultRegisterer.MustRegister(srv)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		srv.Run(ctx)
-		wg.Done()
-	}()
+	tm := taskmanager.New(
+		promserver.New(promserver.WithAddr(cfg.PrometheusAddr)),
+		srv,
+	)
 
 	if cfg.LeaderConfiguration.Leader == "" {
 		slog.Info("no leader provided. using k8s leader election instead")
-		wg.Add(1)
-		go func() {
+		_ = tm.Add(taskmanager.TaskFunc(func(ctx context.Context) error {
 			runWithLeaderElection(ctx, srv, cfg)
-			wg.Done()
-		}()
+			return nil
+		}))
 	}
 
-	ctx2, done := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+	ctx, done := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer done()
-	<-ctx2.Done()
 
-	slog.Info("shutting down")
-	cancel()
-	wg.Wait()
+	if err = tm.Run(ctx); err != nil {
+		slog.Error("failed to start", "err", err)
+		os.Exit(1)
+	}
+
 	slog.Info("exiting")
 }
 
@@ -116,14 +109,6 @@ func runWithLeaderElection(ctx context.Context, srv *switcher.Switcher, cfg conf
 			},
 		},
 	})
-}
-
-func runPrometheusServer(addr string) {
-	http.Handle("/metrics", promhttp.Handler())
-	if err := http.ListenAndServe(addr, nil); !errors.Is(err, http.ErrServerClosed) {
-		slog.Error("failed to start Prometheus listener", "err", err)
-		panic(err)
-	}
 }
 
 func getConfiguration() configuration.Configuration {
