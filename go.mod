@@ -8,7 +8,7 @@ require (
 	github.com/clambin/go-common/taskmanager v0.2.1
 	github.com/go-chi/chi/v5 v5.0.8
 	github.com/prometheus/client_golang v1.15.1
-	github.com/stretchr/testify v1.8.3
+	github.com/stretchr/testify v1.8.4
 	golang.org/x/exp v0.0.0-20230510235704-dd950f8aeaea
 	k8s.io/apimachinery v0.27.2
 	k8s.io/client-go v0.27.2
