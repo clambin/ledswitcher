@@ -1,4 +1,4 @@
-# ledsetter
+# ledswitcher
 ![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/clambin/ledswitcher?color=green&label=Release&style=plastic)
 ![Codecov](https://img.shields.io/codecov/c/gh/clambin/ledswitcher?style=plastic)
 ![Build](https://github.com/clambin/ledswitcher/workflows/Build/badge.svg)
