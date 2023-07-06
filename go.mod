@@ -3,7 +3,7 @@ module github.com/clambin/ledswitcher
 go 1.19
 
 require (
-	github.com/clambin/go-common/httpclient v0.5.0
+	github.com/clambin/go-common/httpclient v0.5.1
 	github.com/clambin/go-common/httpserver v0.5.0
 	github.com/clambin/go-common/taskmanager v0.2.1
 	github.com/go-chi/chi/v5 v5.0.8
@@ -44,7 +44,6 @@ require (
 	github.com/stretchr/objx v0.5.0 // indirect
 	golang.org/x/net v0.10.0 // indirect
 	golang.org/x/oauth2 v0.8.0 // indirect
-	golang.org/x/sync v0.3.0 // indirect
 	golang.org/x/sys v0.9.0 // indirect
 	golang.org/x/term v0.8.0 // indirect
 	golang.org/x/text v0.9.0 // indirect
