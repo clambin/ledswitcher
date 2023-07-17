@@ -4,12 +4,12 @@ go 1.19
 
 require (
 	github.com/clambin/go-common/httpclient v0.5.1
-	github.com/clambin/go-common/httpserver v0.5.0
+	github.com/clambin/go-common/httpserver v0.7.0
 	github.com/clambin/go-common/taskmanager v0.2.1
 	github.com/go-chi/chi/v5 v5.0.10
 	github.com/prometheus/client_golang v1.16.0
 	github.com/stretchr/testify v1.8.4
-	golang.org/x/exp v0.0.0-20230510235704-dd950f8aeaea
+	golang.org/x/exp v0.0.0-20230713183714-613f0c0eb8a1
 	k8s.io/apimachinery v0.27.3
 	k8s.io/client-go v0.27.3
 )
