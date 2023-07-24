@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/clambin/go-common/httpclient v0.5.1
-	github.com/clambin/go-common/httpserver v0.8.3
+	github.com/clambin/go-common/httpserver v0.11.0
 	github.com/clambin/go-common/taskmanager v0.2.1
 	github.com/go-chi/chi/v5 v5.0.10
 	github.com/prometheus/client_golang v1.16.0
