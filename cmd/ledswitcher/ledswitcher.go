@@ -9,12 +9,12 @@ import (
 	"github.com/clambin/ledswitcher/switcher"
 	"github.com/clambin/ledswitcher/version"
 	"github.com/prometheus/client_golang/prometheus"
-	"golang.org/x/exp/slog"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
@@ -28,11 +28,11 @@ func main() {
 	if cfg.Debug {
 		opts.Level = slog.LevelDebug
 	}
-	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &opts)))
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &opts))
 
 	slog.Info("ledswitcher starting", "version", version.BuildVersion)
 
-	srv, err := switcher.New(cfg)
+	srv, err := switcher.New(cfg, logger)
 	if err != nil {
 		slog.Error("failed to create Switcher", "err", err)
 		os.Exit(1)

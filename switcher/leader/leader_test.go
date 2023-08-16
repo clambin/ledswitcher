@@ -7,6 +7,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"log/slog"
 	"testing"
 	"time"
 )
@@ -15,7 +16,7 @@ func TestLeader_Run(t *testing.T) {
 	l, _ := leader.New(configuration.LeaderConfiguration{
 		Rotation:  100 * time.Millisecond,
 		Scheduler: configuration.SchedulerConfiguration{Mode: "linear"},
-	})
+	}, slog.Default().With("component", "leader"))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	ch := make(chan error)

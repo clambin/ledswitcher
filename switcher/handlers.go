@@ -3,7 +3,7 @@ package switcher
 import (
 	"encoding/json"
 	"fmt"
-	"golang.org/x/exp/slog"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"

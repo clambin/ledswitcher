@@ -5,6 +5,7 @@ import (
 	"github.com/clambin/ledswitcher/switcher/leader/scheduler"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -14,7 +15,7 @@ import (
 func TestLeader_Advance(t *testing.T) {
 	l, _ := New(configuration.LeaderConfiguration{
 		Scheduler: configuration.SchedulerConfiguration{Mode: "linear"},
-	})
+	}, slog.Default().With("component", "leader"))
 
 	var eps endpoints
 	var servers []*httptest.Server

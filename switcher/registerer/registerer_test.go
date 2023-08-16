@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -16,7 +17,7 @@ func TestRegisterer_Run(t *testing.T) {
 	reg := registry{}
 	s := httptest.NewServer(http.HandlerFunc(reg.handle))
 	defer s.Close()
-	r := New("http://127.0.0.1:8080", 10*time.Millisecond)
+	r := New("http://127.0.0.1:8080", 10*time.Millisecond, slog.Default())
 	r.SetLeaderURL(s.URL)
 
 	p := prometheus.NewPedanticRegistry()

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/clambin/go-common/httpclient"
 	"github.com/prometheus/client_golang/prometheus"
-	"golang.org/x/exp/slog"
+	"log/slog"
 	"net/http"
 	"sync"
 	"time"
@@ -20,16 +20,18 @@ type Registerer struct {
 	transport   *httpclient.RoundTripper
 	leaderURL   string
 	registered  bool
+	logger      *slog.Logger
 	lock        sync.RWMutex
 }
 
-func New(endpointURL string, interval time.Duration) *Registerer {
+func New(endpointURL string, interval time.Duration, logger *slog.Logger) *Registerer {
 	transport := httpclient.NewRoundTripper(httpclient.WithMetrics("ledswitcher", "registerer", "ledswitcher"))
 	return &Registerer{
 		EndPointURL: endpointURL,
 		Interval:    interval,
 		client:      &http.Client{Transport: transport},
 		transport:   transport,
+		logger:      logger,
 	}
 }
 
@@ -88,7 +90,7 @@ func (r *Registerer) register() {
 	r.registered = err == nil
 
 	if !r.registered {
-		slog.Error("failed to register", "err", err, "leader", r.leaderURL)
+		r.logger.Error("failed to register", "err", err, "leader", r.leaderURL)
 	}
 }
 

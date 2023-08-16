@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -29,7 +30,7 @@ var (
 )
 
 func TestHealth(t *testing.T) {
-	s, err := New(testConfig)
+	s, err := New(testConfig, slog.Default())
 	require.NoError(t, err)
 
 	resp := httptest.NewRecorder()
@@ -46,7 +47,7 @@ func TestHealth(t *testing.T) {
 }
 
 func TestStats(t *testing.T) {
-	s, _ := New(leaderConfig())
+	s, _ := New(leaderConfig(), slog.Default())
 	s.leader.RegisterClient("http://host1:8080")
 	s.leader.RegisterClient("http://host2:8080")
 
@@ -90,7 +91,7 @@ func TestLED(t *testing.T) {
 		{name: "error", method: http.MethodPost, err: errors.New("fail"), statusCode: http.StatusInternalServerError, action: &True},
 	}
 
-	s, _ := New(leaderConfig())
+	s, _ := New(leaderConfig(), slog.Default())
 	setter := mocks.NewSetter(t)
 	s.setter = setter
 
@@ -124,7 +125,7 @@ func TestRegisterClient(t *testing.T) {
 	cfg := leaderConfig()
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			s, err := New(cfg)
+			s, err := New(cfg, slog.Default())
 			require.NoError(t, err)
 
 			var target string

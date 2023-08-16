@@ -1,15 +1,14 @@
 module github.com/clambin/ledswitcher
 
-go 1.19
+go 1.21
 
 require (
 	github.com/clambin/go-common/httpclient v0.6.0
-	github.com/clambin/go-common/httpserver v0.11.0
+	github.com/clambin/go-common/httpserver v0.12.0
 	github.com/clambin/go-common/taskmanager v0.3.0
 	github.com/go-chi/chi/v5 v5.0.10
 	github.com/prometheus/client_golang v1.16.0
 	github.com/stretchr/testify v1.8.4
-	golang.org/x/exp v0.0.0-20230713183714-613f0c0eb8a1
 	k8s.io/apimachinery v0.28.0
 	k8s.io/client-go v0.28.0
 )

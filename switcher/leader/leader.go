@@ -7,7 +7,7 @@ import (
 	"github.com/clambin/ledswitcher/configuration"
 	"github.com/clambin/ledswitcher/switcher/leader/scheduler"
 	"github.com/prometheus/client_golang/prometheus"
-	"golang.org/x/exp/slog"
+	"log/slog"
 	"net/http"
 	"os"
 	"sync"
@@ -17,6 +17,7 @@ import (
 // Leader implements the Leader interface
 type Leader struct {
 	scheduler *scheduler.Scheduler
+	logger    *slog.Logger
 	client    *http.Client
 	transport *httpclient.RoundTripper
 	interval  time.Duration
@@ -27,7 +28,7 @@ type Leader struct {
 var _ prometheus.Collector = &Leader{}
 
 // New creates a new LEDBroker
-func New(cfg configuration.LeaderConfiguration) (*Leader, error) {
+func New(cfg configuration.LeaderConfiguration, logger *slog.Logger) (*Leader, error) {
 	s, err := scheduler.New(cfg.Scheduler)
 	if err != nil {
 		return nil, fmt.Errorf("scheduler: %w", err)
@@ -39,6 +40,7 @@ func New(cfg configuration.LeaderConfiguration) (*Leader, error) {
 	transport := httpclient.NewRoundTripper(httpclient.WithMetrics("ledswitcher", "leader", "ledswitcher"))
 	return &Leader{
 		scheduler: s,
+		logger:    logger,
 		client:    &http.Client{Transport: transport},
 		transport: transport,
 		interval:  cfg.Rotation,
@@ -70,11 +72,11 @@ func (l *Leader) Run(ctx context.Context) error {
 	ticker := time.NewTicker(l.interval)
 	defer ticker.Stop()
 
-	slog.Info("leader started")
+	l.logger.Info("started")
 	for {
 		select {
 		case <-ctx.Done():
-			slog.Info("leader stopped")
+			l.logger.Info("stopped")
 			return nil
 		case <-ticker.C:
 			if l.IsLeading() {
@@ -111,7 +113,7 @@ func (l *Leader) setState(target string, state bool) {
 	}
 
 	l.scheduler.UpdateStatus(target, err == nil)
-	slog.Debug(stateString, "client", target, "err", err)
+	l.logger.Debug(stateString, "client", target, "err", err)
 }
 
 // SetLEDOn performs an HTTP request to switch on the LED at the specified host

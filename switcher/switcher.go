@@ -12,6 +12,7 @@ import (
 	"github.com/clambin/ledswitcher/switcher/registerer"
 	"github.com/go-chi/chi/v5"
 	"github.com/prometheus/client_golang/prometheus"
+	"log/slog"
 	"net/http"
 	"os"
 	"strings"
@@ -40,7 +41,7 @@ type httpServer struct {
 }
 
 // New creates a new Switcher
-func New(cfg configuration.Configuration) (*Switcher, error) {
+func New(cfg configuration.Configuration, logger *slog.Logger) (*Switcher, error) {
 	hostname, err := os.Hostname()
 	if err != nil {
 		return nil, fmt.Errorf("unable to determine hostname: %w", err)
@@ -52,7 +53,7 @@ func New(cfg configuration.Configuration) (*Switcher, error) {
 	}
 
 	s := Switcher{
-		Registerer: registerer.New("http://"+hostname+":"+appAddrParts[1], 5*time.Minute),
+		Registerer: registerer.New("http://"+hostname+":"+appAddrParts[1], 5*time.Minute, logger.With("component", "registerer")),
 		setter:     &led.RealSetter{LEDPath: cfg.LedPath},
 		httpServer: httpServer{
 			addr:    cfg.Addr,
@@ -62,7 +63,7 @@ func New(cfg configuration.Configuration) (*Switcher, error) {
 	}
 	s.Registerer.SetLeaderURL("http://" + cfg.Leader + ":" + s.appPort)
 
-	if s.leader, err = leader.New(cfg.LeaderConfiguration); err != nil {
+	if s.leader, err = leader.New(cfg.LeaderConfiguration, logger.With("component", "leader")); err != nil {
 		return nil, fmt.Errorf("invalid config: %w", err)
 	}
 

@@ -7,6 +7,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -18,7 +19,7 @@ import (
 func TestServer_Run(t *testing.T) {
 	cfg := leaderConfig()
 	cfg.Scheduler.Mode = "binary"
-	s, err := New(cfg)
+	s, err := New(cfg, slog.Default())
 	require.NoError(t, err)
 	require.NotNil(t, s.leader)
 
