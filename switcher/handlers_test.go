@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/clambin/ledswitcher/configuration"
-	"github.com/clambin/ledswitcher/switcher/led/mocks"
+	"github.com/clambin/ledswitcher/switcher/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -101,7 +101,7 @@ func TestLED(t *testing.T) {
 			resp := httptest.NewRecorder()
 
 			if tt.action != nil {
-				setter.On("SetLED", *tt.action).Return(tt.err).Once()
+				setter.EXPECT().SetLED(*tt.action).Return(tt.err).Once()
 			}
 
 			s.handleLED(resp, req)

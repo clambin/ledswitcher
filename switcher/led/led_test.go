@@ -16,7 +16,7 @@ func TestSetter(t *testing.T) {
 		require.NoError(t, err)
 	}(tmpdir)
 
-	setter := led.RealSetter{LEDPath: tmpdir}
+	setter := led.Setter{LEDPath: tmpdir}
 
 	err = setter.SetLED(true)
 	require.NoError(t, err)

@@ -30,7 +30,7 @@ type Switcher struct {
 	leader     *leader.Leader
 	Registerer *registerer.Registerer
 	httpServer httpServer
-	setter     led.Setter
+	setter     Setter
 	appPort    string
 }
 
@@ -38,6 +38,11 @@ type httpServer struct {
 	addr    string
 	handler http.Handler
 	metrics *middleware.PrometheusMetrics
+}
+
+type Setter interface {
+	SetLED(state bool) error
+	GetLED() bool
 }
 
 // New creates a new Switcher
@@ -54,7 +59,7 @@ func New(cfg configuration.Configuration, logger *slog.Logger) (*Switcher, error
 
 	s := Switcher{
 		Registerer: registerer.New("http://"+hostname+":"+appAddrParts[1], 5*time.Minute, logger.With("component", "registerer")),
-		setter:     &led.RealSetter{LEDPath: cfg.LedPath},
+		setter:     &led.Setter{LEDPath: cfg.LedPath},
 		httpServer: httpServer{
 			addr:    cfg.Addr,
 			metrics: middleware.NewPrometheusMetrics(middleware.PrometheusMetricsOptions{Application: "ledswitcher", MetricsType: middleware.Summary}),

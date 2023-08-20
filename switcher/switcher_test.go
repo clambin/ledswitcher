@@ -3,7 +3,6 @@ package switcher
 import (
 	"context"
 	"github.com/clambin/ledswitcher/configuration"
-	"github.com/clambin/ledswitcher/switcher/led"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -63,7 +62,7 @@ type FakeSetter struct {
 	lock     sync.RWMutex
 }
 
-var _ led.Setter = &FakeSetter{}
+var _ Setter = &FakeSetter{}
 
 func (f *FakeSetter) SetLED(state bool) (err error) {
 	f.lock.Lock()
