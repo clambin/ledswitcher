@@ -1,7 +1,7 @@
 package leader
 
 import (
-	"github.com/clambin/ledswitcher/switcher/leader/scheduler"
+	"github.com/clambin/ledswitcher/internal/switcher/leader/scheduler"
 )
 
 // Stats structure holds items we want to report in the /health endpoint

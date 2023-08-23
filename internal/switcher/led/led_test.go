@@ -1,7 +1,7 @@
 package led_test
 
 import (
-	"github.com/clambin/ledswitcher/switcher/led"
+	"github.com/clambin/ledswitcher/internal/switcher/led"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"os"

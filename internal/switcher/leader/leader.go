@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/clambin/go-common/httpclient"
-	"github.com/clambin/ledswitcher/configuration"
-	"github.com/clambin/ledswitcher/switcher/leader/scheduler"
+	"github.com/clambin/ledswitcher/internal/configuration"
+	scheduler2 "github.com/clambin/ledswitcher/internal/switcher/leader/scheduler"
 	"github.com/prometheus/client_golang/prometheus"
 	"log/slog"
 	"net/http"
@@ -16,7 +16,7 @@ import (
 
 // Leader implements the Leader interface
 type Leader struct {
-	scheduler *scheduler.Scheduler
+	scheduler *scheduler2.Scheduler
 	logger    *slog.Logger
 	client    *http.Client
 	transport *httpclient.RoundTripper
@@ -29,7 +29,7 @@ var _ prometheus.Collector = &Leader{}
 
 // New creates a new LEDBroker
 func New(cfg configuration.LeaderConfiguration, logger *slog.Logger) (*Leader, error) {
-	s, err := scheduler.New(cfg.Scheduler)
+	s, err := scheduler2.New(cfg.Scheduler)
 	if err != nil {
 		return nil, fmt.Errorf("scheduler: %w", err)
 	}
@@ -38,14 +38,17 @@ func New(cfg configuration.LeaderConfiguration, logger *slog.Logger) (*Leader, e
 		return nil, fmt.Errorf("hostname: %w", err)
 	}
 	transport := httpclient.NewRoundTripper(httpclient.WithMetrics("ledswitcher", "leader", "ledswitcher"))
-	return &Leader{
+	httpClient := http.Client{Transport: transport}
+	l := Leader{
 		scheduler: s,
 		logger:    logger,
-		client:    &http.Client{Transport: transport},
+		client:    &httpClient,
 		transport: transport,
 		interval:  cfg.Rotation,
 		leading:   hostname == cfg.Leader,
-	}, nil
+	}
+
+	return &l, nil
 }
 
 // RegisterClient registers a new client with the Leader
@@ -86,68 +89,46 @@ func (l *Leader) Run(ctx context.Context) error {
 	}
 }
 
-func (l *Leader) advance(next []scheduler.Action) {
-	wg := sync.WaitGroup{}
+func (l *Leader) advance(next []scheduler2.Action) {
+	var wg sync.WaitGroup
+	wg.Add(len(next))
 	for _, action := range next {
-		wg.Add(1)
 		go func(target string, state bool) {
-			l.setState(target, state)
-			wg.Done()
+			defer wg.Done()
+			err := l.setLED(target, state)
+			l.scheduler.UpdateStatus(target, err == nil)
+			l.logger.Debug("setState", "client", target, "state", state, "err", err)
 		}(action.Host, action.State)
 	}
 	wg.Wait()
 }
 
-func (l *Leader) setState(target string, state bool) {
-	var (
-		err         error
-		stateString string
-	)
-	switch state {
-	case false:
-		err = l.SetLEDOff(target)
-		stateString = "OFF"
-	case true:
-		err = l.SetLEDOn(target)
-		stateString = "ON"
-	}
-
-	l.scheduler.UpdateStatus(target, err == nil)
-	l.logger.Debug(stateString, "client", target, "err", err)
+var statusConfig = map[bool]struct {
+	method             string
+	expectedStatusCode int
+}{
+	true:  {method: http.MethodPost, expectedStatusCode: http.StatusCreated},
+	false: {method: http.MethodDelete, expectedStatusCode: http.StatusNoContent},
 }
 
-// SetLEDOn performs an HTTP request to switch on the LED at the specified host
-func (l *Leader) SetLEDOn(targetURL string) (err error) {
-	req, _ := http.NewRequest(http.MethodPost, targetURL+"/led", nil)
-	var resp *http.Response
-	resp, err = l.client.Do(req)
+// setLED performs an HTTP request to switch the LED at the specified host on or off
+func (l *Leader) setLED(targetURL string, state bool) error {
+	cfg := statusConfig[state]
+	req, _ := http.NewRequest(cfg.method, targetURL+"/led", nil)
+	resp, err := l.client.Do(req)
 	if err == nil {
 		_ = resp.Body.Close()
-		if resp.StatusCode != http.StatusCreated {
-			err = fmt.Errorf("SetLEDOn: %s", resp.Status)
+		if resp.StatusCode != cfg.expectedStatusCode {
+			err = fmt.Errorf("setLED(%v): %d", state, resp.StatusCode)
 		}
 	}
-	return
+	return err
 }
 
-// SetLEDOff performs an HTTP request to switch off the LED at the specified host
-func (l *Leader) SetLEDOff(targetURL string) (err error) {
-	req, _ := http.NewRequest(http.MethodDelete, targetURL+"/led", nil)
-	var resp *http.Response
-	resp, err = l.client.Do(req)
-	if err == nil {
-		_ = resp.Body.Close()
-		if resp.StatusCode != http.StatusNoContent {
-			err = fmt.Errorf("SetLEDOn: %s", resp.Status)
-		}
-	}
-	return
+func (l *Leader) Describe(ch chan<- *prometheus.Desc) {
+	l.transport.Describe(ch)
 }
 
-func (l *Leader) Describe(descs chan<- *prometheus.Desc) {
-	l.transport.Describe(descs)
-}
-
-func (l *Leader) Collect(metrics chan<- prometheus.Metric) {
-	l.transport.Collect(metrics)
+func (l *Leader) Collect(ch chan<- prometheus.Metric) {
+	l.transport.Collect(ch)
 }

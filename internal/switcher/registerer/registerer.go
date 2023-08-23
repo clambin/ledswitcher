@@ -26,13 +26,15 @@ type Registerer struct {
 
 func New(endpointURL string, interval time.Duration, logger *slog.Logger) *Registerer {
 	transport := httpclient.NewRoundTripper(httpclient.WithMetrics("ledswitcher", "registerer", "ledswitcher"))
-	return &Registerer{
+	httpClient := http.Client{Transport: transport}
+	r := Registerer{
 		EndPointURL: endpointURL,
 		Interval:    interval,
-		client:      &http.Client{Transport: transport},
+		client:      &httpClient,
 		transport:   transport,
 		logger:      logger,
 	}
+	return &r
 }
 
 var _ prometheus.Collector = &Registerer{}
@@ -77,10 +79,10 @@ func (r *Registerer) register() {
 		return
 	}
 
-	body := fmt.Sprintf(`{ "url": "%s" }`, r.EndPointURL)
-	req, _ := http.NewRequest(http.MethodPost, r.leaderURL+"/register", bytes.NewBufferString(body))
+	body := `{ "url": "` + r.EndPointURL + `" }`
+	target := r.leaderURL + "/register"
 
-	resp, err := r.client.Do(req)
+	resp, err := r.client.Post(target, "application/json", bytes.NewBufferString(body))
 	if err == nil {
 		_ = resp.Body.Close()
 		if resp.StatusCode != http.StatusCreated {

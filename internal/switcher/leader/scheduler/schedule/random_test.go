@@ -1,7 +1,7 @@
 package schedule_test
 
 import (
-	"github.com/clambin/ledswitcher/switcher/leader/scheduler/schedule"
+	"github.com/clambin/ledswitcher/internal/switcher/leader/scheduler/schedule"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )

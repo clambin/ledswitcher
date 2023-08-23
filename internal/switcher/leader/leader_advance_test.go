@@ -1,8 +1,9 @@
 package leader
 
 import (
-	"github.com/clambin/ledswitcher/configuration"
-	"github.com/clambin/ledswitcher/switcher/leader/scheduler"
+	"github.com/clambin/go-common/httpclient"
+	"github.com/clambin/ledswitcher/internal/configuration"
+	"github.com/clambin/ledswitcher/internal/switcher/leader/scheduler"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"log/slog"
@@ -65,6 +66,21 @@ func TestLeader_Advance(t *testing.T) {
 
 	for _, s := range servers {
 		s.Client()
+	}
+}
+
+func BenchmarkLeader(b *testing.B) {
+	l, _ := New(configuration.LeaderConfiguration{
+		Scheduler: configuration.SchedulerConfiguration{Mode: "linear"},
+	}, slog.Default().With("component", "leader"))
+
+	resp := http.Response{StatusCode: http.StatusCreated}
+	l.client.Transport = httpclient.RoundTripperFunc(func(request *http.Request) (*http.Response, error) {
+		return &resp, nil
+	})
+
+	for i := 0; i < b.N; i++ {
+		l.advance([]scheduler.Action{{State: true}, {State: true}, {State: true}, {State: true}})
 	}
 }
 

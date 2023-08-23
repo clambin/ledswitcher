@@ -15,7 +15,7 @@ func (s *Scheduler) Next() (actions []Action) {
 	hosts := s.getActiveHosts()
 	count := len(hosts)
 	if count == 0 {
-		return []Action{}
+		return nil
 	}
 
 	// get the next state and, for each host that is not in the desired state, create an action

@@ -5,9 +5,8 @@ import (
 	"flag"
 	"github.com/clambin/go-common/taskmanager"
 	promserver "github.com/clambin/go-common/taskmanager/prometheus"
-	"github.com/clambin/ledswitcher/configuration"
-	"github.com/clambin/ledswitcher/switcher"
-	"github.com/clambin/ledswitcher/version"
+	"github.com/clambin/ledswitcher/internal/configuration"
+	"github.com/clambin/ledswitcher/internal/switcher"
 	"github.com/prometheus/client_golang/prometheus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
@@ -21,6 +20,8 @@ import (
 	"time"
 )
 
+var version = "change-me"
+
 func main() {
 	cfg := getConfiguration()
 
@@ -30,7 +31,7 @@ func main() {
 	}
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &opts))
 
-	slog.Info("ledswitcher starting", "version", version.BuildVersion)
+	slog.Info("ledswitcher starting", "version", version)
 
 	srv, err := switcher.New(cfg, logger)
 	if err != nil {

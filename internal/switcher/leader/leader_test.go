@@ -2,8 +2,8 @@ package leader_test
 
 import (
 	"context"
-	"github.com/clambin/ledswitcher/configuration"
-	"github.com/clambin/ledswitcher/switcher/leader"
+	"github.com/clambin/ledswitcher/internal/configuration"
+	"github.com/clambin/ledswitcher/internal/switcher/leader"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
