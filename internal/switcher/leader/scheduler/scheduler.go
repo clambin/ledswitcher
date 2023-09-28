@@ -3,7 +3,7 @@ package scheduler
 import (
 	"github.com/clambin/ledswitcher/internal/configuration"
 	"github.com/clambin/ledswitcher/internal/switcher/leader/scheduler/schedule"
-	"sort"
+	"slices"
 	"sync"
 )
 
@@ -56,7 +56,7 @@ func (s *Scheduler) register(name string) {
 	// add the new host
 	s.hosts[name] = RegisteredHost{Name: name}
 	s.hostNames = append(s.hostNames, name)
-	sort.Strings(s.hostNames)
+	slices.Sort(s.hostNames)
 }
 
 // GetHosts returns all registered hosts (regardless of their state)
