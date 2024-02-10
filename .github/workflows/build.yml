@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - master
-      - heap
+      - go122
 jobs:
   test:
     uses: clambin/workflows/.github/workflows/test.yaml@go122
