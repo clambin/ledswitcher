@@ -15,7 +15,7 @@ import (
 // A Registerer attempts to register the instance with the leader on a regular basis
 type Registerer struct {
 	EndPointURL string
-	Interval    time.Duration
+	interval    time.Duration
 	client      *http.Client
 	transport   *httpclient.RoundTripper
 	leaderURL   string
@@ -27,9 +27,13 @@ type Registerer struct {
 func New(endpointURL string, interval time.Duration, logger *slog.Logger) *Registerer {
 	transport := httpclient.NewRoundTripper(httpclient.WithMetrics("ledswitcher", "registerer", "ledswitcher"))
 	httpClient := http.Client{Transport: transport}
+	if interval == 0 {
+		interval = registrationInterval
+	}
+
 	r := Registerer{
 		EndPointURL: endpointURL,
-		Interval:    interval,
+		interval:    interval,
 		client:      &httpClient,
 		transport:   transport,
 		logger:      logger,
@@ -45,29 +49,21 @@ const registrationInterval = time.Minute
 // Run implements the main loop of a Registerer. It registers with the leader on a regular basis, informing the leading
 // broker of an instance to take into account, as well as acting as a keep-alive for the leading broker.
 func (r *Registerer) Run(ctx context.Context) error {
-	if r.Interval == 0 {
-		r.Interval = registrationInterval
-	}
-
-	registerTicker := time.NewTicker(preRegistrationInterval)
-	defer registerTicker.Stop()
-
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
-		case <-registerTicker.C:
-			wasRegistered := r.IsRegistered()
+		case <-time.After(r.registerWaitTime()):
 			r.register()
-			if !wasRegistered && r.IsRegistered() {
-				registerTicker.Stop()
-				registerTicker = time.NewTicker(r.Interval)
-			} else if wasRegistered && !r.IsRegistered() {
-				registerTicker.Stop()
-				registerTicker = time.NewTicker(preRegistrationInterval)
-			}
 		}
 	}
+}
+
+func (r *Registerer) registerWaitTime() time.Duration {
+	if r.IsRegistered() {
+		return r.interval
+	}
+	return preRegistrationInterval
 }
 
 func (r *Registerer) register() {
@@ -91,7 +87,7 @@ func (r *Registerer) register() {
 	}
 	r.registered = err == nil
 
-	if !r.registered {
+	if err != nil {
 		r.logger.Error("failed to register", "err", err, "leader", r.leaderURL)
 	}
 }
