@@ -38,6 +38,16 @@ func TestRegisterer_Run(t *testing.T) {
 	assert.Len(t, metrics, 2)
 }
 
+func TestRegisterer_SetRegistered(t *testing.T) {
+	r := New("", 0, slog.Default())
+	assert.Equal(t, registrationInterval, r.interval)
+	assert.False(t, r.IsRegistered())
+	for _, b := range []bool{true, false} {
+		r.SetRegistered(b)
+		assert.Equal(t, b, r.IsRegistered())
+	}
+}
+
 type registry struct {
 }
 
