@@ -10,7 +10,6 @@ import (
 	"github.com/clambin/ledswitcher/internal/switcher/leader"
 	"github.com/clambin/ledswitcher/internal/switcher/led"
 	"github.com/clambin/ledswitcher/internal/switcher/registerer"
-	"github.com/go-chi/chi/v5"
 	"github.com/prometheus/client_golang/prometheus"
 	"log/slog"
 	"net/http"
@@ -72,14 +71,14 @@ func New(cfg configuration.Configuration, logger *slog.Logger) (*Switcher, error
 		return nil, fmt.Errorf("invalid config: %w", err)
 	}
 
-	r := chi.NewMux()
-	r.Use(s.httpServer.metrics.Handle)
-	r.Post("/led", s.handleLED)
-	r.Delete("/led", s.handleLED)
-	r.Post("/register", s.handleRegisterClient)
-	r.Get("/stats", s.handleStats)
-	r.Get("/health", s.handleHealth)
-	s.httpServer.handler = r
+	m := http.NewServeMux()
+	mw := s.httpServer.metrics.Handle
+	m.Handle("POST /led", mw(http.HandlerFunc(s.handleLED)))
+	m.Handle("DELETE /led", mw(http.HandlerFunc(s.handleLED)))
+	m.Handle("POST /register", mw(http.HandlerFunc(s.handleRegisterClient)))
+	m.Handle("GET /stats", mw(http.HandlerFunc(s.handleStats)))
+	m.Handle("GET /health", mw(http.HandlerFunc(s.handleHealth)))
+	s.httpServer.handler = m
 
 	return &s, err
 }
