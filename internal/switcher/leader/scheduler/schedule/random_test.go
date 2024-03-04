@@ -10,7 +10,7 @@ func TestRandomScheduler_Schedule(t *testing.T) {
 	s := schedule.RandomSchedule{}
 
 	last := []bool{false, false, false, false}
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		r := s.Next(4)
 		assert.Len(t, r, 4)
 		assert.NotEqual(t, r, last, i)

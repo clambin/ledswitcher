@@ -20,7 +20,7 @@ func TestLeader_Advance(t *testing.T) {
 
 	var eps endpoints
 	var servers []*httptest.Server
-	for i := 0; i < 4; i++ {
+	for range 4 {
 		var e endpoint
 		eps = append(eps, &e)
 		servers = append(servers, httptest.NewServer(http.HandlerFunc(e.handle)))
@@ -79,7 +79,7 @@ func BenchmarkLeader(b *testing.B) {
 		return &resp, nil
 	})
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		l.advance([]scheduler.Action{{State: true}, {State: true}, {State: true}, {State: true}})
 	}
 }

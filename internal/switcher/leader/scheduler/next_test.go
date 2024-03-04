@@ -93,7 +93,7 @@ func TestScheduler_Next_StatusChanges(t *testing.T) {
 
 func hostDown(s *scheduler.Scheduler, hosts ...string) {
 	for _, host := range hosts {
-		for i := 0; i < 5; i++ {
+		for range 5 {
 			s.UpdateStatus(host, false)
 		}
 	}

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/clambin/go-common/httpclient"
 	"github.com/clambin/ledswitcher/internal/configuration"
-	scheduler2 "github.com/clambin/ledswitcher/internal/switcher/leader/scheduler"
+	"github.com/clambin/ledswitcher/internal/switcher/leader/scheduler"
 	"github.com/prometheus/client_golang/prometheus"
 	"log/slog"
 	"net/http"
@@ -16,7 +16,7 @@ import (
 
 // Leader implements the Leader interface
 type Leader struct {
-	scheduler *scheduler2.Scheduler
+	scheduler *scheduler.Scheduler
 	logger    *slog.Logger
 	client    *http.Client
 	transport *httpclient.RoundTripper
@@ -29,7 +29,7 @@ var _ prometheus.Collector = &Leader{}
 
 // New creates a new LEDBroker
 func New(cfg configuration.LeaderConfiguration, logger *slog.Logger) (*Leader, error) {
-	s, err := scheduler2.New(cfg.Scheduler)
+	s, err := scheduler.New(cfg.Scheduler)
 	if err != nil {
 		return nil, fmt.Errorf("scheduler: %w", err)
 	}
@@ -89,7 +89,7 @@ func (l *Leader) Run(ctx context.Context) error {
 	}
 }
 
-func (l *Leader) advance(next []scheduler2.Action) {
+func (l *Leader) advance(next []scheduler.Action) {
 	var wg sync.WaitGroup
 	wg.Add(len(next))
 	for _, action := range next {

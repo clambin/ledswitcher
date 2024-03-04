@@ -1,9 +1,10 @@
 package switcher
 
 import (
+	"bytes"
 	"context"
 	"github.com/clambin/ledswitcher/internal/configuration"
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"log/slog"
@@ -44,15 +45,13 @@ func TestServer_Run(t *testing.T) {
 	}, time.Second, 10*time.Millisecond)
 
 	cancel()
-	//assert.NoError(t, <-ch)
 	<-ch
 
-	r := prometheus.NewPedanticRegistry()
-	r.MustRegister(s)
-
-	metrics, err := r.Gather()
-	require.NoError(t, err)
-	assert.Len(t, metrics, 6)
+	assert.NoError(t, testutil.CollectAndCompare(s, bytes.NewBufferString(`
+# HELP ledswitcher_registerer_api_errors_total Number of failed HTTP calls
+# TYPE ledswitcher_registerer_api_errors_total counter
+ledswitcher_registerer_api_errors_total{application="ledswitcher",method="POST",path="/register"} 0
+`), "ledswitcher_registerer_api_errors_total"))
 }
 
 type FakeSetter struct {

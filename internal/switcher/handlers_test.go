@@ -78,7 +78,7 @@ func TestStats(t *testing.T) {
 func TestLED(t *testing.T) {
 	True := true
 	False := false
-	testCases := []struct {
+	tests := []struct {
 		name       string
 		method     string
 		err        error
@@ -95,7 +95,7 @@ func TestLED(t *testing.T) {
 	setter := mocks.NewSetter(t)
 	s.setter = setter
 
-	for _, tt := range testCases {
+	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			req, _ := http.NewRequest(tt.method, "/led", nil)
 			resp := httptest.NewRecorder()
@@ -111,7 +111,7 @@ func TestLED(t *testing.T) {
 }
 
 func TestRegisterClient(t *testing.T) {
-	testCases := []struct {
+	tests := []struct {
 		name    string
 		leading bool
 		target  string
@@ -123,7 +123,7 @@ func TestRegisterClient(t *testing.T) {
 	}
 
 	cfg := leaderConfig()
-	for _, tt := range testCases {
+	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s, err := New(cfg, slog.Default())
 			require.NoError(t, err)

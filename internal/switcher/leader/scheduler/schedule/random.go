@@ -14,7 +14,7 @@ var _ Schedule = &RandomSchedule{}
 // Next returns the next pattern
 func (s *RandomSchedule) Next(count int) []bool {
 	var next int
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		next = 1 + rand.Intn(count)
 		if next != s.current {
 			break

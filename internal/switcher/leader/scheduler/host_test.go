@@ -10,7 +10,7 @@ func TestRegisteredClient(t *testing.T) {
 	c := scheduler.RegisteredHost{}
 	assert.True(t, c.IsAlive())
 
-	for i := 0; i < 4; i++ {
+	for range 4 {
 		c.UpdateStatus(false)
 		assert.True(t, c.IsAlive())
 	}

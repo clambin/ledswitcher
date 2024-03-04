@@ -1,8 +1,9 @@
 package registerer
 
 import (
+	"bytes"
 	"context"
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -15,13 +16,10 @@ import (
 
 func TestRegisterer_Run(t *testing.T) {
 	reg := registry{}
-	s := httptest.NewServer(http.HandlerFunc(reg.handle))
+	s := httptest.NewServer(reg)
 	defer s.Close()
 	r := New("http://127.0.0.1:8080", 10*time.Millisecond, slog.Default())
 	r.SetLeaderURL(s.URL)
-
-	p := prometheus.NewPedanticRegistry()
-	p.MustRegister(r)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	ch := make(chan error)
@@ -30,12 +28,15 @@ func TestRegisterer_Run(t *testing.T) {
 
 	require.Eventually(t, func() bool { return r.IsRegistered() }, 500*time.Millisecond, 100*time.Millisecond)
 
+	assert.NoError(t, testutil.CollectAndCompare(r, bytes.NewBufferString(`
+# HELP ledswitcher_registerer_api_errors_total Number of failed HTTP calls
+# TYPE ledswitcher_registerer_api_errors_total counter
+ledswitcher_registerer_api_errors_total{application="ledswitcher",method="POST",path="/register"} 0
+`),
+		"ledswitcher_registerer_api_errors_total"))
+
 	cancel()
 	<-ch
-
-	metrics, err := p.Gather()
-	require.NoError(t, err)
-	assert.Len(t, metrics, 2)
 }
 
 func TestRegisterer_SetRegistered(t *testing.T) {
@@ -51,7 +52,7 @@ func TestRegisterer_SetRegistered(t *testing.T) {
 type registry struct {
 }
 
-func (r *registry) handle(w http.ResponseWriter, req *http.Request) {
+func (r registry) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if req.Method != http.MethodPost {
 		http.Error(w, "invalid method", http.StatusMethodNotAllowed)
 		return
