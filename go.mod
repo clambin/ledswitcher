@@ -3,7 +3,7 @@ module github.com/clambin/ledswitcher
 go 1.22
 
 require (
-	github.com/clambin/go-common/httpclient v0.6.0
+	github.com/clambin/go-common/httpclient v0.7.0
 	github.com/clambin/go-common/httpserver v0.12.0
 	github.com/clambin/go-common/taskmanager v0.3.0
 	github.com/prometheus/client_golang v1.19.0
