@@ -3,7 +3,7 @@ package leader
 import (
 	"context"
 	"fmt"
-	"github.com/clambin/go-common/httpclient"
+	"github.com/clambin/go-common/http/roundtripper"
 	"github.com/clambin/ledswitcher/internal/configuration"
 	"github.com/clambin/ledswitcher/internal/switcher/leader/scheduler"
 	"github.com/prometheus/client_golang/prometheus"
@@ -19,10 +19,11 @@ type Leader struct {
 	scheduler *scheduler.Scheduler
 	logger    *slog.Logger
 	client    *http.Client
-	transport *httpclient.RoundTripper
-	interval  time.Duration
-	leading   bool
-	lock      sync.RWMutex
+	metrics   roundtripper.RoundTripMetrics
+	//transport *httpclient.RoundTripper
+	interval time.Duration
+	leading  bool
+	lock     sync.RWMutex
 }
 
 var _ prometheus.Collector = &Leader{}
@@ -33,17 +34,19 @@ func New(cfg configuration.LeaderConfiguration, logger *slog.Logger) (*Leader, e
 	if err != nil {
 		return nil, fmt.Errorf("scheduler: %w", err)
 	}
+
 	hostname, err := os.Hostname()
 	if err != nil {
 		return nil, fmt.Errorf("hostname: %w", err)
 	}
-	transport := httpclient.NewRoundTripper(httpclient.WithMetrics("ledswitcher", "leader", "ledswitcher"))
-	httpClient := http.Client{Transport: transport}
+
+	metrics := roundtripper.NewDefaultRoundTripMetrics("ledswitcher", "leader", "")
+
 	l := Leader{
 		scheduler: s,
 		logger:    logger,
-		client:    &httpClient,
-		transport: transport,
+		client:    &http.Client{Transport: roundtripper.New(roundtripper.WithInstrumentedRoundTripper(metrics))},
+		metrics:   metrics,
 		interval:  cfg.Rotation,
 		leading:   hostname == cfg.Leader,
 	}
@@ -126,9 +129,9 @@ func (l *Leader) setLED(targetURL string, state bool) error {
 }
 
 func (l *Leader) Describe(ch chan<- *prometheus.Desc) {
-	l.transport.Describe(ch)
+	l.metrics.Describe(ch)
 }
 
 func (l *Leader) Collect(ch chan<- prometheus.Metric) {
-	l.transport.Collect(ch)
+	l.metrics.Collect(ch)
 }

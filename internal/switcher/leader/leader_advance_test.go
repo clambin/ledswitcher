@@ -1,7 +1,7 @@
 package leader
 
 import (
-	"github.com/clambin/go-common/httpclient"
+	"github.com/clambin/go-common/http/roundtripper"
 	"github.com/clambin/ledswitcher/internal/configuration"
 	"github.com/clambin/ledswitcher/internal/switcher/leader/scheduler"
 	"github.com/stretchr/testify/assert"
@@ -75,7 +75,7 @@ func BenchmarkLeader(b *testing.B) {
 	}, slog.Default().With("component", "leader"))
 
 	resp := http.Response{StatusCode: http.StatusCreated}
-	l.client.Transport = httpclient.RoundTripperFunc(func(request *http.Request) (*http.Response, error) {
+	l.client.Transport = roundtripper.RoundTripperFunc(func(request *http.Request) (*http.Response, error) {
 		return &resp, nil
 	})
 

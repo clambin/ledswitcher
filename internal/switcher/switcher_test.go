@@ -1,7 +1,6 @@
 package switcher
 
 import (
-	"bytes"
 	"context"
 	"github.com/clambin/ledswitcher/internal/configuration"
 	"github.com/prometheus/client_golang/prometheus/testutil"
@@ -11,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -23,7 +23,7 @@ func TestServer_Run(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, s.leader)
 
-	ledSetter := &FakeSetter{}
+	ledSetter := &fakeSetter{}
 	s.setter = ledSetter
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -47,23 +47,40 @@ func TestServer_Run(t *testing.T) {
 	cancel()
 	<-ch
 
-	assert.NoError(t, testutil.CollectAndCompare(s, bytes.NewBufferString(`
-# HELP ledswitcher_registerer_api_errors_total Number of failed HTTP calls
-# TYPE ledswitcher_registerer_api_errors_total counter
-ledswitcher_registerer_api_errors_total{application="ledswitcher",method="POST",path="/register"} 0
-`), "ledswitcher_registerer_api_errors_total"))
+	assert.NoError(t, testutil.CollectAndCompare(s, strings.NewReader(`
+# HELP ledswitcher_registerer_http_server_requests_total total number of http server requests
+# TYPE ledswitcher_registerer_http_server_requests_total counter
+ledswitcher_registerer_http_server_requests_total{code="200",method="GET",path="/health"} 1
+ledswitcher_registerer_http_server_requests_total{code="201",method="POST",path="/led"} 2
+ledswitcher_registerer_http_server_requests_total{code="201",method="POST",path="/register"} 1
+ledswitcher_registerer_http_server_requests_total{code="204",method="DELETE",path="/led"} 1
+
+# HELP ledswitcher_leader_http_requests_total total number of http requests
+# TYPE ledswitcher_leader_http_requests_total counter
+#ledswitcher_leader_http_requests_total{code="201",method="POST",path="/led"} 2
+#ledswitcher_leader_http_requests_total{code="204",method="DELETE",path="/led"} 2
+
+
+# HELP ledswitcher_register_http_requests_total total number of http requests
+# TYPE ledswitcher_register_http_requests_total counter
+ledswitcher_register_http_requests_total{code="201",method="POST",path="/register"} 1
+`),
+		"ledswicher_registerer_http_server_requests_total",
+		// "ledswitcher_leader_http_requests_total",  // race condition: leader may not be ready yet on startup, so first request may fail
+		"ledswitcher_register_http_requests_total",
+	))
 }
 
-type FakeSetter struct {
+var _ Setter = &fakeSetter{}
+
+type fakeSetter struct {
 	onCount  int
 	offCount int
 	state    bool
 	lock     sync.RWMutex
 }
 
-var _ Setter = &FakeSetter{}
-
-func (f *FakeSetter) SetLED(state bool) (err error) {
+func (f *fakeSetter) SetLED(state bool) (err error) {
 	f.lock.Lock()
 	defer f.lock.Unlock()
 	if state == true {
@@ -75,13 +92,13 @@ func (f *FakeSetter) SetLED(state bool) (err error) {
 	return
 }
 
-func (f *FakeSetter) GetLED() bool {
+func (f *fakeSetter) GetLED() bool {
 	f.lock.RLock()
 	defer f.lock.RUnlock()
 	return f.state
 }
 
-func (f *FakeSetter) Called() (on, off int) {
+func (f *fakeSetter) Called() (on, off int) {
 	f.lock.RLock()
 	defer f.lock.RUnlock()
 	return f.onCount, f.offCount

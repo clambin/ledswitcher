@@ -1,7 +1,6 @@
 package switcher
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"github.com/clambin/ledswitcher/internal/configuration"
@@ -12,6 +11,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -133,7 +133,7 @@ func TestRegisterClient(t *testing.T) {
 				target = fmt.Sprintf("%s:%s", tt.target, s.appPort)
 			}
 			body := fmt.Sprintf(`{ "url": "%s" }`, target)
-			req, _ := http.NewRequest(http.MethodPost, "/register", bytes.NewBufferString(body))
+			req, _ := http.NewRequest(http.MethodPost, "/register", strings.NewReader(body))
 			resp := httptest.NewRecorder()
 
 			if tt.leading {

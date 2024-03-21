@@ -1,13 +1,13 @@
 package registerer
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"github.com/clambin/go-common/httpclient"
+	"github.com/clambin/go-common/http/roundtripper"
 	"github.com/prometheus/client_golang/prometheus"
 	"log/slog"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 )
@@ -17,7 +17,7 @@ type Registerer struct {
 	EndPointURL string
 	interval    time.Duration
 	client      *http.Client
-	transport   *httpclient.RoundTripper
+	metrics     roundtripper.RoundTripMetrics
 	leaderURL   string
 	registered  bool
 	logger      *slog.Logger
@@ -25,8 +25,8 @@ type Registerer struct {
 }
 
 func New(endpointURL string, interval time.Duration, logger *slog.Logger) *Registerer {
-	transport := httpclient.NewRoundTripper(httpclient.WithMetrics("ledswitcher", "registerer", "ledswitcher"))
-	httpClient := http.Client{Transport: transport}
+	metrics := roundtripper.NewDefaultRoundTripMetrics("ledswitcher", "register", "")
+	httpClient := http.Client{Transport: roundtripper.New(roundtripper.WithInstrumentedRoundTripper(metrics))}
 	if interval == 0 {
 		interval = registrationInterval
 	}
@@ -35,7 +35,7 @@ func New(endpointURL string, interval time.Duration, logger *slog.Logger) *Regis
 		EndPointURL: endpointURL,
 		interval:    interval,
 		client:      &httpClient,
-		transport:   transport,
+		metrics:     metrics,
 		logger:      logger,
 	}
 	return &r
@@ -50,11 +50,11 @@ const registrationInterval = time.Minute
 // broker of an instance to take into account, as well as acting as a keep-alive for the leading broker.
 func (r *Registerer) Run(ctx context.Context) error {
 	for {
+		r.register()
 		select {
 		case <-ctx.Done():
 			return nil
 		case <-time.After(r.registerWaitTime()):
-			r.register()
 		}
 	}
 }
@@ -78,7 +78,7 @@ func (r *Registerer) register() {
 	body := `{ "url": "` + r.EndPointURL + `" }`
 	target := r.leaderURL + "/register"
 
-	resp, err := r.client.Post(target, "application/json", bytes.NewBufferString(body))
+	resp, err := r.client.Post(target, "application/json", strings.NewReader(body))
 	if err == nil {
 		_ = resp.Body.Close()
 		if resp.StatusCode != http.StatusCreated {
@@ -117,10 +117,10 @@ func (r *Registerer) SetLeaderURL(leaderURL string) {
 
 // Describe implements the prometheus.Collector interface
 func (r *Registerer) Describe(descs chan<- *prometheus.Desc) {
-	r.transport.Describe(descs)
+	r.metrics.Describe(descs)
 }
 
 // Collect implements the prometheus.Collector interface
 func (r *Registerer) Collect(metrics chan<- prometheus.Metric) {
-	r.transport.Collect(metrics)
+	r.metrics.Collect(metrics)
 }
