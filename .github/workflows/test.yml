@@ -4,11 +4,11 @@ on:
   push:
     branches-ignore:
       - master
-      - go122
+      - http
   pull_request_target:
 
 jobs:
   test:
-    uses: clambin/workflows/.github/workflows/test.yaml@go122
+    uses: clambin/workflows/.github/workflows/test.yaml@main
     secrets:
       codecov-token: ${{ secrets.CODECOV_TOKEN }}

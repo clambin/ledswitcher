@@ -3,7 +3,7 @@ package switcher
 import (
 	"context"
 	"fmt"
-	"github.com/clambin/go-common/httpserver/middleware"
+	"github.com/clambin/go-common/http/middleware"
 	"github.com/clambin/go-common/taskmanager"
 	"github.com/clambin/go-common/taskmanager/httpserver"
 	"github.com/clambin/ledswitcher/internal/configuration"
@@ -36,7 +36,7 @@ type Switcher struct {
 type httpServer struct {
 	addr    string
 	handler http.Handler
-	metrics *middleware.PrometheusMetrics
+	metrics middleware.ServerMetrics
 }
 
 type Setter interface {
@@ -56,12 +56,14 @@ func New(cfg configuration.Configuration, logger *slog.Logger) (*Switcher, error
 		return nil, fmt.Errorf("invalid application address: %s", cfg.Addr)
 	}
 
+	metrics := middleware.NewDefaultServerSummaryMetrics("ledswitcher", "registerer", "")
+
 	s := Switcher{
 		Registerer: registerer.New("http://"+hostname+":"+appAddrParts[1], 5*time.Minute, logger.With("component", "registerer")),
 		setter:     &led.Setter{LEDPath: cfg.LedPath},
 		httpServer: httpServer{
 			addr:    cfg.Addr,
-			metrics: middleware.NewPrometheusMetrics(middleware.PrometheusMetricsOptions{Application: "ledswitcher", MetricsType: middleware.Summary}),
+			metrics: metrics,
 		},
 		appPort: appAddrParts[1],
 	}
@@ -72,7 +74,7 @@ func New(cfg configuration.Configuration, logger *slog.Logger) (*Switcher, error
 	}
 
 	m := http.NewServeMux()
-	mw := s.httpServer.metrics.Handle
+	mw := middleware.WithServerMetrics(metrics)
 	m.Handle("POST /led", mw(http.HandlerFunc(s.handleLED)))
 	m.Handle("DELETE /led", mw(http.HandlerFunc(s.handleLED)))
 	m.Handle("POST /register", mw(http.HandlerFunc(s.handleRegisterClient)))
@@ -86,9 +88,9 @@ func New(cfg configuration.Configuration, logger *slog.Logger) (*Switcher, error
 // Run starts a Switcher and waits for the context to be canceled
 func (s *Switcher) Run(ctx context.Context) error {
 	tm := taskmanager.New(
+		httpserver.New(s.httpServer.addr, s.httpServer.handler),
 		s.leader,
 		s.Registerer,
-		httpserver.New(s.httpServer.addr, s.httpServer.handler),
 	)
 	return tm.Run(ctx)
 }

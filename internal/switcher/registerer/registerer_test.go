@@ -1,7 +1,6 @@
 package registerer
 
 import (
-	"bytes"
 	"context"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
@@ -10,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 )
@@ -28,12 +28,11 @@ func TestRegisterer_Run(t *testing.T) {
 
 	require.Eventually(t, func() bool { return r.IsRegistered() }, 500*time.Millisecond, 100*time.Millisecond)
 
-	assert.NoError(t, testutil.CollectAndCompare(r, bytes.NewBufferString(`
-# HELP ledswitcher_registerer_api_errors_total Number of failed HTTP calls
-# TYPE ledswitcher_registerer_api_errors_total counter
-ledswitcher_registerer_api_errors_total{application="ledswitcher",method="POST",path="/register"} 0
-`),
-		"ledswitcher_registerer_api_errors_total"))
+	assert.NoError(t, testutil.CollectAndCompare(r, strings.NewReader(`
+# HELP ledswitcher_register_http_requests_total total number of http requests
+# TYPE ledswitcher_register_http_requests_total counter
+ledswitcher_register_http_requests_total{code="201",method="POST",path="/register"} 1
+`), ""))
 
 	cancel()
 	<-ch
