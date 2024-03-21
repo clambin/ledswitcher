@@ -1,0 +1,76 @@
+---
+apiVersion: k8s.kevingomez.fr/v1
+kind: GrafanaDashboard
+metadata:
+    annotations:
+        dark/folder: Development
+    name: ledswitcher
+    namespace: infra
+spec:
+    title: LED Switcher
+    tags: [generated,yaml]
+    auto_refresh: 1m
+    time:
+        - now-6h
+        - now
+    rows:
+        - name: Leader
+          panels:
+            - timeseries:
+                title: Rate
+                span: 6
+                targets:
+                    - prometheus:
+                        query: avg by (code) (rate(ledswitcher_leader_http_requests_total[$__rate_interval]))
+                        legend: "{{code}}"
+                axis:
+                    unit: reqps
+            - timeseries:
+                title: Latency
+                span: 6
+                targets:
+                    - prometheus:
+                        query: avg by (method) (ledswitcher_leader_http_request_duration_seconds_sum / ledswitcher_leader_http_request_duration_seconds_count)
+                        legend: "{{method}}"
+                axis:
+                    unit: s
+        - name: Registration
+          panels:
+            - timeseries:
+                title: Rate
+                span: 6
+                targets:
+                    - prometheus:
+                        query: avg by (instance, code) (rate(ledswitcher_register_http_requests_total[$__rate_interval]))
+                        legend: "{{instance}}:{{code}}"
+                axis:
+                    unit: reqps
+            - timeseries:
+                title: Latency
+                span: 6
+                targets:
+                    - prometheus:
+                        query: avg by (instance) (ledswitcher_register_http_request_duration_seconds_sum / ledswitcher_register_http_request_duration_seconds_count)
+                        legend: "{{instance}}"
+                axis:
+                    unit: s
+        - name: Server
+          panels:
+            - timeseries:
+                title: Rate
+                span: 6
+                targets:
+                    - prometheus:
+                        query: avg by (code) (rate(ledswitcher_registerer_http_server_requests_total[$__rate_interval]))
+                        legend: '{{code}}'
+                axis:
+                    unit: reqps
+            - timeseries:
+                title: Latency
+                span: 6
+                targets:
+                    - prometheus:
+                        query: avg by (path, method) (ledswitcher_registerer_http_server_request_duration_seconds_sum / ledswitcher_registerer_http_server_request_duration_seconds_count)
+                        legend: '{{path}}:{{method}}'
+                axis:
+                    unit: s
