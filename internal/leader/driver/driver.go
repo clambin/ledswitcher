@@ -70,11 +70,11 @@ func (d *Driver) Run(ctx context.Context) error {
 	for {
 		if d.IsLeading() {
 			d.advance(d.Scheduler.Next())
-			select {
-			case <-ctx.Done():
-				return nil
-			case <-ticker.C:
-			}
+		}
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-ticker.C:
 		}
 	}
 }
