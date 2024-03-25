@@ -26,6 +26,8 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+
+	_ "net/http/pprof"
 )
 
 var version = "change-me"
@@ -56,6 +58,7 @@ func main() {
 	m.Handle("/endpoint/led", ep.LEDHandler)
 
 	tm := taskmanager.New(
+		httpserver.New(":6060", http.DefaultServeMux),
 		promserver.New(promserver.WithAddr(cfg.PrometheusAddr)),
 		httpserver.New(cfg.Addr, mw(m)),
 		ep,
