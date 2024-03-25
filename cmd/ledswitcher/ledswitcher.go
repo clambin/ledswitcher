@@ -156,7 +156,7 @@ func runWithLeaderElection(ctx context.Context, ep *endpoint.Endpoint, l *leader
 		RetryPeriod:     5 * time.Second,
 		Callbacks: leaderelection.LeaderCallbacks{
 			OnStartedLeading: func(ctx context.Context) {
-				logger.Info("OnStartLeading called")
+				logger.Debug("OnStartLeading called")
 				//<-ctx.Done()
 			},
 			OnStoppedLeading: func() {
@@ -164,7 +164,7 @@ func runWithLeaderElection(ctx context.Context, ep *endpoint.Endpoint, l *leader
 				os.Exit(1)
 			},
 			OnNewLeader: func(identity string) {
-				logger.Info("leader elected: " + identity)
+				logger.Info("leader elected", "leader", identity)
 				ep.SetLeaderURL(cfg.LeaderURL(identity))
 				l.SetLeading(identity == hostname)
 			},
