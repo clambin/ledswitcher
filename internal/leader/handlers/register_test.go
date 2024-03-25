@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestRegister_ServeHTTP(t *testing.T) {
@@ -76,8 +77,9 @@ func TestRegister_ServeHTTP(t *testing.T) {
 }
 
 type reg struct {
-	clients map[string]struct{}
-	leading bool
+	clients    map[string]struct{}
+	leading    bool
+	lastUpdate time.Time
 }
 
 func (r *reg) RegisterClient(s string) {
@@ -94,7 +96,12 @@ func (r *reg) IsLeading() bool {
 func (r *reg) GetHosts() []scheduler.RegisteredHost {
 	hosts := make([]scheduler.RegisteredHost, 0, len(r.clients))
 	for h := range r.clients {
-		hosts = append(hosts, scheduler.RegisteredHost{Name: h})
+		hosts = append(hosts, scheduler.RegisteredHost{
+			Name:        h,
+			State:       true,
+			Failures:    0,
+			LastUpdated: r.lastUpdate,
+		})
 	}
 	return hosts
 }

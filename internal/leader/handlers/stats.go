@@ -17,12 +17,13 @@ func (r *StatsHandler) ServeHTTP(w http.ResponseWriter, _ *http.Request) {
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
+
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
 
 	if err := enc.Encode(r.Registry.GetHosts()); err != nil {
 		r.Logger.Error("failed to encode hosts", "err", err)
 		http.Error(w, "failed to encode hosts: "+err.Error(), http.StatusInternalServerError)
-		return
 	}
 }

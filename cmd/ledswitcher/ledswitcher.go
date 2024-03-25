@@ -20,6 +20,7 @@ import (
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -99,7 +100,15 @@ func getEndpointURL(cfg configuration.Configuration) string {
 	if err != nil {
 		panic("unable to determine hostname: " + err.Error())
 	}
-	return cfg.LeaderURL(hostname)
+	return hostToURI(hostname, cfg)
+}
+
+func hostToURI(hostname string, cfg configuration.Configuration) string {
+	_, port, err := net.SplitHostPort(cfg.Addr)
+	if err != nil {
+		panic("unable to determine port from Addr: " + err.Error())
+	}
+	return "http://" + hostname + ":" + port
 }
 
 func makeLeader(cfg configuration.LeaderConfiguration, logger *slog.Logger) *leader.Leader {
@@ -165,7 +174,7 @@ func runWithLeaderElection(ctx context.Context, ep *endpoint.Endpoint, l *leader
 			},
 			OnNewLeader: func(identity string) {
 				logger.Info("leader elected", "leader", identity)
-				ep.SetLeaderURL(cfg.LeaderURL(identity))
+				ep.SetLeaderURL(hostToURI(identity, cfg))
 				l.SetLeading(identity == hostname)
 			},
 		},

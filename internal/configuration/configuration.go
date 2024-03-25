@@ -27,8 +27,3 @@ type K8SConfiguration struct {
 	LockName  string
 	Namespace string
 }
-
-func (c Configuration) LeaderURL(hostname string) string {
-	// TODO: Addr may be more than ":<port>"
-	return "http://" + hostname + c.Addr
-}
