@@ -18,7 +18,7 @@ type RegisterHandler struct {
 type Registry interface {
 	RegisterClient(string)
 	IsLeading() bool
-	GetHosts() []scheduler.RegisteredHost
+	GetHosts() []*scheduler.RegisteredHost
 }
 
 type RegisterRequest struct {

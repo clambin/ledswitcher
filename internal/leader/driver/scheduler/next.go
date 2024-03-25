@@ -22,16 +22,13 @@ func (s *Scheduler) Next() []Action {
 	actions := make([]Action, 0, count)
 	for index, state := range s.Schedule.Next(count) {
 		host := hosts[index]
-		registeredHost := s.hosts[host]
-		if registeredHost.State == state {
-			continue
+		if s.hosts[host].State != state {
+			actions = append(actions, Action{
+				Host:  host,
+				State: state,
+			})
+			s.hosts[host].State = state
 		}
-		registeredHost.State = state
-		s.hosts[host] = registeredHost
-		actions = append(actions, Action{
-			Host:  hosts[index],
-			State: state,
-		})
 	}
 	return actions
 }

@@ -10,7 +10,7 @@ import (
 // Scheduler records the list of hosts and calculates the next host(s) whose LED should be switched on
 type Scheduler struct {
 	schedule.Schedule
-	hosts     map[string]RegisteredHost
+	hosts     map[string]*RegisteredHost
 	hostNames []string
 	lock      sync.RWMutex
 }
@@ -20,7 +20,7 @@ func New(cfg configuration.SchedulerConfiguration) (*Scheduler, error) {
 	s, err := schedule.New(cfg.Mode)
 	sch := Scheduler{
 		Schedule: s,
-		hosts:    make(map[string]RegisteredHost),
+		hosts:    make(map[string]*RegisteredHost),
 	}
 	return &sch, err
 }
@@ -54,13 +54,13 @@ func (s *Scheduler) register(name string) {
 	}
 
 	// add the new host
-	s.hosts[name] = RegisteredHost{Name: name}
+	s.hosts[name] = &RegisteredHost{Name: name}
 	s.hostNames = append(s.hostNames, name)
 	slices.Sort(s.hostNames)
 }
 
 // GetHosts returns all registered hosts (regardless of their state)
-func (s *Scheduler) GetHosts() (hosts []RegisteredHost) {
+func (s *Scheduler) GetHosts() (hosts []*RegisteredHost) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 	for _, hostName := range s.hostNames {

@@ -93,10 +93,10 @@ func (r *reg) IsLeading() bool {
 	return r.leading
 }
 
-func (r *reg) GetHosts() []scheduler.RegisteredHost {
-	hosts := make([]scheduler.RegisteredHost, 0, len(r.clients))
+func (r *reg) GetHosts() []*scheduler.RegisteredHost {
+	hosts := make([]*scheduler.RegisteredHost, 0, len(r.clients))
 	for h := range r.clients {
-		hosts = append(hosts, scheduler.RegisteredHost{
+		hosts = append(hosts, &scheduler.RegisteredHost{
 			Name:        h,
 			State:       true,
 			Failures:    0,
