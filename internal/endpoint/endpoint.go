@@ -8,21 +8,15 @@ import (
 	"time"
 )
 
-var _ http.Handler = &Endpoint{}
-
 type Endpoint struct {
-	http.Handler
+	*handlers.LEDHandler
+	*handlers.HealthHandler
 	*registerer.Registerer
 }
 
 const defaultRegistrationInterval = time.Minute
 
 func New(endpointURL string, interval time.Duration, httpClient *http.Client, setter handlers.Setter, logger *slog.Logger) *Endpoint {
-	ledSetterHandler := handlers.LEDSetter{
-		Setter: setter,
-		Logger: logger.With("component", "ledsetter"),
-	}
-
 	if interval == 0 {
 		interval = defaultRegistrationInterval
 	}
@@ -33,15 +27,10 @@ func New(endpointURL string, interval time.Duration, httpClient *http.Client, se
 		HTTPClient:  httpClient,
 		Logger:      logger,
 	}
-	registererHandler := handlers.Registerer{
-		Registry: &r,
-	}
 
-	m := http.NewServeMux()
-	m.Handle("/endpoint/led", &ledSetterHandler)
-	m.Handle("/endpoint/health", &registererHandler)
 	return &Endpoint{
-		Handler:    m,
-		Registerer: &r,
+		LEDHandler:    &handlers.LEDHandler{Setter: setter, Logger: logger.With("component", "ledsetter")},
+		HealthHandler: &handlers.HealthHandler{Registry: &r},
+		Registerer:    &r,
 	}
 }

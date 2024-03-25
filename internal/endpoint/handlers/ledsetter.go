@@ -5,7 +5,7 @@ import (
 	"net/http"
 )
 
-type LEDSetter struct {
+type LEDHandler struct {
 	Setter
 	Logger *slog.Logger
 }
@@ -14,7 +14,7 @@ type Setter interface {
 	SetLED(bool) error
 }
 
-func (s LEDSetter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+func (h LEDHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	var state bool
 	var status int
 	switch req.Method {
@@ -29,12 +29,12 @@ func (s LEDSetter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if err := s.Setter.SetLED(state); err != nil {
-		s.Logger.Error("failed to set LED state", "err", err)
+	if err := h.Setter.SetLED(state); err != nil {
+		h.Logger.Error("failed to set LED state", "err", err)
 		http.Error(w, "failed to set led state: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	w.WriteHeader(status)
-	s.Logger.Debug("/led", "state", state)
+	h.Logger.Debug("/led", "state", state)
 }

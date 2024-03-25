@@ -30,12 +30,12 @@ func TestEndpoint(t *testing.T) {
 
 	req, _ := http.NewRequest(http.MethodGet, "/endpoint/health", nil)
 	resp := httptest.NewRecorder()
-	ep.ServeHTTP(resp, req)
+	ep.HealthHandler.ServeHTTP(resp, req)
 	assert.Equal(t, http.StatusOK, resp.Code)
 
 	req, _ = http.NewRequest(http.MethodPost, "/endpoint/led", nil)
 	resp = httptest.NewRecorder()
-	ep.ServeHTTP(resp, req)
+	ep.LEDHandler.ServeHTTP(resp, req)
 	assert.Equal(t, http.StatusCreated, resp.Code)
 	assert.True(t, bool(led))
 

@@ -10,7 +10,7 @@ import (
 
 func TestRegisterer_ServeHTTP(t *testing.T) {
 	var r registry
-	h := handlers.Registerer{Registry: &r}
+	h := handlers.HealthHandler{Registry: &r}
 
 	req, _ := http.NewRequest(http.MethodGet, "/", nil)
 	resp := httptest.NewRecorder()

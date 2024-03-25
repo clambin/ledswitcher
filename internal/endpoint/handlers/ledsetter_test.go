@@ -47,7 +47,7 @@ func TestLEDSetter_ServeHTTP(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			l := ledSetter{err: tt.err}
 
-			h := handlers.LEDSetter{
+			h := handlers.LEDHandler{
 				Setter: &l,
 				Logger: slog.Default(),
 			}

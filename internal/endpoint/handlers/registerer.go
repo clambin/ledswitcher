@@ -2,9 +2,9 @@ package handlers
 
 import "net/http"
 
-var _ http.Handler = Registerer{}
+var _ http.Handler = HealthHandler{}
 
-type Registerer struct {
+type HealthHandler struct {
 	Registry
 }
 
@@ -12,8 +12,8 @@ type Registry interface {
 	IsRegistered() bool
 }
 
-func (r Registerer) ServeHTTP(w http.ResponseWriter, _ *http.Request) {
-	if !r.Registry.IsRegistered() {
+func (h HealthHandler) ServeHTTP(w http.ResponseWriter, _ *http.Request) {
+	if !h.Registry.IsRegistered() {
 		http.Error(w, "endpoint not registered (yet)", http.StatusServiceUnavailable)
 		return
 	}

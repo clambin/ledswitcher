@@ -13,7 +13,6 @@ import (
 	"github.com/clambin/ledswitcher/internal/endpoint"
 	"github.com/clambin/ledswitcher/internal/leader"
 	"github.com/clambin/ledswitcher/internal/led"
-	"github.com/clambin/ledswitcher/pkg/chainmux"
 	"github.com/prometheus/client_golang/prometheus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
@@ -49,14 +48,15 @@ func main() {
 	prometheus.MustRegister(serverMetrics)
 	mw := middleware.WithRequestMetrics(serverMetrics)
 
-	m := chainmux.ChainMux{
-		"/leader":   mw(l),
-		"/endpoint": mw(ep),
-	}
+	m := http.NewServeMux()
+	m.Handle("POST /leader/register", l.RegisterHandler)
+	m.Handle("GET /leader/stats", l.StatsHandler)
+	m.Handle("GET /endpoint/health", ep.HealthHandler)
+	m.Handle("/endpoint/led", ep.LEDHandler)
 
 	tm := taskmanager.New(
 		promserver.New(promserver.WithAddr(cfg.PrometheusAddr)),
-		httpserver.New(cfg.Addr, m),
+		httpserver.New(cfg.Addr, mw(m)),
 		ep,
 		l,
 	)
