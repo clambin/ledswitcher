@@ -3,10 +3,15 @@ package main
 import (
 	"context"
 	"flag"
+	"github.com/clambin/go-common/http/metrics"
+	"github.com/clambin/go-common/http/roundtripper"
 	"github.com/clambin/go-common/taskmanager"
+	"github.com/clambin/go-common/taskmanager/httpserver"
 	promserver "github.com/clambin/go-common/taskmanager/prometheus"
 	"github.com/clambin/ledswitcher/internal/configuration"
-	"github.com/clambin/ledswitcher/internal/switcher"
+	"github.com/clambin/ledswitcher/internal/endpoint"
+	"github.com/clambin/ledswitcher/internal/leader"
+	"github.com/clambin/ledswitcher/internal/led"
 	"github.com/prometheus/client_golang/prometheus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
@@ -14,6 +19,7 @@ import (
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	"log/slog"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -31,24 +37,27 @@ func main() {
 	}
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &opts))
 
-	slog.Info("ledswitcher starting", "version", version)
+	logger.Info("ledswitcher starting", "version", version)
+	defer logger.Info("ledswitcher exiting")
 
-	srv, err := switcher.New(cfg, logger)
-	if err != nil {
-		slog.Error("failed to create Switcher", "err", err)
-		os.Exit(1)
-	}
-	prometheus.DefaultRegisterer.MustRegister(srv)
+	l := makeLeader(cfg.LeaderConfiguration, logger.With("component", "leader"))
+	ep := makeEndpoint(cfg, logger.With("component", "endpoint"))
 
+	r := http.NewServeMux()
+	r.Handle("/endpoint", ep)
+	r.Handle("/leader", l)
+	// TODO: middleware
 	tm := taskmanager.New(
 		promserver.New(promserver.WithAddr(cfg.PrometheusAddr)),
-		srv,
+		httpserver.New(cfg.Addr, r),
+		ep,
+		l,
 	)
 
 	if cfg.LeaderConfiguration.Leader == "" {
-		slog.Info("no leader provided. using k8s leader election instead")
+		logger.Info("no leader provided. using k8s leader election instead")
 		_ = tm.Add(taskmanager.TaskFunc(func(ctx context.Context) error {
-			runWithLeaderElection(ctx, srv, cfg)
+			runWithLeaderElection(ctx, ep, l, cfg, logger.With("component", "k8s"))
 			return nil
 		}))
 	}
@@ -56,24 +65,67 @@ func main() {
 	ctx, done := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer done()
 
-	if err = tm.Run(ctx); err != nil {
+	if err := tm.Run(ctx); err != nil {
 		slog.Error("failed to start", "err", err)
 		os.Exit(1)
 	}
-
-	slog.Info("exiting")
 }
 
-func runWithLeaderElection(ctx context.Context, srv *switcher.Switcher, cfg configuration.Configuration) {
+func getConfiguration() configuration.Configuration {
+	var cfg configuration.Configuration
+	flag.BoolVar(&cfg.Debug, "debug", false, "log debug messages")
+	flag.DurationVar(&cfg.LeaderConfiguration.Rotation, "rotation", time.Second, "delay of LED switching to the next state")
+	flag.StringVar(&cfg.LeaderConfiguration.Scheduler.Mode, "mode", "linear", "LED pattern mode")
+	flag.StringVar(&cfg.Addr, "addr", ":8080", "controller address")
+	flag.StringVar(&cfg.PrometheusAddr, "prometheus", ":9090", "prometheus metrics address")
+	flag.StringVar(&cfg.LedPath, "led-path", "/sys/class/leds/led1", "path name to the sysfs directory for the LED")
+	flag.StringVar(&cfg.K8SConfiguration.LockName, "lock-name", "ledswitcher", "name of the k8s leader election lock")
+	flag.StringVar(&cfg.K8SConfiguration.Namespace, "lock-namespace", "default", "namespace of the k8s leader election lock")
+	flag.StringVar(&cfg.Leader, "leader", "", "leader node name (if empty, k8s leader election will be used")
+
+	flag.Parse()
+	return cfg
+}
+
+func getEndpointURL(cfg configuration.Configuration) string {
+	hostname, err := os.Hostname()
+	if err != nil {
+		panic("unable to determine hostname: " + err.Error())
+	}
+	return cfg.LeaderURL(hostname)
+}
+
+func makeLeader(cfg configuration.LeaderConfiguration, logger *slog.Logger) *leader.Leader {
+	leaderClientMetrics := metrics.NewRequestSummaryMetrics("ledswitcher", "leader", nil)
+	prometheus.MustRegister(leaderClientMetrics)
+	leaderClient := http.Client{Transport: roundtripper.New(roundtripper.WithRequestMetrics(leaderClientMetrics))}
+
+	l, err := leader.New(cfg, &leaderClient, logger)
+	if err != nil {
+		panic(err)
+	}
+	return l
+}
+
+func makeEndpoint(cfg configuration.Configuration, logger *slog.Logger) *endpoint.Endpoint {
+	endpointClientMetrics := metrics.NewRequestSummaryMetrics("ledswitcher", "endpoint", nil)
+	prometheus.MustRegister(endpointClientMetrics)
+	endpointClient := http.Client{Transport: roundtripper.New(roundtripper.WithRequestMetrics(endpointClientMetrics))}
+
+	setter := led.Setter{LEDPath: cfg.LedPath}
+	return endpoint.New(getEndpointURL(cfg), 0, &endpointClient, &setter, logger)
+}
+
+func runWithLeaderElection(ctx context.Context, ep *endpoint.Endpoint, l *leader.Leader, cfg configuration.Configuration, logger *slog.Logger) {
 	k8sCfg, err := rest.InClusterConfig()
 	if err != nil {
-		slog.Error("rest.InClusterConfig failed", "err", err)
+		logger.Error("rest.InClusterConfig failed", "err", err)
 		panic(err)
 	}
 
 	hostname, err := os.Hostname()
 	if err != nil {
-		slog.Error("unable to determine hostname", "err", err)
+		logger.Error("unable to determine hostname", "err", err)
 		panic(err)
 	}
 
@@ -97,33 +149,18 @@ func runWithLeaderElection(ctx context.Context, srv *switcher.Switcher, cfg conf
 		RetryPeriod:     5 * time.Second,
 		Callbacks: leaderelection.LeaderCallbacks{
 			OnStartedLeading: func(ctx context.Context) {
-				slog.Info("OnStartLeading called")
+				logger.Info("OnStartLeading called")
 				//<-ctx.Done()
 			},
 			OnStoppedLeading: func() {
-				slog.Info("leader lost")
+				logger.Info("leader lost")
 				os.Exit(1)
 			},
 			OnNewLeader: func(identity string) {
-				slog.Info("leader elected: " + identity)
-				srv.SetLeader(identity)
+				logger.Info("leader elected: " + identity)
+				ep.SetLeaderURL(cfg.LeaderURL(identity))
+				l.SetLeading(identity == hostname)
 			},
 		},
 	})
-}
-
-func getConfiguration() configuration.Configuration {
-	var cfg configuration.Configuration
-	flag.BoolVar(&cfg.Debug, "debug", false, "log debug messages")
-	flag.DurationVar(&cfg.LeaderConfiguration.Rotation, "rotation", time.Second, "delay of LED switching to the next state")
-	flag.StringVar(&cfg.LeaderConfiguration.Scheduler.Mode, "mode", "linear", "LED pattern mode")
-	flag.StringVar(&cfg.Addr, "addr", ":8080", "controller address")
-	flag.StringVar(&cfg.PrometheusAddr, "prometheus", ":9090", "prometheus metrics address")
-	flag.StringVar(&cfg.LedPath, "led-path", "/sys/class/leds/led1", "path name to the sysfs directory for the LED")
-	flag.StringVar(&cfg.K8SConfiguration.LockName, "lock-name", "ledswitcher", "name of the k8s leader election lock")
-	flag.StringVar(&cfg.K8SConfiguration.Namespace, "lock-namespace", "default", "namespace of the k8s leader election lock")
-	flag.StringVar(&cfg.Leader, "leader", "", "leader node name (if empty, k8s leader election will be used")
-
-	flag.Parse()
-	return cfg
 }
