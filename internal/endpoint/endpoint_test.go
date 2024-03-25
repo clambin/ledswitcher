@@ -28,12 +28,12 @@ func TestEndpoint(t *testing.T) {
 
 	assert.Eventually(t, func() bool { return ep.IsRegistered() }, time.Second, 10*time.Millisecond)
 
-	req, _ := http.NewRequest(http.MethodGet, "/health", nil)
+	req, _ := http.NewRequest(http.MethodGet, "/endpoint/health", nil)
 	resp := httptest.NewRecorder()
 	ep.ServeHTTP(resp, req)
 	assert.Equal(t, http.StatusOK, resp.Code)
 
-	req, _ = http.NewRequest(http.MethodPost, "/led", nil)
+	req, _ = http.NewRequest(http.MethodPost, "/endpoint/led", nil)
 	resp = httptest.NewRecorder()
 	ep.ServeHTTP(resp, req)
 	assert.Equal(t, http.StatusCreated, resp.Code)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"github.com/clambin/go-common/http/metrics"
+	"github.com/clambin/go-common/http/middleware"
 	"github.com/clambin/go-common/http/roundtripper"
 	"github.com/clambin/go-common/taskmanager"
 	"github.com/clambin/go-common/taskmanager/httpserver"
@@ -12,6 +13,7 @@ import (
 	"github.com/clambin/ledswitcher/internal/endpoint"
 	"github.com/clambin/ledswitcher/internal/leader"
 	"github.com/clambin/ledswitcher/internal/led"
+	"github.com/clambin/ledswitcher/pkg/chainmux"
 	"github.com/prometheus/client_golang/prometheus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
@@ -43,13 +45,18 @@ func main() {
 	l := makeLeader(cfg.LeaderConfiguration, logger.With("component", "leader"))
 	ep := makeEndpoint(cfg, logger.With("component", "endpoint"))
 
-	r := http.NewServeMux()
-	r.Handle("/endpoint", ep)
-	r.Handle("/leader", l)
-	// TODO: middleware
+	serverMetrics := metrics.NewRequestSummaryMetrics("ledswitcher", "server", nil)
+	prometheus.MustRegister(serverMetrics)
+	mw := middleware.WithRequestMetrics(serverMetrics)
+
+	m := chainmux.ChainMux{
+		"/leader":   mw(l),
+		"/endpoint": mw(ep),
+	}
+
 	tm := taskmanager.New(
 		promserver.New(promserver.WithAddr(cfg.PrometheusAddr)),
-		httpserver.New(cfg.Addr, r),
+		httpserver.New(cfg.Addr, m),
 		ep,
 		l,
 	)

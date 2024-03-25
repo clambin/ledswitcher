@@ -21,8 +21,8 @@ func New(cfg configuration.LeaderConfiguration, httpClient *http.Client, logger 
 	}
 
 	m := http.NewServeMux()
-	m.Handle("POST /register", &handlers.RegisterHandler{Registry: d, Logger: logger.With("handler", "register")})
-	m.Handle("GET /stats", &handlers.StatsHandler{Registry: d, Logger: logger.With("handler", "stats")})
+	m.Handle("POST /leader/register", &handlers.RegisterHandler{Registry: d, Logger: logger.With("handler", "register")})
+	m.Handle("GET /leader/stats", &handlers.StatsHandler{Registry: d, Logger: logger.With("handler", "stats")})
 
 	return &Leader{
 		Handler: m,

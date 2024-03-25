@@ -38,8 +38,8 @@ func New(endpointURL string, interval time.Duration, httpClient *http.Client, se
 	}
 
 	m := http.NewServeMux()
-	m.Handle("/led", &ledSetterHandler)
-	m.Handle("/health", &registererHandler)
+	m.Handle("/endpoint/led", &ledSetterHandler)
+	m.Handle("/endpoint/health", &registererHandler)
 	return &Endpoint{
 		Handler:    m,
 		Registerer: &r,
