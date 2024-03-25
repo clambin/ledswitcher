@@ -34,15 +34,15 @@ spec:
                         legend: "{{method}}"
                 axis:
                     unit: s
-        - name: Registration
+        - name: Endpoints
           panels:
             - timeseries:
                 title: Rate
                 span: 6
                 targets:
                     - prometheus:
-                        query: avg by (instance, code) (rate(ledswitcher_register_http_requests_total[$__rate_interval]))
-                        legend: "{{instance}}:{{code}}"
+                        query: avg by (code) (rate(ledswitcher_endpoint_http_requests_total[$__rate_interval]))
+                        legend: "{{code}}"
                 axis:
                     unit: reqps
             - timeseries:
@@ -50,8 +50,8 @@ spec:
                 span: 6
                 targets:
                     - prometheus:
-                        query: avg by (instance) (ledswitcher_register_http_request_duration_seconds_sum / ledswitcher_register_http_request_duration_seconds_count)
-                        legend: "{{instance}}"
+                        query: avg (ledswitcher_endpoint_http_request_duration_seconds_sum / ledswitcher_endpoint_http_request_duration_seconds_count)
+                        legend: "latency"
                 axis:
                     unit: s
         - name: Server
@@ -61,8 +61,8 @@ spec:
                 span: 6
                 targets:
                     - prometheus:
-                        query: avg by (code) (rate(ledswitcher_registerer_http_server_requests_total[$__rate_interval]))
-                        legend: '{{code}}'
+                        query: sum by (path) (rate(ledswitcher_server_http_requests_total[$__rate_interval]))
+                        legend: '{{path}}'
                 axis:
                     unit: reqps
             - timeseries:
@@ -70,7 +70,7 @@ spec:
                 span: 6
                 targets:
                     - prometheus:
-                        query: avg by (path, method) (ledswitcher_registerer_http_server_request_duration_seconds_sum / ledswitcher_registerer_http_server_request_duration_seconds_count)
-                        legend: '{{path}}:{{method}}'
+                        query: avg by (path) (ledswitcher_server_http_request_duration_seconds_sum / ledswitcher_server_http_request_duration_seconds_count)
+                        legend: '{{path}}'
                 axis:
                     unit: s
