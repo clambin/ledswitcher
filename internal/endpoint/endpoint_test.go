@@ -43,6 +43,13 @@ func TestEndpoint(t *testing.T) {
 	assert.NoError(t, <-ch)
 }
 
+func TestEndpoint_DefaultInterval(t *testing.T) {
+	var led setter
+	ep := endpoint.New("http://localhost:8080", 0, http.DefaultClient, &led, slog.Default())
+
+	assert.Equal(t, time.Minute, ep.Interval)
+}
+
 type setter bool
 
 func (s *setter) SetLED(b bool) error {

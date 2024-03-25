@@ -40,6 +40,19 @@ func TestLeader(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestLeader_Fail(t *testing.T) {
+	hostname, err := os.Hostname()
+	require.NoError(t, err)
+	cfg := configuration.LeaderConfiguration{
+		Leader:    hostname,
+		Rotation:  time.Millisecond,
+		Scheduler: configuration.SchedulerConfiguration{Mode: "<invalid>"},
+	}
+	_, err = leader.New(cfg, http.DefaultClient, slog.Default())
+	assert.Error(t, err)
+
+}
+
 type endpoint struct {
 	called atomic.Int32
 }

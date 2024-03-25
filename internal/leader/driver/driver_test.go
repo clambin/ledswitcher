@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-func TestLeader_Run(t *testing.T) {
+func TestDriver_Run(t *testing.T) {
 	l, _ := driver.New(configuration.LeaderConfiguration{
 		Rotation:  100 * time.Millisecond,
 		Scheduler: configuration.SchedulerConfiguration{Mode: "linear"},
@@ -35,4 +35,11 @@ func TestLeader_Run(t *testing.T) {
 
 	stats := l.Scheduler.GetHosts()
 	assert.Len(t, stats, 2)
+}
+
+func TestDriver_Fail(t *testing.T) {
+	_, err := driver.New(configuration.LeaderConfiguration{
+		Scheduler: configuration.SchedulerConfiguration{Mode: "<invalid>"},
+	}, http.DefaultClient, slog.Default())
+	assert.Error(t, err)
 }
