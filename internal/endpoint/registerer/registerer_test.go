@@ -46,7 +46,7 @@ func (r registry) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, "invalid method", http.StatusMethodNotAllowed)
 		return
 	}
-	if req.URL.Path != "/register" {
+	if req.URL.Path != "/leader/register" {
 		http.Error(w, "invalid path", http.StatusNotFound)
 		return
 	}

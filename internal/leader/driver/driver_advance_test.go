@@ -100,7 +100,7 @@ type endpoint struct {
 }
 
 func (e *endpoint) handle(w http.ResponseWriter, req *http.Request) {
-	if req.URL.Path != "/led" {
+	if req.URL.Path != "/endpoint/led" {
 		http.Error(w, "invalid path", http.StatusBadRequest)
 		return
 	}
