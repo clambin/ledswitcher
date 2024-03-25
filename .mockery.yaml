@@ -3,7 +3,7 @@ filename: "{{.InterfaceName}}.go"
 dir: "{{.InterfaceDir}}/mocks"
 mockname: "{{.InterfaceName}}"
 outpkg: "mocks"
-packages:
-  github.com/clambin/ledswitcher/switcher:
-    interfaces:
-      Setter:
+packages: {}
+  #github.com/clambin/ledswitcher/switcher:
+  #  interfaces:
+  #    Setter:
