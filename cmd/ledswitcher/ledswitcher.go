@@ -52,10 +52,8 @@ func main() {
 	mw := middleware.WithRequestMetrics(serverMetrics)
 
 	m := http.NewServeMux()
-	m.Handle("POST /leader/register", l.RegisterHandler)
-	m.Handle("GET /leader/stats", l.StatsHandler)
-	m.Handle("GET /endpoint/health", ep.HealthHandler)
-	m.Handle("/endpoint/led", ep.LEDHandler)
+	m.Handle("/leader/", l)
+	m.Handle("/endpoint/", ep)
 
 	tm := taskmanager.New(
 		httpserver.New(":6060", http.DefaultServeMux),

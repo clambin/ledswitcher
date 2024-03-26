@@ -10,8 +10,7 @@ import (
 )
 
 type Leader struct {
-	*handlers.RegisterHandler
-	*handlers.StatsHandler
+	http.Handler
 	*driver.Driver
 }
 
@@ -21,9 +20,12 @@ func New(cfg configuration.LeaderConfiguration, httpClient *http.Client, logger 
 		return nil, fmt.Errorf("driver: %w", err)
 	}
 
+	m := http.NewServeMux()
+	m.Handle("POST /leader/register", &handlers.RegisterHandler{Registry: d, Logger: logger.With("handler", "register")})
+	m.Handle("GET /leader/stats", &handlers.StatsHandler{Registry: d, Logger: logger.With("handler", "stats")})
+
 	return &Leader{
-		RegisterHandler: &handlers.RegisterHandler{Registry: d, Logger: logger.With("handler", "register")},
-		StatsHandler:    &handlers.StatsHandler{Registry: d, Logger: logger.With("handler", "stats")},
-		Driver:          d,
+		Driver:  d,
+		Handler: m,
 	}, nil
 }

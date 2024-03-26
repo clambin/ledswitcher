@@ -9,8 +9,7 @@ import (
 )
 
 type Endpoint struct {
-	*handlers.LEDHandler
-	*handlers.HealthHandler
+	http.Handler
 	*registerer.Registerer
 }
 
@@ -28,9 +27,14 @@ func New(endpointURL string, interval time.Duration, httpClient *http.Client, se
 		Logger:      logger,
 	}
 
+	m := http.NewServeMux()
+	lh := handlers.LEDHandler{Setter: setter, Logger: logger.With("component", "ledsetter")}
+	m.Handle("POST /endpoint/led", &lh)
+	m.Handle("DELETE /endpoint/led", &lh)
+	m.Handle("/endpoint/health", &handlers.HealthHandler{Registry: &r})
+
 	return &Endpoint{
-		LEDHandler:    &handlers.LEDHandler{Setter: setter, Logger: logger.With("component", "ledsetter")},
-		HealthHandler: &handlers.HealthHandler{Registry: &r},
-		Registerer:    &r,
+		Registerer: &r,
+		Handler:    m,
 	}
 }
