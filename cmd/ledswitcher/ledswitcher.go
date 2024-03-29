@@ -2,18 +2,18 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"github.com/clambin/go-common/http/metrics"
 	"github.com/clambin/go-common/http/middleware"
 	"github.com/clambin/go-common/http/roundtripper"
-	"github.com/clambin/go-common/taskmanager"
-	"github.com/clambin/go-common/taskmanager/httpserver"
-	promserver "github.com/clambin/go-common/taskmanager/prometheus"
 	"github.com/clambin/ledswitcher/internal/configuration"
 	"github.com/clambin/ledswitcher/internal/endpoint"
 	"github.com/clambin/ledswitcher/internal/leader"
 	"github.com/clambin/ledswitcher/internal/led"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"golang.org/x/sync/errgroup"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -26,8 +26,6 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
-
-	_ "net/http/pprof"
 )
 
 var version = "change-me"
@@ -55,27 +53,39 @@ func main() {
 	m.Handle("/leader/", l)
 	m.Handle("/endpoint/", ep)
 
-	tm := taskmanager.New(
-		httpserver.New(":6060", http.DefaultServeMux),
-		promserver.New(promserver.WithAddr(cfg.PrometheusAddr)),
-		httpserver.New(cfg.Addr, mw(m)),
-		ep,
-		l,
-	)
-
-	if cfg.LeaderConfiguration.Leader == "" {
-		logger.Info("no leader provided. using k8s leader election instead")
-		_ = tm.Add(taskmanager.TaskFunc(func(ctx context.Context) error {
-			runWithLeaderElection(ctx, ep, l, cfg, logger.With("component", "k8s"))
-			return nil
-		}))
-	}
-
 	ctx, done := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer done()
 
-	if err := tm.Run(ctx); err != nil {
-		slog.Error("failed to start", "err", err)
+	var g errgroup.Group
+
+	g.Go(func() error {
+		err := http.ListenAndServe(cfg.PrometheusAddr, promhttp.Handler())
+		if errors.Is(err, http.ErrServerClosed) {
+			err = nil
+		}
+		return err
+	})
+	g.Go(func() error {
+		err := http.ListenAndServe(cfg.Addr, mw(m))
+		if errors.Is(err, http.ErrServerClosed) {
+			err = nil
+		}
+		return err
+	})
+	g.Go(func() error {
+		return ep.Run(ctx)
+	})
+	g.Go(func() error {
+		return l.Run(ctx)
+	})
+
+	if cfg.LeaderConfiguration.Leader == "" {
+		logger.Info("no leader provided. using k8s leader election instead")
+		g.Go(func() error { runWithLeaderElection(ctx, ep, l, cfg, logger.With("component", "k8s")); return nil })
+	}
+
+	if err := g.Wait(); err != nil {
+		logger.Error("failed to start", "err", err)
 		os.Exit(1)
 	}
 }
