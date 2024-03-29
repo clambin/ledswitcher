@@ -20,9 +20,9 @@ FROM alpine
 WORKDIR /app
 COPY --from=builder /app/ledswitcher /app/ledswitcher
 
-RUN /usr/sbin/addgroup app
-RUN /usr/sbin/adduser app -G app -D
-USER app
+#RUN /usr/sbin/addgroup app
+#RUN /usr/sbin/adduser app -G app -D
+#USER app
 
 ENTRYPOINT ["/app/ledswitcher"]
 CMD []
