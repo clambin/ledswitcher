@@ -1,6 +1,5 @@
 FROM --platform=${BUILDPLATFORM:-linux/amd64} golang:1.22 as builder
 
-ARG TARGETPLATFORM
 ARG BUILDPLATFORM
 ARG TARGETOS
 ARG TARGETARCH
@@ -19,10 +18,6 @@ FROM alpine
 
 WORKDIR /app
 COPY --from=builder /app/ledswitcher /app/ledswitcher
-
-#RUN /usr/sbin/addgroup app
-#RUN /usr/sbin/adduser app -G app -D
-#USER app
 
 ENTRYPOINT ["/app/ledswitcher"]
 CMD []
