@@ -45,7 +45,7 @@ func main() {
 	l := makeLeader(cfg.LeaderConfiguration, logger.With("component", "leader"))
 	ep := makeEndpoint(cfg, logger.With("component", "endpoint"))
 
-	serverMetrics := metrics.NewRequestSummaryMetrics("ledswitcher", "server", nil)
+	serverMetrics := metrics.NewRequestMetrics(metrics.Options{Namespace: "ledswitcher", Subsystem: "server"})
 	prometheus.MustRegister(serverMetrics)
 	mw := middleware.WithRequestMetrics(serverMetrics)
 
@@ -123,7 +123,8 @@ func hostToURI(hostname string, cfg configuration.Configuration) string {
 }
 
 func makeLeader(cfg configuration.LeaderConfiguration, logger *slog.Logger) *leader.Leader {
-	leaderClientMetrics := metrics.NewRequestSummaryMetrics("ledswitcher", "leader", nil)
+	leaderClientMetrics := metrics.NewRequestMetrics(metrics.Options{Namespace: "ledswitcher", Subsystem: "leader"})
+
 	prometheus.MustRegister(leaderClientMetrics)
 	leaderClient := http.Client{Transport: roundtripper.New(roundtripper.WithRequestMetrics(leaderClientMetrics))}
 
@@ -135,7 +136,8 @@ func makeLeader(cfg configuration.LeaderConfiguration, logger *slog.Logger) *lea
 }
 
 func makeEndpoint(cfg configuration.Configuration, logger *slog.Logger) *endpoint.Endpoint {
-	endpointClientMetrics := metrics.NewRequestSummaryMetrics("ledswitcher", "endpoint", nil)
+	endpointClientMetrics := metrics.NewRequestMetrics(metrics.Options{Namespace: "ledswitcher", Subsystem: "endpoint"})
+
 	prometheus.MustRegister(endpointClientMetrics)
 	endpointClient := http.Client{Transport: roundtripper.New(roundtripper.WithRequestMetrics(endpointClientMetrics))}
 
