@@ -8,7 +8,7 @@ require (
 	github.com/clambin/go-common/http v0.5.0
 	github.com/prometheus/client_golang v1.19.1
 	github.com/stretchr/testify v1.9.0
-	golang.org/x/sync v0.7.0
+	golang.org/x/sync v0.8.0
 	k8s.io/apimachinery v0.31.0
 	k8s.io/client-go v0.31.0
 )
