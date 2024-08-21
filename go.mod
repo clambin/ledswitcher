@@ -6,7 +6,7 @@ toolchain go1.22.3
 
 require (
 	github.com/clambin/go-common/http v0.5.1
-	github.com/prometheus/client_golang v1.20.0
+	github.com/prometheus/client_golang v1.20.1
 	github.com/stretchr/testify v1.9.0
 	golang.org/x/sync v0.8.0
 	k8s.io/apimachinery v0.31.0
