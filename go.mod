@@ -1,11 +1,9 @@
 module github.com/clambin/ledswitcher
 
-go 1.22.0
-
-toolchain go1.22.3
+go 1.23.0
 
 require (
-	github.com/clambin/go-common/http v0.5.1
+	github.com/clambin/go-common/http v0.5.2
 	github.com/prometheus/client_golang v1.20.2
 	github.com/stretchr/testify v1.9.0
 	golang.org/x/sync v0.8.0
@@ -16,7 +14,7 @@ require (
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/clambin/go-common/cache v0.5.0 // indirect
+	github.com/clambin/go-common/cache v0.6.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/emicklei/go-restful/v3 v3.11.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
