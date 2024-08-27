@@ -27,7 +27,7 @@ func (d *Driver) advance(_ context.Context) {
 		go func(target string, state bool) {
 			defer wg.Done()
 			err := d.setLED(target, state)
-			d.registry.UpdateStatus(target, err == nil)
+			d.registry.UpdateStatus(target, state, err == nil)
 			d.logger.Debug("setState", "host", target, "state", state, "err", err)
 		}(action.Host, action.State)
 	}
