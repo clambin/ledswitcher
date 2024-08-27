@@ -26,12 +26,25 @@ func (d *Driver) advance(_ context.Context) {
 	for _, action := range next {
 		go func(target string, state bool) {
 			defer wg.Done()
-			err := d.setLED(target, state)
-			d.registry.UpdateStatus(target, state, err == nil)
-			d.logger.Debug("setState", "host", target, "state", state, "err", err)
+			d.sendStateRequest(target, state)
 		}(action.Host, action.State)
 	}
 	wg.Wait()
+}
+
+func (d *Driver) sendStateRequest(target string, state bool) {
+	current, found := d.registry.HostState(target)
+	if !found {
+		d.logger.Warn("host state not found", "target", target)
+		return
+	}
+	if state == current {
+		d.logger.Debug("host already in desired state. not sending request", "target", target, "state", current)
+		return
+	}
+	err := d.setLED(target, state)
+	d.registry.UpdateHostState(target, state, err == nil)
+	d.logger.Debug("setState", "host", target, "state", state, "err", err)
 }
 
 var statusConfig = map[bool]struct {

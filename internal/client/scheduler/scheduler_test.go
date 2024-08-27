@@ -46,3 +46,27 @@ func TestScheduler_Next(t *testing.T) {
 		{Host: "host3", State: true},
 	}, s.Next())
 }
+
+func TestActions_LogValue(t *testing.T) {
+	tests := []struct {
+		name string
+		a    scheduler.Actions
+		want string
+	}{
+		{
+			name: "1",
+			a:    scheduler.Actions{{State: true}},
+			want: "1",
+		},
+		{
+			name: "10",
+			a:    scheduler.Actions{{State: true}, {State: false}},
+			want: "10",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.a.LogValue().String())
+		})
+	}
+}

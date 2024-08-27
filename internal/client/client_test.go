@@ -11,14 +11,15 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"sync/atomic"
 	"testing"
 	"time"
 )
 
 func TestClient(t *testing.T) {
-	var ledCalled atomic.Bool
-	l := slog.Default()
+	var ledCalled atomic.Int32
+	l := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	r := registry.Registry{Logger: l}
 	s := httptest.NewServer(serverHandler(t, &ledCalled, &r))
 	defer s.Close()
@@ -27,8 +28,8 @@ func TestClient(t *testing.T) {
 		Addr: ":8088",
 		LeaderConfiguration: configuration.LeaderConfiguration{
 			Leader:    s.URL,
-			Rotation:  time.Second,
-			Scheduler: configuration.SchedulerConfiguration{Mode: "linear"},
+			Rotation:  500 * time.Millisecond,
+			Scheduler: configuration.SchedulerConfiguration{Mode: "random"},
 		},
 	}
 	c, err := New(cfg, &r, l)
@@ -45,10 +46,10 @@ func TestClient(t *testing.T) {
 	}()
 
 	assert.Eventually(t, func() bool { return c.IsRegistered() }, time.Second, 100*time.Millisecond)
-	assert.Eventually(t, func() bool { return ledCalled.Load() }, time.Second, 100*time.Millisecond)
+	assert.Eventually(t, func() bool { return ledCalled.Load() > 1 }, 5*time.Second, 500*time.Millisecond)
 }
 
-func serverHandler(t *testing.T, ledCalled *atomic.Bool, reg *registry.Registry) http.Handler {
+func serverHandler(t *testing.T, ledCalled *atomic.Int32, reg *registry.Registry) http.Handler {
 	t.Helper()
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		//t.Log(r.URL.Path)
@@ -56,10 +57,10 @@ func serverHandler(t *testing.T, ledCalled *atomic.Bool, reg *registry.Registry)
 		case "/endpoint/led":
 			switch r.Method {
 			case http.MethodPost:
-				ledCalled.Store(true)
+				ledCalled.Add(1)
 				w.WriteHeader(http.StatusCreated)
 			case http.MethodDelete:
-				ledCalled.Store(true)
+				ledCalled.Add(1)
 				w.WriteHeader(http.StatusNoContent)
 			default:
 				w.WriteHeader(http.StatusMethodNotAllowed)

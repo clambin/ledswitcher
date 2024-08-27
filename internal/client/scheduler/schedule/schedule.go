@@ -1,6 +1,9 @@
 package schedule
 
-import "fmt"
+import (
+	"fmt"
+	"slices"
+)
 
 // Schedule interface to determine the next LED to switch on
 type Schedule interface {
@@ -25,9 +28,12 @@ func New(mode string) (Schedule, error) {
 	return s, nil
 }
 
-func intToBits(val, count int) (bits []bool) {
-	for bit := 1 << (count - 1); bit > 0; bit = bit >> 1 {
-		bits = append(bits, val&bit != 0)
+func intToBits(val, count int) []bool {
+	bits := make([]bool, 0, count)
+	for range count {
+		bits = append(bits, val&0x1 == 0x1)
+		val >>= 1
 	}
-	return
+	slices.Reverse(bits)
+	return bits
 }

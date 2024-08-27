@@ -17,7 +17,7 @@ type Registrant interface {
 type Registry interface {
 	IsLeading() bool
 	Register(string)
-	GetHosts() []*registry.Host
+	Hosts() []*registry.Host
 }
 
 func New(ledSetter LEDSetter, registrant Registrant, registry Registry, logger *slog.Logger) http.Handler {

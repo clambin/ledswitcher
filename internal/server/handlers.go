@@ -84,7 +84,7 @@ func registryStatsHandler(registry Registry, logger *slog.Logger) http.Handler {
 		enc := json.NewEncoder(w)
 		enc.SetIndent("", "  ")
 
-		if err := enc.Encode(registry.GetHosts()); err != nil {
+		if err := enc.Encode(registry.Hosts()); err != nil {
 			logger.Error("failed to encode hosts", "err", err)
 			http.Error(w, "failed to encode hosts: "+err.Error(), http.StatusInternalServerError)
 		}

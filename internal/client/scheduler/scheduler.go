@@ -54,15 +54,13 @@ func (s *Scheduler) Next() Actions {
 	defer s.lock.Unlock()
 
 	// only consider the active hosts
-	hosts := s.registry.GetHosts()
+	hosts := s.registry.Hosts()
 	count := len(hosts)
 	if count == 0 {
 		return nil
 	}
 
 	// get the next state and, for each host that is not in the desired state, create an action
-	//
-	// TODO: unlike previous implementation, we don't keep the current state.  So each LED will get a request for every iteration.
 	actions := make(Actions, 0, count)
 	for index, state := range s.schedule.Next(count) {
 		host := hosts[index]

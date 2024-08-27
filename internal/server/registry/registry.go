@@ -43,7 +43,7 @@ func (r *Registry) Register(name string) {
 	})
 }
 
-func (r *Registry) GetHosts() []*Host {
+func (r *Registry) Hosts() []*Host {
 	r.lock.RLock()
 	defer r.lock.RUnlock()
 	hosts := make([]*Host, 0, len(r.hosts))
@@ -55,7 +55,18 @@ func (r *Registry) GetHosts() []*Host {
 	return hosts
 }
 
-func (r *Registry) UpdateStatus(host string, state bool, reachable bool) {
+func (r *Registry) HostState(name string) (bool, bool) {
+	r.lock.RLock()
+	defer r.lock.RUnlock()
+	for _, host := range r.hosts {
+		if host.IsAlive() && host.Name == name {
+			return host.State, true
+		}
+	}
+	return false, false
+}
+
+func (r *Registry) UpdateHostState(host string, state bool, reachable bool) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 	for _, h := range r.hosts {

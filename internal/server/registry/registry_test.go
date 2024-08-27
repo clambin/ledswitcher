@@ -47,7 +47,7 @@ func TestRegistry_GetHosts(t *testing.T) {
 				r.Register(host)
 			}
 			registeredHosts := make([]string, 0, len(tt.hosts))
-			for _, host := range r.GetHosts() {
+			for _, host := range r.Hosts() {
 				registeredHosts = append(registeredHosts, host.Name)
 			}
 			assert.Equal(t, tt.want, registeredHosts)
@@ -59,12 +59,12 @@ func TestRegistry_ReRegister(t *testing.T) {
 	r := &Registry{Logger: slog.Default()}
 	r.Register("localhost")
 	for range maxFailures {
-		r.UpdateStatus("localhost", false, false)
+		r.UpdateHostState("localhost", false, false)
 	}
-	assert.Empty(t, r.GetHosts())
+	assert.Empty(t, r.Hosts())
 	r.Register("localhost")
-	require.Len(t, r.GetHosts(), 1)
-	assert.Equal(t, "localhost", r.GetHosts()[0].Name)
+	require.Len(t, r.Hosts(), 1)
+	assert.Equal(t, "localhost", r.Hosts()[0].Name)
 }
 
 func TestRegistry_UpdateStatus(t *testing.T) {
@@ -113,8 +113,8 @@ func TestRegistry_UpdateStatus(t *testing.T) {
 			t.Parallel()
 			r := &Registry{Logger: slog.Default()}
 			r.Register(tt.args.host)
-			r.UpdateStatus(tt.args.host, tt.args.state, tt.args.reachable)
-			hosts := r.GetHosts()
+			r.UpdateHostState(tt.args.host, tt.args.state, tt.args.reachable)
+			hosts := r.Hosts()
 			require.Len(t, hosts, 1)
 			assert.Equal(t, tt.wantState, hosts[0].State)
 			assert.Equal(t, tt.wantIsAlive, hosts[0].IsAlive())
@@ -125,12 +125,12 @@ func TestRegistry_UpdateStatus(t *testing.T) {
 func TestRegistry_Dead(t *testing.T) {
 	r := &Registry{Logger: slog.Default()}
 	r.Register("localhost")
-	r.UpdateStatus("localhost", false, true)
-	assert.True(t, r.GetHosts()[0].IsAlive())
+	r.UpdateHostState("localhost", false, true)
+	assert.True(t, r.Hosts()[0].IsAlive())
 	for range maxFailures {
-		r.UpdateStatus("localhost", false, false)
+		r.UpdateHostState("localhost", false, false)
 	}
-	assert.Empty(t, r.GetHosts())
+	assert.Empty(t, r.Hosts())
 }
 
 func TestRegistry_Cleanup(t *testing.T) {
@@ -160,7 +160,7 @@ func TestRegistry_Cleanup(t *testing.T) {
 			t.Parallel()
 			r := &Registry{hosts: []*Host{&tt.host}}
 			r.Cleanup()
-			assert.Len(t, r.GetHosts(), tt.want)
+			assert.Len(t, r.Hosts(), tt.want)
 		})
 	}
 }

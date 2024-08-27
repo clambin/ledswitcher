@@ -14,12 +14,13 @@ var _ Schedule = &RandomSchedule{}
 // Next returns the next pattern
 func (s *RandomSchedule) Next(count int) []bool {
 	var next int
+	maxVal := 1<<(count-1) + 1
 	for range 5 {
-		next = 1 + rand.Intn(count)
+		next = rand.Intn(maxVal)
 		if next != s.current {
 			break
 		}
 	}
 	s.current = next
-	return intToBits(1<<(s.current-1), count)
+	return intToBits(s.current, count)
 }
