@@ -28,11 +28,11 @@ func (r *Registrant) Register(ctx context.Context) {
 	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, r.leaderURL+"/leader/register", &body)
 	resp, err := r.httpClient.Do(req)
 	if err != nil {
-		r.logger.Error("failed to send registration request", "err", err)
+		r.logger.Error("failed to send registration request", "err", err, "target", r.leaderURL)
 		return
 	}
 	if resp.StatusCode != http.StatusCreated {
-		r.logger.Error("registration request rejected", "status", resp.Status)
+		r.logger.Error("registration request rejected", "status", resp.Status, "target", r.leaderURL)
 		return
 	}
 	r.isRegistered.Store(true)

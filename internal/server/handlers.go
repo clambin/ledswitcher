@@ -67,7 +67,7 @@ func registryHandler(registry Registry, logger *slog.Logger) http.Handler {
 		}
 
 		registry.Register(hostname.String())
-		logger.Debug("/register", "url", hostname.String())
+		logger.Debug("client registered", "url", hostname.String())
 		w.WriteHeader(http.StatusCreated)
 	})
 }
