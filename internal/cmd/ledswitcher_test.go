@@ -45,7 +45,7 @@ func Test_main(t *testing.T) {
 	cancel()
 	assert.NoError(t, <-errCh)
 
-	assert.Equal(t, 8, testutil.CollectAndCount(r,
+	assert.Equal(t, 6, testutil.CollectAndCount(r,
 		"ledswitcher_server_api_requests_total",
 		"ledswitcher_server_api_request_duration_seconds",
 		"ledswitcher_client_api_requests_total",

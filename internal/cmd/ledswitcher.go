@@ -95,10 +95,12 @@ func build(cfg configuration.Configuration, promReg prometheus.Registerer) (http
 
 	ledSetter := ledsetter.Setter{LEDPath: cfg.LedPath}
 	r := registry.Registry{Logger: l.With(slog.String("component", "registry"))}
-	httpClient := http.DefaultClient
-	httpClient.Transport = promhttp.InstrumentRoundTripperDuration(clientDuration,
-		promhttp.InstrumentRoundTripperCounter(clientCounter, http.DefaultTransport),
-	)
+	httpClient := &http.Client{
+		Timeout: 10 * time.Second,
+		Transport: promhttp.InstrumentRoundTripperDuration(clientDuration,
+			promhttp.InstrumentRoundTripperCounter(clientCounter, http.DefaultTransport),
+		),
+	}
 	c, err := client.NewWithHTTPClient(cfg, &r, httpClient, l.With(slog.String("component", "client")))
 	if err != nil {
 		err = fmt.Errorf("invalid client configuration: %w", err)
