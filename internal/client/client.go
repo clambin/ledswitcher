@@ -18,7 +18,6 @@ var _ server.Registrant = &Client{}
 type Client struct {
 	Driver
 	Registrant
-	myURL       string
 	ledInterval time.Duration
 	isLeading   bool
 }

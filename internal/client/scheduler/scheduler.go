@@ -10,10 +10,9 @@ import (
 
 // Scheduler determines the LED state for each active host(s)
 type Scheduler struct {
-	schedule  schedule.Schedule
-	registry  *registry.Registry
-	hostNames []string
-	lock      sync.RWMutex
+	schedule schedule.Schedule
+	registry *registry.Registry
+	lock     sync.RWMutex
 }
 
 // New creates a Scheduler based on the provided pattern name

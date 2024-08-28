@@ -117,7 +117,7 @@ func build(cfg configuration.Configuration, promReg prometheus.Registerer) (http
 
 func electLeader(ctx context.Context, cfg configuration.Configuration, logger *slog.Logger) string {
 	ch := make(chan string)
-	runElection(ctx, cfg, ch, logger.With(slog.String("component", "k8s")))
+	go runElection(ctx, cfg, ch, logger.With(slog.String("component", "k8s")))
 	return <-ch
 }
 
@@ -163,6 +163,7 @@ func runElection(ctx context.Context, cfg configuration.Configuration, ch chan<-
 			OnNewLeader: func(identity string) {
 				logger.Info("leader elected", "leader", identity)
 				ch <- identity
+				<-ctx.Done()
 			},
 		},
 	})
