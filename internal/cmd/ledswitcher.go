@@ -9,6 +9,7 @@ import (
 	"github.com/clambin/ledswitcher/internal/server"
 	"github.com/clambin/ledswitcher/internal/server/ledsetter"
 	"github.com/clambin/ledswitcher/internal/server/registry"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"golang.org/x/sync/errgroup"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -22,12 +23,48 @@ import (
 	"time"
 )
 
+var (
+	serverCounter = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "ledswitcher_server_api_requests_total",
+			Help: "A serverCounter for requests to the wrapped handler.",
+		},
+		[]string{"code", "method"},
+	)
+
+	serverDuration = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "ledswitcher_server_api_request_duration_seconds",
+			Help:    "A histogram of latencies for requests.",
+			Buckets: []float64{.25, .5, 1, 2.5, 5, 10},
+		},
+		[]string{"method"},
+	)
+
+	clientCounter = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "ledswitcher_client_api_requests_total",
+			Help: "A counter for requests from the wrapped client.",
+		},
+		[]string{"code", "method"},
+	)
+
+	clientDuration = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "ledswitcher_client_api_request_duration_seconds",
+			Help:    "A histogram of request latencies.",
+			Buckets: prometheus.DefBuckets,
+		},
+		[]string{"code", "method"},
+	)
+)
+
 func Main(ctx context.Context, version string) error {
-	return runWithConfiguration(ctx, configuration.GetConfiguration(), version)
+	return runWithConfiguration(ctx, configuration.GetConfiguration(), prometheus.DefaultRegisterer, version)
 }
 
-func runWithConfiguration(ctx context.Context, cfg configuration.Configuration, version string) error {
-	h, c, r, logger, err := build(cfg)
+func runWithConfiguration(ctx context.Context, cfg configuration.Configuration, promReg prometheus.Registerer, version string) error {
+	h, c, r, logger, err := build(cfg, promReg)
 	if err != nil {
 		return err
 	}
@@ -43,14 +80,13 @@ func runWithConfiguration(ctx context.Context, cfg configuration.Configuration, 
 	var g errgroup.Group
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", promhttp.Handler())
-	// TODO: middleware
 	runHTTPServer(ctx, cfg.PrometheusAddr, mux, &g, logger)
 	runHTTPServer(ctx, cfg.Addr, h, &g, logger)
 	g.Go(func() error { return c.Run(ctx) })
 	return g.Wait()
 }
 
-func build(cfg configuration.Configuration) (http.Handler, *client.Client, *registry.Registry, *slog.Logger, error) {
+func build(cfg configuration.Configuration, promReg prometheus.Registerer) (http.Handler, *client.Client, *registry.Registry, *slog.Logger, error) {
 	var opt slog.HandlerOptions
 	if cfg.Debug {
 		opt.Level = slog.LevelDebug
@@ -59,13 +95,21 @@ func build(cfg configuration.Configuration) (http.Handler, *client.Client, *regi
 
 	ledSetter := ledsetter.Setter{LEDPath: cfg.LedPath}
 	r := registry.Registry{Logger: l.With(slog.String("component", "registry"))}
-	// TODO: client instrumentation
 	httpClient := http.DefaultClient
+	httpClient.Transport = promhttp.InstrumentRoundTripperDuration(clientDuration,
+		promhttp.InstrumentRoundTripperCounter(clientCounter, http.DefaultTransport),
+	)
 	c, err := client.NewWithHTTPClient(cfg, &r, httpClient, l.With(slog.String("component", "client")))
 	if err != nil {
 		err = fmt.Errorf("invalid client configuration: %w", err)
 	}
-	h := server.New(&ledSetter, c, &r, l.With(slog.String("component", "server")))
+	h := promhttp.InstrumentHandlerDuration(serverDuration,
+		promhttp.InstrumentHandlerCounter(serverCounter,
+			server.New(&ledSetter, c, &r, l.With(slog.String("component", "server"))),
+		),
+	)
+
+	promReg.MustRegister(serverCounter, serverDuration, clientCounter, clientDuration)
 	return h, c, &r, l, err
 }
 

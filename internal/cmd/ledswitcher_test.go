@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"github.com/clambin/ledswitcher/internal/configuration"
 	"github.com/clambin/ledswitcher/internal/server/registry"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"testing"
@@ -28,9 +30,11 @@ func Test_main(t *testing.T) {
 		},
 	}
 
+	r := prometheus.NewRegistry()
+
 	errCh := make(chan error)
 	go func() {
-		errCh <- runWithConfiguration(ctx, cfg, "dev")
+		errCh <- runWithConfiguration(ctx, cfg, r, "dev")
 	}()
 
 	assert.Eventually(t, func() bool {
@@ -40,6 +44,13 @@ func Test_main(t *testing.T) {
 
 	cancel()
 	assert.NoError(t, <-errCh)
+
+	assert.Equal(t, 8, testutil.CollectAndCount(r,
+		"ledswitcher_server_api_requests_total",
+		"ledswitcher_server_api_request_duration_seconds",
+		"ledswitcher_client_api_requests_total",
+		"ledswitcher_client_api_request_duration_seconds",
+	))
 }
 
 func getStats() (int, error) {
