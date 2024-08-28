@@ -47,11 +47,6 @@ func healthHandler(registrar Registrant) http.Handler {
 
 func registryHandler(registry Registry, logger *slog.Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !registry.IsLeading() {
-			http.Error(w, "not leading", http.StatusServiceUnavailable)
-			return
-		}
-
 		var req api.RegistrationRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			logger.Error("failed to parse request", "err", err)
@@ -63,6 +58,12 @@ func registryHandler(registry Registry, logger *slog.Logger) http.Handler {
 		if err != nil {
 			logger.Error("invalid hostname in request", "err", err)
 			http.Error(w, "invalid request: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		if !registry.IsLeading() {
+			logger.Warn("rejecting registration request: not leading", "url", hostname.String())
+			http.Error(w, "not leading", http.StatusServiceUnavailable)
 			return
 		}
 
