@@ -39,7 +39,7 @@ func (d *Driver) sendStateRequest(target string, state bool) {
 		return
 	}
 	if state == current {
-		d.logger.Debug("host already in desired state. not sending request", "target", target, "state", current)
+		//d.logger.Debug("host already in desired state. not sending request", "target", target, "state", current)
 		return
 	}
 	err := d.setLED(target, state)
