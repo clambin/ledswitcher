@@ -11,7 +11,7 @@ import (
 	"sync/atomic"
 )
 
-type Registrant struct {
+type registrant struct {
 	leaderURL    string
 	cfg          configuration.Configuration
 	clientURL    string
@@ -20,11 +20,11 @@ type Registrant struct {
 	logger       *slog.Logger
 }
 
-func (r *Registrant) SetLeader(host string) {
+func (r *registrant) setLeader(host string) {
 	r.leaderURL = "http://" + r.cfg.MustURLFromHost(host)
 }
 
-func (r *Registrant) Register(ctx context.Context) {
+func (r *registrant) register(ctx context.Context) {
 	r.logger.Debug("(re-)registering with leader")
 	if r.leaderURL == "" {
 		r.logger.Warn("no leader yet. skipping registration request")
@@ -50,6 +50,6 @@ func (r *Registrant) Register(ctx context.Context) {
 	r.isRegistered.Store(true)
 }
 
-func (r *Registrant) IsRegistered() bool {
+func (r *registrant) IsRegistered() bool {
 	return r.isRegistered.Load()
 }

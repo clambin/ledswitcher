@@ -11,15 +11,14 @@ import (
 	"sync"
 )
 
-// Driver sends requests to endpoints to switch their LED on/off depending on the configured scheduler
-type Driver struct {
+type driver struct {
 	scheduler *scheduler.Scheduler
 	registry  *registry.Registry
 	logger    *slog.Logger
 	client    *http.Client
 }
 
-func (d *Driver) advance(_ context.Context) {
+func (d *driver) advance(_ context.Context) {
 	next := d.scheduler.Next()
 	var wg sync.WaitGroup
 	wg.Add(len(next))
@@ -35,7 +34,7 @@ func (d *Driver) advance(_ context.Context) {
 	d.logger.Debug("advanced scheduler", "next", next)
 }
 
-func (d *Driver) sendStateRequest(target string, state bool) error {
+func (d *driver) sendStateRequest(target string, state bool) error {
 	current, found := d.registry.HostState(target)
 	if !found {
 		return errors.New("unable to find host state")
@@ -57,7 +56,7 @@ var statusConfig = map[bool]struct {
 }
 
 // setLED performs an HTTP request to switch the LED at the specified host on or off
-func (d *Driver) setLED(targetURL string, state bool) error {
+func (d *driver) setLED(targetURL string, state bool) error {
 	cfg := statusConfig[state]
 	req, _ := http.NewRequest(cfg.method, targetURL+"/endpoint/led", nil)
 	resp, err := d.client.Do(req)

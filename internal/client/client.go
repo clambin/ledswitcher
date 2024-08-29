@@ -6,18 +6,15 @@ import (
 	"github.com/clambin/ledswitcher/internal/client/scheduler"
 	"github.com/clambin/ledswitcher/internal/configuration"
 	"github.com/clambin/ledswitcher/internal/registry"
-	"github.com/clambin/ledswitcher/internal/server"
 	"log/slog"
 	"net/http"
 	"os"
 	"time"
 )
 
-var _ server.Registrant = &Client{}
-
 type Client struct {
-	Driver
-	Registrant
+	driver
+	registrant
 	Leader        chan string
 	ledInterval   time.Duration
 	logger        *slog.Logger
@@ -35,13 +32,13 @@ func NewWithHTTPClient(cfg configuration.Configuration, hostname string, registr
 	}
 
 	c := Client{
-		Driver: Driver{
+		driver: driver{
 			scheduler: s,
 			registry:  registry,
 			logger:    l.With(slog.String("component", "scheduler")),
 			client:    httpClient,
 		},
-		Registrant: Registrant{
+		registrant: registrant{
 			cfg:        cfg,
 			clientURL:  "http://" + cfg.MustURLFromHost(hostname),
 			httpClient: httpClient,
@@ -54,14 +51,11 @@ func NewWithHTTPClient(cfg configuration.Configuration, hostname string, registr
 	return &c, nil
 }
 
-const unregisteredRegisterInterval = 100 * time.Millisecond
-const registeredRegisterInterval = 30 * time.Second
-
 func (c *Client) Run(ctx context.Context) error {
 	ledTicker := time.NewTicker(c.ledInterval)
 	defer ledTicker.Stop()
 
-	registryTicker := time.NewTicker(unregisteredRegisterInterval)
+	registryTicker := time.NewTicker(10 * time.Second)
 	defer registryTicker.Stop()
 
 	registryCleanupTicker := time.NewTicker(30 * time.Second)
@@ -73,13 +67,12 @@ func (c *Client) Run(ctx context.Context) error {
 	}
 
 	for {
-		registryTicker = c.setRegistryTicker(registryTicker)
-
 		select {
 		case leader := <-c.Leader:
 			c.setLeader(leader, hostname)
+			c.register(ctx)
 		case <-registryTicker.C:
-			c.Register(ctx)
+			c.register(ctx)
 		case <-ledTicker.C:
 			if c.registry.IsLeading() {
 				c.advance(ctx)
@@ -95,26 +88,6 @@ func (c *Client) Run(ctx context.Context) error {
 func (c *Client) setLeader(leader string, hostname string) {
 	leading := leader == hostname || leader == "localhost" // localhost is for testing only
 	c.logger.Debug("setting leader", "leader", leader, "leading", leading)
-	c.Registrant.SetLeader(leader)
+	c.registrant.setLeader(leader)
 	c.registry.Leading(leading)
-}
-
-func (c *Client) registrationInterval() time.Duration {
-	if c.IsRegistered() {
-		return 30 * time.Second
-	}
-	return 100 * time.Millisecond
-}
-
-func (c *Client) setRegistryTicker(t *time.Ticker) *time.Ticker {
-	if c.wasRegistered == c.IsRegistered() {
-		return t
-	}
-	t.Stop()
-	if c.IsRegistered() {
-		c.wasRegistered = true
-		return time.NewTicker(registeredRegisterInterval)
-	}
-	c.wasRegistered = false
-	return time.NewTicker(unregisteredRegisterInterval)
 }
