@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"log/slog"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 )
@@ -79,11 +80,17 @@ func (r *Registry) UpdateHostState(host string, state bool, reachable bool) {
 func (r *Registry) Cleanup() {
 	r.lock.Lock()
 	defer r.lock.Unlock()
-	cleaned := make([]*Host, 0, len(r.hosts))
+	alive := make([]*Host, 0, len(r.hosts))
+	dead := make([]string, 0, len(r.hosts))
 	for _, host := range r.hosts {
 		if host.IsAlive() {
-			cleaned = append(cleaned, host)
+			alive = append(alive, host)
+		} else {
+			dead = append(dead, host.Name)
 		}
 	}
-	r.hosts = cleaned
+	if len(dead) != 0 {
+		r.Logger.Warn("dropping dead hosts", "dropped", strings.Join(dead, ","))
+	}
+	r.hosts = alive
 }

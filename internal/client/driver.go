@@ -38,13 +38,11 @@ func (d *Driver) sendStateRequest(target string, state bool) {
 		d.logger.Warn("host state not found", "target", target)
 		return
 	}
-	if state == current {
-		//d.logger.Debug("host already in desired state. not sending request", "target", target, "state", current)
-		return
+	if state != current {
+		err := d.setLED(target, state)
+		d.registry.UpdateHostState(target, state, err == nil)
+		d.logger.Debug("setState", "host", target, "state", state, "err", err)
 	}
-	err := d.setLED(target, state)
-	d.registry.UpdateHostState(target, state, err == nil)
-	d.logger.Debug("setState", "host", target, "state", state, "err", err)
 }
 
 var statusConfig = map[bool]struct {
