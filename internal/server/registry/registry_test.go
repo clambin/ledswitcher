@@ -29,9 +29,8 @@ func TestRegistry_HostState(t *testing.T) {
 	assert.True(t, found)
 	assert.True(t, up)
 
-	up, found = r.HostState("bar")
+	_, found = r.HostState("bar")
 	assert.False(t, found)
-
 }
 
 func TestRegistry_GetHosts(t *testing.T) {
