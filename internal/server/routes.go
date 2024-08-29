@@ -8,16 +8,16 @@ import (
 func addRoutes(
 	m *http.ServeMux,
 	ledSetter LEDSetter,
-	registrerer Registrant,
+	registrant Registrant,
 	registry Registry,
 	logger *slog.Logger,
 ) {
-	ledHandler := LEDHandler(ledSetter, logger.With(slog.String("handler", "/led")))
+	ledHandler := LEDHandler(ledSetter, logger.With(slog.String("handler", "led")))
 	m.Handle("POST /endpoint/led", ledHandler)
 	m.Handle("DELETE /endpoint/led", ledHandler)
 
-	m.Handle("POST /leader/register", registryHandler(registry, logger.With(slog.String("handler", "/leader/register"))))
-	m.Handle("GET /leader/stats", registryStatsHandler(registry, logger.With(slog.String("handler", "/leader/stats"))))
+	m.Handle("POST /leader/register", registryHandler(registry, logger.With(slog.String("handler", "register"))))
+	m.Handle("GET /leader/stats", registryStatsHandler(registry, logger.With(slog.String("handler", "stats"))))
 
-	m.Handle("/health", healthHandler(registrerer))
+	m.Handle("/health", healthHandler(registrant))
 }

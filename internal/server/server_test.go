@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
-	"sync/atomic"
 	"testing"
 )
 
@@ -117,11 +116,9 @@ func TestServer(t *testing.T) {
 var _ LEDSetter = &fakeLEDSetter{}
 
 type fakeLEDSetter struct {
-	led atomic.Bool
 }
 
-func (f *fakeLEDSetter) SetLED(state bool) error {
-	f.led.Store(state)
+func (f *fakeLEDSetter) SetLED(_ bool) error {
 	return nil
 }
 

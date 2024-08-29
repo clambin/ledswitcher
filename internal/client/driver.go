@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/clambin/ledswitcher/internal/client/scheduler"
 	"github.com/clambin/ledswitcher/internal/server/registry"
@@ -20,29 +21,31 @@ type Driver struct {
 
 func (d *Driver) advance(_ context.Context) {
 	next := d.scheduler.Next()
-	d.logger.Debug("advanced scheduler", "next", next)
 	var wg sync.WaitGroup
 	wg.Add(len(next))
 	for _, action := range next {
 		go func(target string, state bool) {
 			defer wg.Done()
-			d.sendStateRequest(target, state)
+			if err := d.sendStateRequest(target, state); err != nil {
+				d.logger.Warn("unable to send state change request", "target", target, "state", state, "err", err)
+			}
 		}(action.Host, action.State)
 	}
 	wg.Wait()
+	d.logger.Debug("advanced scheduler", "next", next)
 }
 
-func (d *Driver) sendStateRequest(target string, state bool) {
+func (d *Driver) sendStateRequest(target string, state bool) error {
 	current, found := d.registry.HostState(target)
 	if !found {
-		d.logger.Warn("host state not found", "target", target)
-		return
+		return errors.New("unable to find host state")
 	}
-	if state != current {
-		err := d.setLED(target, state)
-		d.registry.UpdateHostState(target, state, err == nil)
-		d.logger.Debug("setState", "host", target, "state", state, "err", err)
+	if state == current {
+		return nil
 	}
+	err := d.setLED(target, state)
+	d.registry.UpdateHostState(target, state, err == nil)
+	return err
 }
 
 var statusConfig = map[bool]struct {
