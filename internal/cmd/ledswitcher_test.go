@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/clambin/ledswitcher/internal/configuration"
-	"github.com/clambin/ledswitcher/internal/server/registry"
+	"github.com/clambin/ledswitcher/internal/registry"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"

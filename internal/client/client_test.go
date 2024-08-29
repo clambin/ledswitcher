@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"github.com/clambin/ledswitcher/internal/api"
 	"github.com/clambin/ledswitcher/internal/configuration"
-	"github.com/clambin/ledswitcher/internal/server/registry"
+	"github.com/clambin/ledswitcher/internal/registry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"log/slog"

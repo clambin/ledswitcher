@@ -1,7 +1,7 @@
 package server
 
 import (
-	"github.com/clambin/ledswitcher/internal/server/registry"
+	"github.com/clambin/ledswitcher/internal/registry"
 	"log/slog"
 	"net/http"
 )

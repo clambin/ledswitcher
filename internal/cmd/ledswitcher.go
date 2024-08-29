@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"github.com/clambin/ledswitcher/internal/client"
 	"github.com/clambin/ledswitcher/internal/configuration"
+	"github.com/clambin/ledswitcher/internal/registry"
 	"github.com/clambin/ledswitcher/internal/server"
 	"github.com/clambin/ledswitcher/internal/server/ledsetter"
-	"github.com/clambin/ledswitcher/internal/server/registry"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"golang.org/x/sync/errgroup"
@@ -161,7 +161,6 @@ func runElection(ctx context.Context, cfg configuration.Configuration, ch chan<-
 			},
 			OnStoppedLeading: func() {
 				logger.Info("leader lost")
-				os.Exit(1)
 			},
 			OnNewLeader: func(identity string) {
 				logger.Info("leader elected", "leader", identity)

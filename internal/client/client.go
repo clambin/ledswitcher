@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"github.com/clambin/ledswitcher/internal/client/scheduler"
 	"github.com/clambin/ledswitcher/internal/configuration"
+	"github.com/clambin/ledswitcher/internal/registry"
 	"github.com/clambin/ledswitcher/internal/server"
-	"github.com/clambin/ledswitcher/internal/server/registry"
 	"log/slog"
 	"net/http"
 	"os"
@@ -68,11 +68,8 @@ func (c *Client) Run(ctx context.Context) error {
 	for {
 		select {
 		case leader := <-c.Leader:
-			leading := leader == hostname || leader == "localhost" // localhost is for testing only
-			c.logger.Debug("setting leader", "leader", leader, "leading", leading)
-			c.Registrant.SetLeader(leader)
-			c.registry.Leading(leading)
-		case <-time.After(c.registerInterval()):
+			c.setLeader(leader, hostname)
+		case <-time.After(c.registrationInterval()):
 			c.Register(ctx)
 		case <-ledTicker.C:
 			if c.registry.IsLeading() {
@@ -86,7 +83,14 @@ func (c *Client) Run(ctx context.Context) error {
 	}
 }
 
-func (c *Client) registerInterval() time.Duration {
+func (c *Client) setLeader(leader string, hostname string) {
+	leading := leader == hostname || leader == "localhost" // localhost is for testing only
+	c.logger.Debug("setting leader", "leader", leader, "leading", leading)
+	c.Registrant.SetLeader(leader)
+	c.registry.Leading(leading)
+}
+
+func (c *Client) registrationInterval() time.Duration {
 	if c.IsRegistered() {
 		return 30 * time.Second
 	}

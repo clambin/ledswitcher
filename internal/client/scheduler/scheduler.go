@@ -3,7 +3,7 @@ package scheduler
 import (
 	"github.com/clambin/ledswitcher/internal/client/scheduler/schedule"
 	"github.com/clambin/ledswitcher/internal/configuration"
-	"github.com/clambin/ledswitcher/internal/server/registry"
+	"github.com/clambin/ledswitcher/internal/registry"
 	"log/slog"
 	"sync"
 )

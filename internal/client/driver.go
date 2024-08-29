@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/clambin/ledswitcher/internal/client/scheduler"
-	"github.com/clambin/ledswitcher/internal/server/registry"
+	"github.com/clambin/ledswitcher/internal/registry"
 	"log/slog"
 	"net/http"
 	"sync"

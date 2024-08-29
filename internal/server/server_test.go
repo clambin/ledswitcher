@@ -2,7 +2,7 @@ package server
 
 import (
 	"bytes"
-	"github.com/clambin/ledswitcher/internal/server/registry"
+	"github.com/clambin/ledswitcher/internal/registry"
 	"github.com/stretchr/testify/assert"
 	"log/slog"
 	"net/http"
