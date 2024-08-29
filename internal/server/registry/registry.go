@@ -2,12 +2,15 @@ package registry
 
 import (
 	"cmp"
+	"github.com/prometheus/client_golang/prometheus"
 	"log/slog"
 	"slices"
 	"strings"
 	"sync"
 	"time"
 )
+
+var _ prometheus.Collector = &Registry{}
 
 type Registry struct {
 	Logger  *slog.Logger
@@ -93,4 +96,15 @@ func (r *Registry) Cleanup() {
 		r.Logger.Warn("dropping dead hosts", "dropped", strings.Join(dead, ","))
 	}
 	r.hosts = alive
+}
+
+var registryGauge = prometheus.NewDesc("ledswitcher_registry_node_count", "Number of registered nodes", nil, nil)
+
+func (r *Registry) Describe(ch chan<- *prometheus.Desc) {
+	ch <- registryGauge
+}
+
+func (r *Registry) Collect(ch chan<- prometheus.Metric) {
+	hosts := r.Hosts()
+	ch <- prometheus.MustNewConstMetric(registryGauge, prometheus.GaugeValue, float64(len(hosts)))
 }

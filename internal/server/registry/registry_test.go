@@ -1,6 +1,8 @@
 package registry
 
 import (
+	"bytes"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"log/slog"
@@ -180,4 +182,22 @@ func TestRegistry_Cleanup(t *testing.T) {
 			assert.Len(t, r.Hosts(), tt.want)
 		})
 	}
+}
+
+func TestRegistry_Collect(t *testing.T) {
+	r := Registry{Logger: slog.Default()}
+	r.Register("localhost")
+
+	assert.NoError(t, testutil.CollectAndCompare(&r, bytes.NewBufferString(`
+# HELP ledswitcher_registry_node_count Number of registered nodes
+# TYPE ledswitcher_registry_node_count gauge
+ledswitcher_registry_node_count 1
+`)))
+
+	r.Hosts()[0].Failures = 10
+	assert.NoError(t, testutil.CollectAndCompare(&r, bytes.NewBufferString(`
+# HELP ledswitcher_registry_node_count Number of registered nodes
+# TYPE ledswitcher_registry_node_count gauge
+ledswitcher_registry_node_count 0
+`)))
 }

@@ -12,6 +12,7 @@ func LEDHandler(ledSetter LEDSetter, logger *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var state bool
 		var status int
+		// muxer only allows post & delete, so no need to handle other methods
 		switch r.Method {
 		case http.MethodPost:
 			state = true
@@ -19,10 +20,6 @@ func LEDHandler(ledSetter LEDSetter, logger *slog.Logger) http.HandlerFunc {
 		case http.MethodDelete:
 			state = false
 			status = http.StatusNoContent
-			// not needed: router only allows post & delete
-			//default:
-			//	http.Error(w, "invalid method: "+r.Method, http.StatusMethodNotAllowed)
-			//	return
 		}
 
 		if err := ledSetter.SetLED(state); err != nil {
@@ -32,7 +29,7 @@ func LEDHandler(ledSetter LEDSetter, logger *slog.Logger) http.HandlerFunc {
 		}
 
 		w.WriteHeader(status)
-		logger.Debug("/led", "state", state)
+		logger.Debug("led state set", "state", state)
 	}
 }
 
@@ -85,7 +82,6 @@ func registryStatsHandler(registry Registry, logger *slog.Logger) http.Handler {
 
 		enc := json.NewEncoder(w)
 		enc.SetIndent("", "  ")
-
 		if err := enc.Encode(registry.Hosts()); err != nil {
 			logger.Error("failed to encode hosts", "err", err)
 			http.Error(w, "failed to encode hosts: "+err.Error(), http.StatusInternalServerError)

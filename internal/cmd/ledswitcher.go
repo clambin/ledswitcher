@@ -120,7 +120,7 @@ func build(cfg configuration.Configuration, promReg prometheus.Registerer, logge
 		),
 	)
 
-	promReg.MustRegister(serverCounter, serverDuration, clientCounter, clientDuration)
+	promReg.MustRegister(serverCounter, serverDuration, clientCounter, clientDuration, &r)
 	return h, c, &r, err
 }
 
