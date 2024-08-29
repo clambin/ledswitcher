@@ -18,8 +18,10 @@ var _ server.Registrant = &Client{}
 type Client struct {
 	Driver
 	Registrant
+	Leader      chan string
 	ledInterval time.Duration
 	isLeading   bool
+	logger      *slog.Logger
 }
 
 func New(cfg configuration.Configuration, registry *registry.Registry, l *slog.Logger) (*Client, error) {
@@ -45,13 +47,14 @@ func NewWithHTTPClient(cfg configuration.Configuration, registry *registry.Regis
 			client:    http.DefaultClient,
 		},
 		Registrant: Registrant{
-			leaderURL:  "http://" + cfg.MustURLFromHost(cfg.LeaderConfiguration.Leader),
+			cfg:        cfg,
 			clientURL:  "http://" + cfg.MustURLFromHost(hostname),
 			httpClient: httpClient,
 			logger:     l.With(slog.String("component", "registerer")),
 		},
+		Leader:      make(chan string),
 		ledInterval: cfg.Rotation,
-		isLeading:   hostname == cfg.LeaderConfiguration.Leader || "localhost" == cfg.LeaderConfiguration.Leader,
+		logger:      l,
 	}
 	return &c, nil
 }
@@ -63,12 +66,22 @@ func (c *Client) Run(ctx context.Context) error {
 	registryCleanupTicker := time.NewTicker(30 * time.Second)
 	defer registryCleanupTicker.Stop()
 
+	hostname, err := os.Hostname()
+	if err != nil {
+		panic("could not get hostname: " + err.Error())
+	}
+
 	for {
 		select {
+		case leader := <-c.Leader:
+			leading := leader == hostname
+			c.logger.Debug("setting leader", "leader", leader, "leading", leading)
+			c.Registrant.SetLeader(leader)
+			c.registry.Leading(leading)
 		case <-time.After(c.registerInterval()):
 			c.Register(ctx)
 		case <-ledTicker.C:
-			if c.isLeading {
+			if c.registry.IsLeading() {
 				c.advance(ctx)
 			}
 		case <-registryCleanupTicker.C:

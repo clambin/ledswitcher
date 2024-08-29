@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/clambin/ledswitcher/internal/api"
+	"github.com/clambin/ledswitcher/internal/configuration"
 	"log/slog"
 	"net/http"
 	"sync/atomic"
@@ -12,13 +13,23 @@ import (
 
 type Registrant struct {
 	leaderURL    string
+	cfg          configuration.Configuration
 	clientURL    string
 	httpClient   *http.Client
 	isRegistered atomic.Bool
 	logger       *slog.Logger
 }
 
+func (r *Registrant) SetLeader(host string) {
+	r.leaderURL = "http://" + r.cfg.MustURLFromHost(host)
+}
+
 func (r *Registrant) Register(ctx context.Context) {
+	if r.leaderURL == "" {
+		r.logger.Warn("no leader yet. skipping registration request")
+		return
+	}
+
 	regReq := api.RegistrationRequest{URL: r.clientURL}
 	var body bytes.Buffer
 	if err := json.NewEncoder(&body).Encode(regReq); err != nil {

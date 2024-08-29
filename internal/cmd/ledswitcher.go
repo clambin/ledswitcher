@@ -70,19 +70,12 @@ func runWithConfiguration(ctx context.Context, cfg configuration.Configuration, 
 	}
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &opt))
 
-	if cfg.LeaderConfiguration.Leader == "" {
-		cfg.LeaderConfiguration.Leader = electLeader(ctx, cfg, logger)
-	}
-
-	h, c, r, err := build(cfg, promReg, logger)
+	h, c, _, err := build(cfg, promReg, logger)
 	if err != nil {
 		return err
 	}
 
-	leading := weAreLeading(cfg)
-	r.Leading(leading)
-
-	logger.Info("starting ledswitcher", "version", version, "leader", cfg.LeaderConfiguration.Leader, "leading", leading)
+	logger.Info("starting ledswitcher", "version", version)
 	defer logger.Info("shutting down ledswitcher")
 
 	var g errgroup.Group
@@ -91,6 +84,14 @@ func runWithConfiguration(ctx context.Context, cfg configuration.Configuration, 
 	runHTTPServer(ctx, cfg.PrometheusAddr, mux, &g, logger)
 	runHTTPServer(ctx, cfg.Addr, h, &g, logger)
 	g.Go(func() error { return c.Run(ctx) })
+
+	if cfg.LeaderConfiguration.Leader != "" {
+		c.Leader <- cfg.LeaderConfiguration.Leader
+	} else {
+		logger.Info("no leader specified. using k8s leader election")
+		go runElection(ctx, cfg, c.Leader, logger.With(slog.String("component", "k8s")))
+	}
+
 	return g.Wait()
 }
 
@@ -115,12 +116,6 @@ func build(cfg configuration.Configuration, promReg prometheus.Registerer, logge
 
 	promReg.MustRegister(serverCounter, serverDuration, clientCounter, clientDuration)
 	return h, c, &r, err
-}
-
-func electLeader(ctx context.Context, cfg configuration.Configuration, logger *slog.Logger) string {
-	ch := make(chan string)
-	go runElection(ctx, cfg, ch, logger.With(slog.String("component", "k8s")))
-	return <-ch
 }
 
 func runElection(ctx context.Context, cfg configuration.Configuration, ch chan<- string, logger *slog.Logger) {
@@ -156,17 +151,15 @@ func runElection(ctx context.Context, cfg configuration.Configuration, ch chan<-
 		RetryPeriod:     5 * time.Second,
 		Callbacks: leaderelection.LeaderCallbacks{
 			OnStartedLeading: func(ctx context.Context) {
-				logger.Debug("OnStartLeading called")
+				logger.Info("OnStartLeading called")
 			},
 			OnStoppedLeading: func() {
 				logger.Info("leader lost")
 				os.Exit(1)
 			},
 			OnNewLeader: func(identity string) {
-				// TODO: this can happen multiple times. current approach doesn't support that
 				logger.Info("leader elected", "leader", identity)
 				ch <- identity
-				<-ctx.Done()
 			},
 		},
 	})
@@ -198,15 +191,4 @@ func runHTTPServer(ctx context.Context, addr string, h http.Handler, g *errgroup
 		}
 		return err
 	})
-}
-
-func weAreLeading(cfg configuration.Configuration) bool {
-	if cfg.LeaderConfiguration.Leader == "localhost" {
-		return true
-	}
-	hostname, err := os.Hostname()
-	if err != nil {
-		panic(err)
-	}
-	return cfg.LeaderConfiguration.Leader == hostname
 }

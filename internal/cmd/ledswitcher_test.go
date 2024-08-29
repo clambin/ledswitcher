@@ -8,7 +8,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"net/http"
+	"os"
 	"testing"
 	"time"
 )
@@ -16,13 +18,16 @@ import (
 func Test_runWithConfiguration(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 
+	hostname, err := os.Hostname()
+	require.NoError(t, err)
+
 	cfg := configuration.Configuration{
 		Debug:          true,
 		Addr:           ":8080",
 		PrometheusAddr: ":9090",
 		LedPath:        "/tmp",
 		LeaderConfiguration: configuration.LeaderConfiguration{
-			Leader:   "localhost",
+			Leader:   hostname,
 			Rotation: time.Second,
 			Scheduler: configuration.SchedulerConfiguration{
 				Mode: "linear",

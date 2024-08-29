@@ -9,8 +9,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"sync/atomic"
 	"testing"
@@ -24,19 +26,22 @@ func TestClient(t *testing.T) {
 	s := httptest.NewServer(serverHandler(t, &ledCalled, &r))
 	defer s.Close()
 
+	u, err := url.Parse(s.URL)
+	require.NoError(t, err)
+	_, port, err := net.SplitHostPort(u.Host)
+	require.NoError(t, err)
+	host, err := os.Hostname()
+	require.NoError(t, err)
+
 	cfg := configuration.Configuration{
-		Addr: ":8088",
+		Addr: ":" + port,
 		LeaderConfiguration: configuration.LeaderConfiguration{
-			Leader:    s.URL,
 			Rotation:  500 * time.Millisecond,
 			Scheduler: configuration.SchedulerConfiguration{Mode: "random"},
 		},
 	}
 	c, err := New(cfg, &r, l)
 	require.NoError(t, err)
-	c.isLeading = true
-	c.Registrant.clientURL = s.URL
-	c.Registrant.leaderURL = s.URL
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -44,6 +49,8 @@ func TestClient(t *testing.T) {
 	go func() {
 		errCh <- c.Run(ctx)
 	}()
+
+	c.Leader <- host
 
 	assert.Eventually(t, func() bool { return c.IsRegistered() }, time.Second, 100*time.Millisecond)
 	assert.Eventually(t, func() bool { return ledCalled.Load() > 1 }, 5*time.Second, 500*time.Millisecond)
