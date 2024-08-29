@@ -58,12 +58,11 @@ func (d *Driver) setLED(targetURL string, state bool) error {
 	cfg := statusConfig[state]
 	req, _ := http.NewRequest(cfg.method, targetURL+"/endpoint/led", nil)
 	resp, err := d.client.Do(req)
-	if err != nil {
-		return err
-	}
-	_ = resp.Body.Close()
-	if resp.StatusCode != cfg.expectedStatusCode {
-		err = fmt.Errorf("setLED(%v): %d", state, resp.StatusCode)
+	if err == nil {
+		_ = resp.Body.Close()
+		if resp.StatusCode != cfg.expectedStatusCode {
+			err = fmt.Errorf("setLED(%v): %d", state, resp.StatusCode)
+		}
 	}
 	return err
 }

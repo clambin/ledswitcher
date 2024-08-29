@@ -163,6 +163,7 @@ func runElection(ctx context.Context, cfg configuration.Configuration, ch chan<-
 				os.Exit(1)
 			},
 			OnNewLeader: func(identity string) {
+				// TODO: this can happen multiple times. current approach doesn't support that
 				logger.Info("leader elected", "leader", identity)
 				ch <- identity
 				<-ctx.Done()

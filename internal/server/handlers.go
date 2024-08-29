@@ -19,9 +19,10 @@ func LEDHandler(ledSetter LEDSetter, logger *slog.Logger) http.HandlerFunc {
 		case http.MethodDelete:
 			state = false
 			status = http.StatusNoContent
-		default:
-			http.Error(w, "invalid method: "+r.Method, http.StatusMethodNotAllowed)
-			return
+			// not needed: router only allows post & delete
+			//default:
+			//	http.Error(w, "invalid method: "+r.Method, http.StatusMethodNotAllowed)
+			//	return
 		}
 
 		if err := ledSetter.SetLED(state); err != nil {
