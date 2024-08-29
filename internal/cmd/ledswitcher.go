@@ -24,6 +24,8 @@ import (
 )
 
 var (
+	buckets = []float64{.001, .005, .01, .025, .05, .1}
+
 	serverCounter = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "ledswitcher_server_api_requests_total",
@@ -36,7 +38,7 @@ var (
 		prometheus.HistogramOpts{
 			Name:    "ledswitcher_server_api_request_duration_seconds",
 			Help:    "A histogram of latencies for requests.",
-			Buckets: prometheus.DefBuckets,
+			Buckets: buckets,
 		},
 		[]string{"code", "method"},
 	)
@@ -53,7 +55,7 @@ var (
 		prometheus.HistogramOpts{
 			Name:    "ledswitcher_client_api_request_duration_seconds",
 			Help:    "A histogram of request latencies.",
-			Buckets: prometheus.DefBuckets,
+			Buckets: buckets,
 		},
 		[]string{"code", "method"},
 	)
