@@ -36,7 +36,7 @@ var (
 		prometheus.HistogramOpts{
 			Name:    "ledswitcher_server_api_request_duration_seconds",
 			Help:    "A histogram of latencies for requests.",
-			Buckets: []float64{.25, .5, 1, 2.5, 5, 10},
+			Buckets: prometheus.DefBuckets,
 		},
 		[]string{"code", "method"},
 	)
