@@ -24,7 +24,7 @@ import (
 )
 
 var (
-	buckets = []float64{.001, .005, .01, .025, .05, .1}
+	buckets = []float64{.0001, .0005, .001, .005, .01, .05}
 
 	serverCounter = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
