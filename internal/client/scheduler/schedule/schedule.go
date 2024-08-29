@@ -22,6 +22,8 @@ func New(mode string) (Schedule, error) {
 		s = &RandomSchedule{}
 	case "binary":
 		s = &BinarySchedule{}
+	case "reverse-binary":
+		s = &ReverseBinarySchedule{}
 	default:
 		return nil, fmt.Errorf("invalid schedule: %s", mode)
 	}

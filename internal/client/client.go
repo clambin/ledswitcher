@@ -18,9 +18,10 @@ var _ server.Registrant = &Client{}
 type Client struct {
 	Driver
 	Registrant
-	Leader      chan string
-	ledInterval time.Duration
-	logger      *slog.Logger
+	Leader        chan string
+	ledInterval   time.Duration
+	logger        *slog.Logger
+	wasRegistered bool
 }
 
 func New(cfg configuration.Configuration, hostname string, registry *registry.Registry, l *slog.Logger) (*Client, error) {
@@ -53,9 +54,15 @@ func NewWithHTTPClient(cfg configuration.Configuration, hostname string, registr
 	return &c, nil
 }
 
+const unregisteredRegisterInterval = 100 * time.Millisecond
+const registeredRegisterInterval = 30 * time.Second
+
 func (c *Client) Run(ctx context.Context) error {
 	ledTicker := time.NewTicker(c.ledInterval)
 	defer ledTicker.Stop()
+
+	registryTicker := time.NewTicker(unregisteredRegisterInterval)
+	defer registryTicker.Stop()
 
 	registryCleanupTicker := time.NewTicker(30 * time.Second)
 	defer registryCleanupTicker.Stop()
@@ -66,10 +73,12 @@ func (c *Client) Run(ctx context.Context) error {
 	}
 
 	for {
+		registryTicker = c.setRegistryTicker(registryTicker)
+
 		select {
 		case leader := <-c.Leader:
 			c.setLeader(leader, hostname)
-		case <-time.After(c.registrationInterval()):
+		case <-registryTicker.C:
 			c.Register(ctx)
 		case <-ledTicker.C:
 			if c.registry.IsLeading() {
@@ -95,4 +104,17 @@ func (c *Client) registrationInterval() time.Duration {
 		return 30 * time.Second
 	}
 	return 100 * time.Millisecond
+}
+
+func (c *Client) setRegistryTicker(t *time.Ticker) *time.Ticker {
+	if c.wasRegistered == c.IsRegistered() {
+		return t
+	}
+	t.Stop()
+	if c.IsRegistered() {
+		c.wasRegistered = true
+		return time.NewTicker(registeredRegisterInterval)
+	}
+	c.wasRegistered = false
+	return time.NewTicker(unregisteredRegisterInterval)
 }

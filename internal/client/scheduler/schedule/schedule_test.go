@@ -8,24 +8,21 @@ import (
 func TestNew(t *testing.T) {
 	testcases := []struct {
 		name string
-		pass bool
+		want assert.ErrorAssertionFunc
 	}{
-		{name: "linear", pass: true},
-		{name: "alternating", pass: true},
-		{name: "random", pass: true},
-		{name: "binary", pass: true},
-		{name: "", pass: false},
-		{name: "invalid", pass: false},
+		{name: "linear", want: assert.NoError},
+		{name: "alternating", want: assert.NoError},
+		{name: "random", want: assert.NoError},
+		{name: "binary", want: assert.NoError},
+		{name: "reverse-binary", want: assert.NoError},
+		{name: "", want: assert.Error},
+		{name: "invalid", want: assert.Error},
 	}
 
 	for _, tt := range testcases {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := New(tt.name)
-			if tt.pass {
-				assert.NoError(t, err)
-			} else {
-				assert.Error(t, err)
-			}
+			tt.want(t, err)
 		})
 	}
 }
