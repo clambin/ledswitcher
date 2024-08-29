@@ -25,6 +25,7 @@ func (r *Registrant) SetLeader(host string) {
 }
 
 func (r *Registrant) Register(ctx context.Context) {
+	r.logger.Debug("(re-)registering with leader")
 	if r.leaderURL == "" {
 		r.logger.Warn("no leader yet. skipping registration request")
 		return
