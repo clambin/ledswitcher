@@ -38,7 +38,7 @@ func NewWithHTTPClient(cfg configuration.Configuration, hostname string, registr
 			scheduler: s,
 			registry:  registry,
 			logger:    l.With(slog.String("component", "scheduler")),
-			client:    http.DefaultClient,
+			client:    httpClient,
 		},
 		Registrant: Registrant{
 			cfg:        cfg,
