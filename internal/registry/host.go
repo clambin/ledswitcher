@@ -4,10 +4,10 @@ import "time"
 
 // Host holds the state of a registered host
 type Host struct {
-	Name        string
-	State       bool
-	Failures    int
 	LastUpdated time.Time
+	Name        string
+	Failures    int
+	State       bool
 }
 
 const maxFailures = 5

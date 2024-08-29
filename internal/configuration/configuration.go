@@ -9,18 +9,18 @@ import (
 )
 
 type Configuration struct {
-	Debug          bool
+	LeaderConfiguration
+	K8SConfiguration
 	Addr           string
 	PrometheusAddr string
 	LedPath        string
-	LeaderConfiguration
-	K8SConfiguration
+	Debug          bool
 }
 
 type LeaderConfiguration struct {
 	Leader    string
-	Rotation  time.Duration
 	Scheduler SchedulerConfiguration
+	Rotation  time.Duration
 }
 
 type SchedulerConfiguration struct {

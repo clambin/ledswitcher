@@ -12,12 +12,12 @@ import (
 )
 
 type registrant struct {
-	leaderURL    string
-	cfg          configuration.Configuration
-	clientURL    string
 	httpClient   *http.Client
-	isRegistered atomic.Bool
 	logger       *slog.Logger
+	cfg          configuration.Configuration
+	leaderURL    string
+	clientURL    string
+	isRegistered atomic.Bool
 }
 
 func (r *registrant) setLeader(host string) {

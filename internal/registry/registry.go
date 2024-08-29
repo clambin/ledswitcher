@@ -14,9 +14,9 @@ var _ prometheus.Collector = &Registry{}
 
 type Registry struct {
 	Logger  *slog.Logger
-	leading bool
 	hosts   []*Host
 	lock    sync.RWMutex
+	leading bool
 }
 
 func (r *Registry) Leading(leading bool) {
