@@ -15,10 +15,9 @@ import (
 type Client struct {
 	driver
 	registrant
-	Leader        chan string
-	ledInterval   time.Duration
-	logger        *slog.Logger
-	wasRegistered bool
+	Leader      chan string
+	ledInterval time.Duration
+	logger      *slog.Logger
 }
 
 func New(cfg configuration.Configuration, hostname string, registry *registry.Registry, l *slog.Logger) (*Client, error) {
