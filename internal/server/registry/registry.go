@@ -12,7 +12,7 @@ import (
 type Registry struct {
 	Logger  *slog.Logger
 	leading bool
-	hosts   []*Host // TODO: better as a map?
+	hosts   []*Host
 	lock    sync.RWMutex
 }
 
