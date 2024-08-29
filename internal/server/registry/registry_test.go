@@ -16,6 +16,24 @@ func TestRegistry_Leading(t *testing.T) {
 	}
 }
 
+func TestRegistry_HostState(t *testing.T) {
+	r := Registry{Logger: slog.Default()}
+	r.Register("foo")
+
+	up, found := r.HostState("foo")
+	assert.True(t, found)
+	assert.False(t, up)
+
+	r.Hosts()[0].State = true
+	up, found = r.HostState("foo")
+	assert.True(t, found)
+	assert.True(t, up)
+
+	up, found = r.HostState("bar")
+	assert.False(t, found)
+
+}
+
 func TestRegistry_GetHosts(t *testing.T) {
 	tests := []struct {
 		name  string

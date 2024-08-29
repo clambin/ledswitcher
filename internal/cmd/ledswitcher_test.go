@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-func Test_main(t *testing.T) {
+func Test_runWithConfiguration(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	cfg := configuration.Configuration{

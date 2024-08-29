@@ -69,13 +69,14 @@ func runWithConfiguration(ctx context.Context, cfg configuration.Configuration, 
 		return err
 	}
 
-	logger.Info("starting ledswitcher", "version", version)
-	defer logger.Info("shutting down ledswitcher")
-
 	if cfg.LeaderConfiguration.Leader == "" {
 		cfg.LeaderConfiguration.Leader = electLeader(ctx, cfg, logger)
 	}
-	r.Leading(weAreLeading(cfg))
+	leading := weAreLeading(cfg)
+	r.Leading(leading)
+
+	logger.Info("starting ledswitcher", "version", version, "leader", cfg.LeaderConfiguration.Leader, "leading", leading)
+	defer logger.Info("shutting down ledswitcher")
 
 	var g errgroup.Group
 	mux := http.NewServeMux()
