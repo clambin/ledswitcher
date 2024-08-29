@@ -104,9 +104,13 @@ func build(cfg configuration.Configuration, promReg prometheus.Registerer, logge
 			promhttp.InstrumentRoundTripperCounter(clientCounter, http.DefaultTransport),
 		),
 	}
-	c, err := client.NewWithHTTPClient(cfg, &r, httpClient, logger.With(slog.String("component", "client")))
+	hostname, err := os.Hostname()
 	if err != nil {
-		err = fmt.Errorf("invalid client configuration: %w", err)
+		return nil, nil, nil, fmt.Errorf("hostname: %w", err)
+	}
+	c, err := client.NewWithHTTPClient(cfg, hostname, &r, httpClient, logger.With(slog.String("component", "client")))
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("invalid client configuration: %w", err)
 	}
 	h := promhttp.InstrumentHandlerDuration(serverDuration,
 		promhttp.InstrumentHandlerCounter(serverCounter,

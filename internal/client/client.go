@@ -24,19 +24,14 @@ type Client struct {
 	logger      *slog.Logger
 }
 
-func New(cfg configuration.Configuration, registry *registry.Registry, l *slog.Logger) (*Client, error) {
-	return NewWithHTTPClient(cfg, registry, http.DefaultClient, l)
+func New(cfg configuration.Configuration, hostname string, registry *registry.Registry, l *slog.Logger) (*Client, error) {
+	return NewWithHTTPClient(cfg, hostname, registry, http.DefaultClient, l)
 }
 
-func NewWithHTTPClient(cfg configuration.Configuration, registry *registry.Registry, httpClient *http.Client, l *slog.Logger) (*Client, error) {
+func NewWithHTTPClient(cfg configuration.Configuration, hostname string, registry *registry.Registry, httpClient *http.Client, l *slog.Logger) (*Client, error) {
 	s, err := scheduler.New(cfg.Scheduler, registry)
 	if err != nil {
 		return nil, fmt.Errorf("invalid scheduler configuration: %w", err)
-	}
-
-	hostname, err := os.Hostname()
-	if err != nil {
-		return nil, fmt.Errorf("hostname: %w", err)
 	}
 
 	c := Client{

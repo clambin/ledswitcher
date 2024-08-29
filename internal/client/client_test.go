@@ -38,7 +38,7 @@ func TestClient(t *testing.T) {
 			Scheduler: configuration.SchedulerConfiguration{Mode: "random"},
 		},
 	}
-	c, err := New(cfg, &r, l)
+	c, err := New(cfg, "localhost", &r, l)
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
