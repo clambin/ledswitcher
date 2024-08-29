@@ -45,10 +45,8 @@ func TestConfiguration_MustURLFromHost(t *testing.T) {
 			t.Parallel()
 			if tt.panics {
 				assert.Panics(t, func() { tt.cfg.MustURLFromHost(tt.host) })
-			} else if tt.host != "" {
-				assert.Equal(t, tt.want, tt.cfg.MustURLFromHost(tt.host))
 			} else {
-				assert.NotEqual(t, tt.want, tt.cfg.MustURLFromHost(""))
+				assert.Equal(t, tt.want, tt.cfg.MustURLFromHost(tt.host))
 			}
 		})
 	}
