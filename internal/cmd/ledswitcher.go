@@ -64,14 +64,21 @@ func Main(ctx context.Context, version string) error {
 }
 
 func runWithConfiguration(ctx context.Context, cfg configuration.Configuration, promReg prometheus.Registerer, version string) error {
-	h, c, r, logger, err := build(cfg, promReg)
-	if err != nil {
-		return err
+	var opt slog.HandlerOptions
+	if cfg.Debug {
+		opt.Level = slog.LevelDebug
 	}
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &opt))
 
 	if cfg.LeaderConfiguration.Leader == "" {
 		cfg.LeaderConfiguration.Leader = electLeader(ctx, cfg, logger)
 	}
+
+	h, c, r, err := build(cfg, promReg, logger)
+	if err != nil {
+		return err
+	}
+
 	leading := weAreLeading(cfg)
 	r.Leading(leading)
 
@@ -87,33 +94,27 @@ func runWithConfiguration(ctx context.Context, cfg configuration.Configuration, 
 	return g.Wait()
 }
 
-func build(cfg configuration.Configuration, promReg prometheus.Registerer) (http.Handler, *client.Client, *registry.Registry, *slog.Logger, error) {
-	var opt slog.HandlerOptions
-	if cfg.Debug {
-		opt.Level = slog.LevelDebug
-	}
-	l := slog.New(slog.NewTextHandler(os.Stderr, &opt))
-
+func build(cfg configuration.Configuration, promReg prometheus.Registerer, logger *slog.Logger) (http.Handler, *client.Client, *registry.Registry, error) {
 	ledSetter := ledsetter.Setter{LEDPath: cfg.LedPath}
-	r := registry.Registry{Logger: l.With(slog.String("component", "registry"))}
+	r := registry.Registry{Logger: logger.With(slog.String("component", "registry"))}
 	httpClient := &http.Client{
 		Timeout: 10 * time.Second,
 		Transport: promhttp.InstrumentRoundTripperDuration(clientDuration,
 			promhttp.InstrumentRoundTripperCounter(clientCounter, http.DefaultTransport),
 		),
 	}
-	c, err := client.NewWithHTTPClient(cfg, &r, httpClient, l.With(slog.String("component", "client")))
+	c, err := client.NewWithHTTPClient(cfg, &r, httpClient, logger.With(slog.String("component", "client")))
 	if err != nil {
 		err = fmt.Errorf("invalid client configuration: %w", err)
 	}
 	h := promhttp.InstrumentHandlerDuration(serverDuration,
 		promhttp.InstrumentHandlerCounter(serverCounter,
-			server.New(&ledSetter, c, &r, l.With(slog.String("component", "server"))),
+			server.New(&ledSetter, c, &r, logger.With(slog.String("component", "server"))),
 		),
 	)
 
 	promReg.MustRegister(serverCounter, serverDuration, clientCounter, clientDuration)
-	return h, c, &r, l, err
+	return h, c, &r, err
 }
 
 func electLeader(ctx context.Context, cfg configuration.Configuration, logger *slog.Logger) string {

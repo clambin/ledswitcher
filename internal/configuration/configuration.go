@@ -1,10 +1,10 @@
 package configuration
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"net"
-	"os"
 	"time"
 )
 
@@ -35,14 +35,12 @@ type K8SConfiguration struct {
 // URLFromHost converts a host to a URL, using Addr to determine the latter.  If host is blank, the system's hostname is used.
 // No scheme (eg http://) is added.
 func (c Configuration) URLFromHost(host string) (string, error) {
+	if host == "" {
+		return "", errors.New("host is empty")
+	}
 	_, port, err := net.SplitHostPort(c.Addr)
 	if err != nil {
 		return "", fmt.Errorf("failed to determine port: %w", err)
-	}
-	if host == "" {
-		if host, err = os.Hostname(); err != nil {
-			return "", fmt.Errorf("failed to determine hostname: %w", err)
-		}
 	}
 	return host + ":" + port, nil
 }

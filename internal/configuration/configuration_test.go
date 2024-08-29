@@ -36,7 +36,7 @@ func TestConfiguration_MustURLFromHost(t *testing.T) {
 				Addr: ":8888",
 			},
 			host:   "",
-			panics: false,
+			panics: true,
 			want:   "",
 		},
 	}
@@ -44,7 +44,7 @@ func TestConfiguration_MustURLFromHost(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			if tt.panics {
-				assert.Panics(t, func() { tt.cfg.MustURLFromHost("localhost") })
+				assert.Panics(t, func() { tt.cfg.MustURLFromHost(tt.host) })
 			} else if tt.host != "" {
 				assert.Equal(t, tt.want, tt.cfg.MustURLFromHost(tt.host))
 			} else {

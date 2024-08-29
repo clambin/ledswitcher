@@ -18,6 +18,10 @@ type Registrant struct {
 	logger       *slog.Logger
 }
 
+func (r *Registrant) SetLeaderURL(string) {
+
+}
+
 func (r *Registrant) Register(ctx context.Context) {
 	regReq := api.RegistrationRequest{URL: r.clientURL}
 	var body bytes.Buffer
