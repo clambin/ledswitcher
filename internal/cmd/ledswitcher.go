@@ -38,7 +38,7 @@ var (
 			Help:    "A histogram of latencies for requests.",
 			Buckets: []float64{.25, .5, 1, 2.5, 5, 10},
 		},
-		[]string{"method"},
+		[]string{"code", "method"},
 	)
 
 	clientCounter = prometheus.NewCounterVec(
@@ -100,8 +100,10 @@ func build(cfg configuration.Configuration, promReg prometheus.Registerer, logge
 	r := registry.Registry{Logger: logger.With(slog.String("component", "registry"))}
 	httpClient := &http.Client{
 		Timeout: 10 * time.Second,
-		Transport: promhttp.InstrumentRoundTripperDuration(clientDuration,
-			promhttp.InstrumentRoundTripperCounter(clientCounter, http.DefaultTransport),
+		Transport: promhttp.InstrumentRoundTripperCounter(clientCounter,
+			promhttp.InstrumentRoundTripperDuration(clientDuration,
+				http.DefaultTransport,
+			),
 		),
 	}
 	hostname, err := os.Hostname()
@@ -112,8 +114,8 @@ func build(cfg configuration.Configuration, promReg prometheus.Registerer, logge
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("invalid client configuration: %w", err)
 	}
-	h := promhttp.InstrumentHandlerDuration(serverDuration,
-		promhttp.InstrumentHandlerCounter(serverCounter,
+	h := promhttp.InstrumentHandlerCounter(serverCounter,
+		promhttp.InstrumentHandlerDuration(serverDuration,
 			server.New(&ledSetter, c, &r, logger.With(slog.String("component", "server"))),
 		),
 	)

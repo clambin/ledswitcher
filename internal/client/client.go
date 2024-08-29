@@ -20,7 +20,6 @@ type Client struct {
 	Registrant
 	Leader      chan string
 	ledInterval time.Duration
-	isLeading   bool
 	logger      *slog.Logger
 }
 
