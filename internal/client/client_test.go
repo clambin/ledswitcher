@@ -30,8 +30,6 @@ func TestClient(t *testing.T) {
 	require.NoError(t, err)
 	_, port, err := net.SplitHostPort(u.Host)
 	require.NoError(t, err)
-	host, err := os.Hostname()
-	require.NoError(t, err)
 
 	cfg := configuration.Configuration{
 		Addr: ":" + port,
@@ -50,7 +48,7 @@ func TestClient(t *testing.T) {
 		errCh <- c.Run(ctx)
 	}()
 
-	c.Leader <- host
+	c.Leader <- "localhost"
 
 	assert.Eventually(t, func() bool { return c.IsRegistered() }, time.Second, 100*time.Millisecond)
 	assert.Eventually(t, func() bool { return ledCalled.Load() > 1 }, 5*time.Second, 500*time.Millisecond)

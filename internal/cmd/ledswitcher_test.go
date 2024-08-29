@@ -22,7 +22,7 @@ func Test_runWithConfiguration(t *testing.T) {
 	require.NoError(t, err)
 
 	cfg := configuration.Configuration{
-		Debug:          true,
+		Debug:          false,
 		Addr:           ":8080",
 		PrometheusAddr: ":9090",
 		LedPath:        "/tmp",

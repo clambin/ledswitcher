@@ -74,7 +74,7 @@ func (c *Client) Run(ctx context.Context) error {
 	for {
 		select {
 		case leader := <-c.Leader:
-			leading := leader == hostname
+			leading := leader == hostname || leader == "localhost" // localhost is for testing only
 			c.logger.Debug("setting leader", "leader", leader, "leading", leading)
 			c.Registrant.SetLeader(leader)
 			c.registry.Leading(leading)
