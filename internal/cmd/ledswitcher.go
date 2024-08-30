@@ -110,11 +110,11 @@ func build(cfg configuration.Configuration, promReg prometheus.Registerer, logge
 	}
 	hostname, err := os.Hostname()
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("hostname: %w", err)
+		return nil, nil, fmt.Errorf("hostname: %w", err)
 	}
 	c, err := client.NewWithHTTPClient(cfg, hostname, &r, httpClient, logger.With(slog.String("component", "client")))
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("invalid client configuration: %w", err)
+		return nil, nil, fmt.Errorf("invalid client configuration: %w", err)
 	}
 	h := promhttp.InstrumentHandlerCounter(serverCounter,
 		promhttp.InstrumentHandlerDuration(serverDuration,
