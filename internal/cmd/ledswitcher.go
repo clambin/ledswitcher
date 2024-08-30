@@ -170,7 +170,6 @@ func runElection(ctx context.Context, cfg configuration.Configuration, ch chan<-
 			},
 		},
 	})
-	panic("unreachable")
 }
 
 func runHTTPServer(ctx context.Context, addr string, h http.Handler, g *errgroup.Group, logger *slog.Logger) {

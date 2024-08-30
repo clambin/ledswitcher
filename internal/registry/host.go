@@ -19,12 +19,11 @@ func (h *Host) IsAlive() bool {
 }
 
 // UpdateStatus updates the status of the host
-func (h *Host) UpdateStatus(state bool, reachable bool) {
+func (h *Host) UpdateStatus(reachable bool) {
 	if !reachable {
 		h.Failures++
 	} else {
 		h.Failures = 0
-		h.State = state
 	}
 	h.LastUpdated = time.Now()
 }

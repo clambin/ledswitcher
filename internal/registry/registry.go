@@ -36,7 +36,7 @@ func (r *Registry) Register(name string) {
 	defer r.lock.Unlock()
 	for _, host := range r.hosts {
 		if host.Name == name {
-			host.UpdateStatus(false, true)
+			host.UpdateStatus(true)
 			return
 		}
 	}
@@ -75,7 +75,8 @@ func (r *Registry) UpdateHostState(host string, state bool, reachable bool) {
 	defer r.lock.Unlock()
 	for _, h := range r.hosts {
 		if h.Name == host {
-			h.UpdateStatus(state, reachable)
+			h.UpdateStatus(reachable)
+			h.State = state
 		}
 	}
 }
