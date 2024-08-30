@@ -72,7 +72,7 @@ func runWithConfiguration(ctx context.Context, cfg configuration.Configuration, 
 	}
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &opt))
 
-	h, c, _, err := build(cfg, promReg, logger)
+	h, c, err := build(cfg, promReg, logger)
 	if err != nil {
 		return err
 	}
@@ -97,7 +97,7 @@ func runWithConfiguration(ctx context.Context, cfg configuration.Configuration, 
 	return g.Wait()
 }
 
-func build(cfg configuration.Configuration, promReg prometheus.Registerer, logger *slog.Logger) (http.Handler, *client.Client, *registry.Registry, error) {
+func build(cfg configuration.Configuration, promReg prometheus.Registerer, logger *slog.Logger) (http.Handler, *client.Client, error) {
 	ledSetter := ledsetter.Setter{LEDPath: cfg.LedPath}
 	r := registry.Registry{Logger: logger.With(slog.String("component", "registry"))}
 	httpClient := &http.Client{
@@ -123,7 +123,7 @@ func build(cfg configuration.Configuration, promReg prometheus.Registerer, logge
 	)
 
 	promReg.MustRegister(serverCounter, serverDuration, clientCounter, clientDuration, &r)
-	return h, c, &r, err
+	return h, c, err
 }
 
 func runElection(ctx context.Context, cfg configuration.Configuration, ch chan<- string, logger *slog.Logger) {
