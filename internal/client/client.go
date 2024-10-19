@@ -13,10 +13,10 @@ import (
 )
 
 type Client struct {
-	registrant
 	driver
-	Leader      chan string
-	logger      *slog.Logger
+	Leader chan string
+	logger *slog.Logger
+	registrant
 	ledInterval time.Duration
 }
 

@@ -9,12 +9,12 @@ import (
 )
 
 type Configuration struct {
-	LeaderConfiguration
 	K8SConfiguration
 	Addr           string
 	PrometheusAddr string
 	LedPath        string
-	Debug          bool
+	LeaderConfiguration
+	Debug bool
 }
 
 type LeaderConfiguration struct {

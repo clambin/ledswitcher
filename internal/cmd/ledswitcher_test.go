@@ -11,11 +11,16 @@ import (
 	"github.com/stretchr/testify/require"
 	"net/http"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 )
 
 func Test_runWithConfiguration(t *testing.T) {
+	tmpDir, _ := os.MkdirTemp("", "ledswitcher_test")
+	defer func() { _ = os.RemoveAll(tmpDir) }()
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "trigger"), []byte("[none]"), 0644))
+
 	ctx, cancel := context.WithCancel(context.Background())
 
 	hostname, err := os.Hostname()
@@ -25,7 +30,7 @@ func Test_runWithConfiguration(t *testing.T) {
 		Debug:          false,
 		Addr:           ":8080",
 		PrometheusAddr: ":9090",
-		LedPath:        "/tmp",
+		LedPath:        tmpDir,
 		LeaderConfiguration: configuration.LeaderConfiguration{
 			Leader:   hostname,
 			Rotation: time.Second,

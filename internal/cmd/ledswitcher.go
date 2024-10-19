@@ -98,7 +98,10 @@ func runWithConfiguration(ctx context.Context, cfg configuration.Configuration, 
 }
 
 func build(cfg configuration.Configuration, promReg prometheus.Registerer, logger *slog.Logger) (http.Handler, *client.Client, error) {
-	ledSetter := ledsetter.Setter{LEDPath: cfg.LedPath}
+	ledSetter, err := ledsetter.New(cfg.LedPath)
+	if err != nil {
+		return nil, nil, err
+	}
 	r := registry.Registry{Logger: logger.With(slog.String("component", "registry"))}
 	httpClient := &http.Client{
 		Timeout: 10 * time.Second,
@@ -118,7 +121,7 @@ func build(cfg configuration.Configuration, promReg prometheus.Registerer, logge
 	}
 	h := promhttp.InstrumentHandlerCounter(serverCounter,
 		promhttp.InstrumentHandlerDuration(serverDuration,
-			server.New(&ledSetter, c, &r, logger.With(slog.String("component", "server"))),
+			server.New(ledSetter, c, &r, logger.With(slog.String("component", "server"))),
 		),
 	)
 

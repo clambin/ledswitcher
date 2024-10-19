@@ -14,9 +14,9 @@ import (
 type registrant struct {
 	httpClient   *http.Client
 	logger       *slog.Logger
-	cfg          configuration.Configuration
 	leaderURL    string
 	clientURL    string
+	cfg          configuration.Configuration
 	isRegistered atomic.Bool
 }
 
