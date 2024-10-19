@@ -6,8 +6,8 @@ import (
 	"net/http"
 )
 
-type LEDSetter interface {
-	SetLED(state bool) error
+type LED interface {
+	Set(state bool) error
 }
 
 type Registrant interface {
@@ -20,8 +20,8 @@ type Registry interface {
 	Hosts() []*registry.Host
 }
 
-func New(ledSetter LEDSetter, registrant Registrant, registry Registry, logger *slog.Logger) http.Handler {
+func New(led LED, registrant Registrant, registry Registry, logger *slog.Logger) http.Handler {
 	mux := http.NewServeMux()
-	addRoutes(mux, ledSetter, registrant, registry, logger)
+	addRoutes(mux, led, registrant, registry, logger)
 	return mux
 }

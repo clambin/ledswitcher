@@ -25,7 +25,7 @@ spec:
           image: clambin/ledswitcher
           args:
             - '--port=8088'
-            - '--led-path=/host/sys/class/leds/led1'
+            - '--led-path=/host/sys/class/leds/PWR'
           volumeMounts:
             - name: hostsys
               mountPath: /host/sys

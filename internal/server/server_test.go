@@ -113,12 +113,12 @@ func TestServer(t *testing.T) {
 	}
 }
 
-var _ LEDSetter = &fakeLEDSetter{}
+var _ LED = &fakeLEDSetter{}
 
 type fakeLEDSetter struct {
 }
 
-func (f *fakeLEDSetter) SetLED(_ bool) error {
+func (f *fakeLEDSetter) Set(_ bool) error {
 	return nil
 }
 

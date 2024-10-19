@@ -8,7 +8,7 @@ import (
 	"github.com/clambin/ledswitcher/internal/configuration"
 	"github.com/clambin/ledswitcher/internal/registry"
 	"github.com/clambin/ledswitcher/internal/server"
-	"github.com/clambin/ledswitcher/internal/server/ledsetter"
+	"github.com/clambin/ledswitcher/pkg/ledberry"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"golang.org/x/sync/errgroup"
@@ -98,9 +98,9 @@ func runWithConfiguration(ctx context.Context, cfg configuration.Configuration, 
 }
 
 func build(cfg configuration.Configuration, promReg prometheus.Registerer, logger *slog.Logger) (http.Handler, *client.Client, error) {
-	ledSetter, err := ledsetter.New(cfg.LedPath)
-	if err != nil {
-		return nil, nil, err
+	led := ledberry.New(cfg.LedPath)
+	if err := led.SetActiveMode("none"); err != nil {
+		return nil, nil, fmt.Errorf("failed to access led: %w", err)
 	}
 	r := registry.Registry{Logger: logger.With(slog.String("component", "registry"))}
 	httpClient := &http.Client{
@@ -121,7 +121,7 @@ func build(cfg configuration.Configuration, promReg prometheus.Registerer, logge
 	}
 	h := promhttp.InstrumentHandlerCounter(serverCounter,
 		promhttp.InstrumentHandlerDuration(serverDuration,
-			server.New(ledSetter, c, &r, logger.With(slog.String("component", "server"))),
+			server.New(led, c, &r, logger.With(slog.String("component", "server"))),
 		),
 	)
 

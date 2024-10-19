@@ -8,7 +8,7 @@ import (
 	"net/url"
 )
 
-func LEDHandler(ledSetter LEDSetter, logger *slog.Logger) http.HandlerFunc {
+func LEDHandler(ledSetter LED, logger *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var state bool
 		var status int
@@ -22,7 +22,7 @@ func LEDHandler(ledSetter LEDSetter, logger *slog.Logger) http.HandlerFunc {
 			status = http.StatusNoContent
 		}
 
-		if err := ledSetter.SetLED(state); err != nil {
+		if err := ledSetter.Set(state); err != nil {
 			logger.Error("failed to set LED state", "err", err)
 			http.Error(w, "failed to set led state: "+err.Error(), http.StatusInternalServerError)
 			return

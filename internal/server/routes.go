@@ -7,7 +7,7 @@ import (
 
 func addRoutes(
 	m *http.ServeMux,
-	ledSetter LEDSetter,
+	ledSetter LED,
 	registrant Registrant,
 	registry Registry,
 	logger *slog.Logger,
