@@ -4,25 +4,25 @@ import (
 	"bytes"
 	"fmt"
 	"os"
-	"path"
+	"path/filepath"
 	"regexp"
-	"sync"
 )
 
 // Setter implements the Setter interface for LEDs
 type Setter struct {
-	LEDPath        string
 	brightnessPath string
-	triggerPath    string
-	lock           sync.Mutex
-	initialised    bool
+}
+
+func New(path string) (*Setter, error) {
+	s := Setter{brightnessPath: filepath.Join(path, "brightness")}
+	if err := s.initialize(path); err != nil {
+		return nil, err
+	}
+	return &s, nil
 }
 
 // SetLED switches a LED on or off
 func (s *Setter) SetLED(state bool) error {
-	if err := s.initialize(); err != nil {
-		return err
-	}
 	data := "0"
 	if state {
 		data = "255"
@@ -32,26 +32,14 @@ func (s *Setter) SetLED(state bool) error {
 
 // getLED returns the current status of the LED. Only used for testing.
 func (s *Setter) getLED() (state bool) {
-	if err := s.initialize(); err != nil {
-		panic(err)
-	}
 	if content, err := os.ReadFile(s.brightnessPath); err == nil {
 		state = string(content) == "255"
 	}
 	return
 }
 
-func (s *Setter) initialize() error {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	// TODO: just write "none" on initialisation?
-	if err := enableManualLEDMode(path.Join(s.LEDPath, "trigger")); err != nil {
-		return err
-	}
-	s.brightnessPath = path.Join(s.LEDPath, "brightness")
-	s.initialised = true
-	return nil
+func (s *Setter) initialize(path string) error {
+	return enableManualLEDMode(filepath.Join(path, "trigger"))
 }
 
 func enableManualLEDMode(path string) error {
