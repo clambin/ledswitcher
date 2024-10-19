@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"github.com/clambin/ledswitcher/internal/api"
 	"github.com/clambin/ledswitcher/internal/configuration"
+	"github.com/clambin/ledswitcher/internal/server"
 	"log/slog"
 	"net/http"
 	"sync/atomic"
@@ -31,7 +31,7 @@ func (r *registrant) register(ctx context.Context) {
 		return
 	}
 
-	regReq := api.RegistrationRequest{URL: r.clientURL}
+	regReq := server.RegistrationRequest{URL: r.clientURL}
 	var body bytes.Buffer
 	if err := json.NewEncoder(&body).Encode(regReq); err != nil {
 		r.logger.Error("failed to encode registration request", "err", err)

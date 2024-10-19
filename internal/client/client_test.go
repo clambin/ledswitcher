@@ -3,9 +3,9 @@ package client
 import (
 	"context"
 	"encoding/json"
-	"github.com/clambin/ledswitcher/internal/api"
 	"github.com/clambin/ledswitcher/internal/configuration"
 	"github.com/clambin/ledswitcher/internal/registry"
+	"github.com/clambin/ledswitcher/internal/server"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"log/slog"
@@ -71,7 +71,7 @@ func serverHandler(t *testing.T, ledCalled *atomic.Int32, reg *registry.Registry
 				w.WriteHeader(http.StatusMethodNotAllowed)
 			}
 		case "/leader/register":
-			var regReq api.RegistrationRequest
+			var regReq server.RegistrationRequest
 			err := json.NewDecoder(r.Body).Decode(&regReq)
 			if err == nil {
 				reg.Register(regReq.URL)

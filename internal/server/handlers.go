@@ -2,7 +2,6 @@ package server
 
 import (
 	"encoding/json"
-	"github.com/clambin/ledswitcher/internal/api"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -45,7 +44,7 @@ func healthHandler(registrar Registrant) http.Handler {
 
 func registryHandler(registry Registry, logger *slog.Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var req api.RegistrationRequest
+		var req RegistrationRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			logger.Error("failed to parse request", "err", err)
 			http.Error(w, "invalid request: "+err.Error(), http.StatusBadRequest)
