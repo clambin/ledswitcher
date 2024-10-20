@@ -12,7 +12,7 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
     go build \
     -ldflags="-X main.version=$VERSION" \
     -o ledswitcher \
-    cmd/ledswitcher/ledswitcher.go
+    ledswitcher.go
 
 FROM alpine
 
