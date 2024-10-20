@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - master
-      - linux6
+      - fix
 jobs:
   test:
     uses: clambin/workflows/.github/workflows/test.yaml@main

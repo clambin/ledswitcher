@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-// A LED controls a LED on a Raspberry Pi.
+// LED controls a LED on a Raspberry Pi.
 type LED struct {
 	brightnessPath string
 	triggerPath    string
@@ -35,7 +35,7 @@ func New(path string) (*LED, error) {
 	return &led, nil
 }
 
-// Set switches the LED on or off.  It's shorthand for SetBrightness(0) and SetBrightness(255).
+// Set switches the LED on or off.
 func (l *LED) Set(on bool) error {
 	var brightness int
 	if on {
@@ -44,7 +44,7 @@ func (l *LED) Set(on bool) error {
 	return os.WriteFile(l.brightnessPath, []byte(strconv.Itoa(brightness)), 0644)
 }
 
-// Get returns the status of the LED, ie on (true) or off (false).
+// Get returns the status of the LED, i.e. on (true) or off (false).
 func (l *LED) Get() (bool, error) {
 	brightness, err := readBrightness(l.brightnessPath)
 	if err != nil {
@@ -77,7 +77,8 @@ func readBrightness(path string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	return strconv.Atoi(string(content))
+	value := strings.Trim(string(content), "\t\r\n ")
+	return strconv.Atoi(value)
 }
 
 func readTrigger(path string) (string, map[string]struct{}, error) {
@@ -87,7 +88,7 @@ func readTrigger(path string) (string, map[string]struct{}, error) {
 	}
 	modes := make(map[string]struct{})
 	var activeMode string
-	for _, mode := range strings.Split(string(content), " ") {
+	for _, mode := range strings.Split(strings.Trim(string(content), "\t\r\n "), " ") {
 		if length := len(mode); length > 2 && mode[0] == '[' && mode[length-1] == ']' {
 			mode = mode[1 : length-1]
 			activeMode = mode

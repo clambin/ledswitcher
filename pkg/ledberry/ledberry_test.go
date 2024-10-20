@@ -85,19 +85,19 @@ func TestLED_GetActiveMode(t *testing.T) {
 	}{
 		{
 			name:    "none",
-			modes:   `[none] timer oneshot heartbeat`,
+			modes:   "[none] timer oneshot heartbeat\n",
 			want:    "none",
 			wantErr: assert.NoError,
 		},
 		{
 			name:    "heartbeat",
-			modes:   `none timer oneshot [heartbeat]`,
+			modes:   "none timer oneshot [heartbeat]\n",
 			want:    "heartbeat",
 			wantErr: assert.NoError,
 		},
 		{
 			name:    "no active mode",
-			modes:   `none timer oneshot heartbeat`,
+			modes:   "none timer oneshot heartbeat\n",
 			want:    "",
 			wantErr: assert.NoError,
 		},
@@ -178,8 +178,8 @@ func initFS(t *testing.T, modes string) string {
 	t.Helper()
 	tmpDir, err := os.MkdirTemp("", "")
 	require.NoError(t, err)
-	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "max_brightness"), []byte("1"), 0644))
-	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "brightness"), []byte("0"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "max_brightness"), []byte("1\n"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "brightness"), []byte("0\n"), 0644))
 	if modes != "" {
 		require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "trigger"), []byte(modes), 0644))
 	}
