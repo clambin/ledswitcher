@@ -20,6 +20,7 @@ func Test_runWithConfiguration(t *testing.T) {
 	tmpDir, _ := os.MkdirTemp("", "ledswitcher_test")
 	defer func() { _ = os.RemoveAll(tmpDir) }()
 	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "trigger"), []byte("[none]"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "max_brightness"), []byte("1"), 0644))
 
 	ctx, cancel := context.WithCancel(context.Background())
 

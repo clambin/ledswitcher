@@ -98,9 +98,9 @@ func runWithConfiguration(ctx context.Context, cfg configuration.Configuration, 
 }
 
 func build(cfg configuration.Configuration, promReg prometheus.Registerer, logger *slog.Logger) (http.Handler, *client.Client, error) {
-	led := ledberry.New(cfg.LedPath)
-	if err := led.SetActiveMode("none"); err != nil {
-		return nil, nil, fmt.Errorf("failed to access led: %w", err)
+	led, err := initLED(cfg)
+	if err != nil {
+		return nil, nil, err
 	}
 	r := registry.Registry{Logger: logger.With(slog.String("component", "registry"))}
 	httpClient := &http.Client{
@@ -127,6 +127,17 @@ func build(cfg configuration.Configuration, promReg prometheus.Registerer, logge
 
 	promReg.MustRegister(serverCounter, serverDuration, clientCounter, clientDuration, &r)
 	return h, c, err
+}
+
+func initLED(cfg configuration.Configuration) (*ledberry.LED, error) {
+	led, err := ledberry.New(cfg.LedPath)
+	if err == nil {
+		err = led.SetActiveMode("none")
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to access led: %w", err)
+	}
+	return led, nil
 }
 
 func runElection(ctx context.Context, cfg configuration.Configuration, ch chan<- string, logger *slog.Logger) {

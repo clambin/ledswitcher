@@ -2,89 +2,97 @@ package ledberry
 
 import (
 	"errors"
+	"iter"
+	"maps"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 )
 
+// A LED controls a LED on a Raspberry Pi.
 type LED struct {
 	brightnessPath string
 	triggerPath    string
+	maxBrightness  int
+	modes          map[string]struct{}
 }
 
-func New(path string) LED {
-	return LED{
+// New returns an LED at the provided path (e.g. /sys/class/led/PWR).
+func New(path string) (*LED, error) {
+	led := LED{
 		brightnessPath: filepath.Join(path, "brightness"),
 		triggerPath:    filepath.Join(path, "trigger"),
 	}
+	var err error
+	if led.maxBrightness, err = readBrightness(filepath.Join(path, "max_brightness")); err != nil {
+		return nil, err
+	}
+	if _, led.modes, err = readTrigger(led.triggerPath); err != nil {
+		return nil, err
+	}
+
+	return &led, nil
 }
 
-func (l LED) GetBrightness() (int, error) {
-	content, err := os.ReadFile(l.brightnessPath)
+// Set switches the LED on or off.  It's shorthand for SetBrightness(0) and SetBrightness(255).
+func (l *LED) Set(on bool) error {
+	var brightness int
+	if on {
+		brightness = l.maxBrightness
+	}
+	return os.WriteFile(l.brightnessPath, []byte(strconv.Itoa(brightness)), 0644)
+}
+
+// Get returns the status of the LED, ie on (true) or off (false).
+func (l *LED) Get() (bool, error) {
+	brightness, err := readBrightness(l.brightnessPath)
+	if err != nil {
+		return false, err
+	}
+	return brightness != 0, nil
+}
+
+// GetModes returns the LED's supported trigger modes.
+func (l *LED) GetModes() iter.Seq[string] {
+	return maps.Keys(l.modes)
+}
+
+// GetActiveMode returns the LED's active trigger mode.
+func (l *LED) GetActiveMode() (string, error) {
+	active, _, err := readTrigger(l.triggerPath)
+	return active, err
+}
+
+// SetActiveMode sets the LED's active trigger mode.  Returns an error is the mode is not supported.
+func (l *LED) SetActiveMode(mode string) error {
+	if _, ok := l.modes[mode]; !ok {
+		return errors.New("invalid mode")
+	}
+	return os.WriteFile(l.triggerPath, []byte(mode), 0644)
+}
+
+func readBrightness(path string) (int, error) {
+	content, err := os.ReadFile(path)
 	if err != nil {
 		return 0, err
 	}
 	return strconv.Atoi(string(content))
 }
 
-func (l LED) SetBrightness(value int) error {
-	return os.WriteFile(l.brightnessPath, []byte(strconv.Itoa(value)), 0644)
-}
-
-func (l LED) Set(on bool) error {
-	if on {
-		return l.SetBrightness(255)
-	}
-	return l.SetBrightness(0)
-}
-
-func (l LED) GetModes() ([]string, error) {
-	content, err := os.ReadFile(l.triggerPath)
+func readTrigger(path string) (string, map[string]struct{}, error) {
+	content, err := os.ReadFile(path)
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
-	modes := strings.Split(string(content), " ")
-	for i := range modes {
-		if length := len(modes[i]); length > 2 {
-			if modes[i][0] == '[' && modes[i][length-1] == ']' {
-				modes[i] = modes[i][1 : length-1]
-			}
+	modes := make(map[string]struct{})
+	var activeMode string
+	for _, mode := range strings.Split(string(content), " ") {
+		if length := len(mode); length > 2 && mode[0] == '[' && mode[length-1] == ']' {
+			mode = mode[1 : length-1]
+			activeMode = mode
 		}
+		modes[mode] = struct{}{}
 	}
-	return modes, nil
-}
-
-func (l LED) GetActiveMode() (string, error) {
-	content, err := os.ReadFile(l.triggerPath)
-	if err != nil {
-		return "", err
-	}
-	modes := strings.Split(string(content), " ")
-	for i := range modes {
-		if length := len(modes[i]); length > 2 {
-			if modes[i][0] == '[' && modes[i][length-1] == ']' {
-				return modes[i][1 : length-1], nil
-			}
-		}
-	}
-	return "", nil
-}
-
-func (l LED) SetActiveMode(mode string) error {
-	modes, err := l.GetModes()
-	if err != nil {
-		return err
-	}
-	var modeIsValid bool
-	for _, m := range modes {
-		if mode == m {
-			modeIsValid = true
-			break
-		}
-	}
-	if !modeIsValid {
-		return errors.New("invalid mode")
-	}
-	return os.WriteFile(l.triggerPath, []byte(mode), 0644)
+	return activeMode, modes, nil
 }

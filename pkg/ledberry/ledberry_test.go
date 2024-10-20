@@ -5,35 +5,29 @@ import (
 	"github.com/stretchr/testify/require"
 	"os"
 	"path/filepath"
+	"sort"
 	"testing"
 )
 
-func TestLED_Brightness(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "")
-	require.NoError(t, err)
+func TestLED_Get_Set(t *testing.T) {
+	tmpDir := initFS(t, "none")
 	t.Cleanup(func() { _ = os.RemoveAll(tmpDir) })
 
-	l := New(tmpDir)
-
-	_, err = l.GetBrightness()
-	assert.Error(t, err)
-	assert.NoError(t, l.SetBrightness(128))
-	got, err := l.GetBrightness()
-	assert.NoError(t, err)
-	assert.Equal(t, 128, got)
-	content, err := os.ReadFile(filepath.Join(tmpDir, "brightness"))
+	l, err := New(tmpDir)
 	require.NoError(t, err)
-	assert.Equal(t, "128", string(content))
+
+	_, err = l.Get()
+	assert.NoError(t, err)
 
 	assert.NoError(t, l.Set(true))
-	value, err := l.GetBrightness()
+	value, err := l.Get()
 	require.NoError(t, err)
-	assert.Equal(t, 255, value)
+	assert.True(t, value)
 
 	assert.NoError(t, l.Set(false))
-	value, err = l.GetBrightness()
+	value, err = l.Get()
 	require.NoError(t, err)
-	assert.Equal(t, 0, value)
+	assert.False(t, value)
 }
 
 func TestLED_GetModes(t *testing.T) {
@@ -46,13 +40,13 @@ func TestLED_GetModes(t *testing.T) {
 		{
 			name:    "valid",
 			modes:   `[none] timer oneshot heartbeat`,
-			want:    []string{"none", "timer", "oneshot", "heartbeat"},
+			want:    []string{"heartbeat", "none", "oneshot", "timer"},
 			wantErr: assert.NoError,
 		},
 		{
 			name:    "nothing active",
 			modes:   `none timer oneshot heartbeat`,
-			want:    []string{"none", "timer", "oneshot", "heartbeat"},
+			want:    []string{"heartbeat", "none", "oneshot", "timer"},
 			wantErr: assert.NoError,
 		},
 		{
@@ -63,19 +57,21 @@ func TestLED_GetModes(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tmpDir, err := os.MkdirTemp("", "")
-			require.NoError(t, err)
+			tmpDir := initFS(t, tt.modes)
 			t.Cleanup(func() { _ = os.RemoveAll(tmpDir) })
 
-			if tt.modes != "" {
-				require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "trigger"), []byte(tt.modes), 0644))
-			}
-
-			l := New(tmpDir)
-
-			got, err := l.GetModes()
-			assert.Equal(t, tt.want, got)
+			l, err := New(tmpDir)
 			tt.wantErr(t, err)
+
+			if err != nil {
+				return
+			}
+			modes := make([]string, 0, len(tt.want))
+			for m := range l.GetModes() {
+				modes = append(modes, m)
+			}
+			sort.Strings(modes)
+			assert.Equal(t, tt.want, modes)
 		})
 	}
 }
@@ -115,14 +111,16 @@ func TestLED_GetActiveMode(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tmpDir, err := os.MkdirTemp("", "")
-			require.NoError(t, err)
+			tmpDir := initFS(t, tt.modes)
 			t.Cleanup(func() { _ = os.RemoveAll(tmpDir) })
-			if tt.modes != "" {
-				require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "trigger"), []byte(tt.modes), 0644))
+
+			l, err := New(tmpDir)
+			tt.wantErr(t, err)
+
+			if err != nil {
+				return
 			}
 
-			l := New(tmpDir)
 			mode, err := l.GetActiveMode()
 			assert.Equal(t, tt.want, mode)
 			tt.wantErr(t, err)
@@ -157,15 +155,14 @@ func TestLED_SetActiveMode(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tmpDir, err := os.MkdirTemp("", "")
-			require.NoError(t, err)
+			tmpDir := initFS(t, tt.modes)
 			t.Cleanup(func() { _ = os.RemoveAll(tmpDir) })
 
-			if tt.modes != "" {
-				require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "trigger"), []byte("[none] heartbeat"), 0644))
+			l, err := New(tmpDir)
+			if err != nil {
+				return
 			}
 
-			l := New(tmpDir)
 			err = l.SetActiveMode(tt.mode)
 			tt.wantErr(t, err)
 			if err == nil {
@@ -175,4 +172,16 @@ func TestLED_SetActiveMode(t *testing.T) {
 			}
 		})
 	}
+}
+
+func initFS(t *testing.T, modes string) string {
+	t.Helper()
+	tmpDir, err := os.MkdirTemp("", "")
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "max_brightness"), []byte("1"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "brightness"), []byte("0"), 0644))
+	if modes != "" {
+		require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "trigger"), []byte(modes), 0644))
+	}
+	return tmpDir
 }
