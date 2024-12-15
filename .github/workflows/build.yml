@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - master
-      - build
+      - memory
 jobs:
   test:
     uses: clambin/workflows/.github/workflows/test.yaml@main
@@ -16,4 +16,4 @@ jobs:
     uses: clambin/workflows/.github/workflows/build.yaml@main
     with:
       image: ghcr.io/clambin/ledswitcher
-      dockerfile: build/Dockerfile
+      dockerfile: Dockerfile
