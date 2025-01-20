@@ -2,8 +2,8 @@ package cmd
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"github.com/clambin/go-common/httputils"
 	"github.com/clambin/ledswitcher/internal/client"
 	"github.com/clambin/ledswitcher/internal/configuration"
 	"github.com/clambin/ledswitcher/internal/registry"
@@ -19,6 +19,7 @@ import (
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	"log/slog"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"time"
 )
@@ -80,12 +81,20 @@ func runWithConfiguration(ctx context.Context, cfg configuration.Configuration, 
 	logger.Info("starting ledswitcher", "version", version)
 	defer logger.Info("shutting down ledswitcher")
 
+	if cfg.PProfAddr != "" {
+		go func() { _ = http.ListenAndServe(cfg.PProfAddr, nil) }()
+	}
+
 	var g errgroup.Group
-	mux := http.NewServeMux()
-	mux.Handle("/metrics", promhttp.Handler())
-	runHTTPServer(ctx, cfg.PrometheusAddr, mux, &g, logger)
-	runHTTPServer(ctx, cfg.Addr, h, &g, logger)
-	g.Go(func() error { return c.Run(ctx) })
+	g.Go(func() error {
+		return httputils.RunServer(ctx, &http.Server{Addr: cfg.PrometheusAddr, Handler: promhttp.Handler()})
+	})
+	g.Go(func() error {
+		return httputils.RunServer(ctx, &http.Server{Addr: cfg.Addr, Handler: h})
+	})
+	g.Go(func() error {
+		return c.Run(ctx)
+	})
 
 	if cfg.LeaderConfiguration.Leader != "" {
 		c.Leader <- cfg.LeaderConfiguration.Leader
@@ -183,32 +192,5 @@ func runElection(ctx context.Context, cfg configuration.Configuration, ch chan<-
 				ch <- identity
 			},
 		},
-	})
-}
-
-func runHTTPServer(ctx context.Context, addr string, h http.Handler, g *errgroup.Group, logger *slog.Logger) {
-	s := &http.Server{Addr: addr, Handler: h}
-	g.Go(func() error {
-		err := s.ListenAndServe()
-		if errors.Is(err, http.ErrServerClosed) {
-			err = nil
-		}
-		if err != nil {
-			logger.Error("server failed to start", "err", err)
-		}
-		return err
-	})
-	g.Go(func() error {
-		<-ctx.Done()
-		stopCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		err := s.Shutdown(stopCtx)
-		if errors.Is(err, http.ErrServerClosed) {
-			err = nil
-		}
-		if err != nil {
-			logger.Error("server failed to stop", "err", err)
-		}
-		return err
 	})
 }

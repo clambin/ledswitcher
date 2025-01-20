@@ -12,6 +12,7 @@ type Configuration struct {
 	K8SConfiguration
 	Addr           string
 	PrometheusAddr string
+	PProfAddr      string
 	LedPath        string
 	LeaderConfiguration
 	Debug bool
@@ -60,6 +61,7 @@ func GetConfiguration() Configuration {
 	flag.StringVar(&cfg.LeaderConfiguration.Scheduler.Mode, "mode", "linear", "LED pattern mode")
 	flag.StringVar(&cfg.Addr, "addr", ":8080", "controller address")
 	flag.StringVar(&cfg.PrometheusAddr, "prometheus", ":9090", "prometheus metrics address")
+	flag.StringVar(&cfg.PProfAddr, "pprof", "", "pprof listener address (default: don't run pprof")
 	flag.StringVar(&cfg.LedPath, "led-path", "/sys/class/leds/led1", "path name to the sysfs directory for the LED")
 	flag.StringVar(&cfg.K8SConfiguration.LockName, "lock-name", "ledswitcher", "name of the k8s leader election lock")
 	flag.StringVar(&cfg.K8SConfiguration.Namespace, "lock-namespace", "default", "namespace of the k8s leader election lock")
