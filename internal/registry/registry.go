@@ -14,7 +14,7 @@ var _ prometheus.Collector = &Registry{}
 
 type Registry struct {
 	Logger  *slog.Logger
-	hosts   []*Host
+	hosts   map[string]*Host
 	lock    sync.RWMutex
 	leading bool
 }
@@ -34,17 +34,15 @@ func (r *Registry) IsLeading() bool {
 func (r *Registry) Register(name string) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
-	for _, host := range r.hosts {
-		if host.Name == name {
-			host.UpdateStatus(true)
-			return
-		}
+	if host, ok := r.hosts[name]; ok {
+		host.UpdateStatus(true)
+		return
 	}
 	r.Logger.Info("registering new client", "url", name)
-	r.hosts = append(r.hosts, &Host{Name: name, LastUpdated: time.Now()})
-	slices.SortFunc(r.hosts, func(a, b *Host) int {
-		return cmp.Compare(a.Name, b.Name)
-	})
+	if r.hosts == nil {
+		r.hosts = make(map[string]*Host)
+	}
+	r.hosts[name] = &Host{Name: name, State: false, LastUpdated: time.Now()}
 }
 
 func (r *Registry) Hosts() []*Host {
@@ -56,47 +54,44 @@ func (r *Registry) Hosts() []*Host {
 			hosts = append(hosts, host)
 		}
 	}
+	slices.SortFunc(hosts, func(a, b *Host) int {
+		return cmp.Compare(a.Name, b.Name)
+	})
 	return hosts
 }
 
 func (r *Registry) HostState(name string) (bool, bool) {
 	r.lock.RLock()
 	defer r.lock.RUnlock()
-	for _, host := range r.hosts {
-		if host.IsAlive() && host.Name == name {
-			return host.State, true
-		}
+	if host, ok := r.hosts[name]; ok {
+		return host.State, true
 	}
 	return false, false
 }
 
-func (r *Registry) UpdateHostState(host string, state bool, reachable bool) {
+func (r *Registry) UpdateHostState(name string, state bool, reachable bool) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
-	for _, h := range r.hosts {
-		if h.Name == host {
-			h.UpdateStatus(reachable)
-			h.State = state
-		}
+	if host, ok := r.hosts[name]; ok {
+		host.UpdateStatus(reachable)
+		host.State = state
 	}
 }
 
 func (r *Registry) Cleanup() {
 	r.lock.Lock()
 	defer r.lock.Unlock()
-	alive := make([]*Host, 0, len(r.hosts))
 	dead := make([]string, 0, len(r.hosts))
-	for _, host := range r.hosts {
-		if host.IsAlive() {
-			alive = append(alive, host)
-		} else {
-			dead = append(dead, host.Name)
+	for name, host := range r.hosts {
+		if !host.IsAlive() {
+			dead = append(dead, name)
+			delete(r.hosts, name)
 		}
 	}
 	if len(dead) != 0 {
+		slices.Sort(dead)
 		r.Logger.Warn("dropping dead hosts", "dropped", strings.Join(dead, ","))
 	}
-	r.hosts = alive
 }
 
 var registryGauge = prometheus.NewDesc("ledswitcher_registry_node_count", "Number of registered nodes", nil, nil)
@@ -108,4 +103,30 @@ func (r *Registry) Describe(ch chan<- *prometheus.Desc) {
 func (r *Registry) Collect(ch chan<- prometheus.Metric) {
 	hosts := r.Hosts()
 	ch <- prometheus.MustNewConstMetric(registryGauge, prometheus.GaugeValue, float64(len(hosts)))
+}
+
+// Host holds the state of a registered host
+type Host struct {
+	LastUpdated time.Time
+	Name        string
+	Failures    int
+	State       bool
+}
+
+const maxFailures = 5
+
+// IsAlive reports if the host is up or down.  If the host has been unavailable 5 times in a row, it's considered "down".
+// One successful request marks it as "up" again
+func (h *Host) IsAlive() bool {
+	return h.Failures < maxFailures
+}
+
+// UpdateStatus updates the status of the host
+func (h *Host) UpdateStatus(reachable bool) {
+	if !reachable {
+		h.Failures++
+	} else {
+		h.Failures = 0
+	}
+	h.LastUpdated = time.Now()
 }

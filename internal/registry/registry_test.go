@@ -177,7 +177,7 @@ func TestRegistry_Cleanup(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			r := &Registry{hosts: []*Host{&tt.host}, Logger: slog.Default()}
+			r := &Registry{hosts: map[string]*Host{tt.host.Name: &tt.host}, Logger: slog.Default()}
 			r.Cleanup()
 			assert.Len(t, r.Hosts(), tt.want)
 		})
