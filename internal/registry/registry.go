@@ -42,7 +42,7 @@ func (r *Registry) Register(name string) {
 	if r.hosts == nil {
 		r.hosts = make(map[string]*Host)
 	}
-	r.hosts[name] = &Host{Name: name, State: false, LastUpdated: time.Now()}
+	r.hosts[name] = &Host{Name: name, LEDState: false, LastUpdated: time.Now()}
 }
 
 func (r *Registry) Hosts() []*Host {
@@ -64,7 +64,7 @@ func (r *Registry) HostState(name string) (bool, bool) {
 	r.lock.RLock()
 	defer r.lock.RUnlock()
 	if host, ok := r.hosts[name]; ok {
-		return host.State, true
+		return host.LEDState, true
 	}
 	return false, false
 }
@@ -74,7 +74,7 @@ func (r *Registry) UpdateHostState(name string, state bool, reachable bool) {
 	defer r.lock.Unlock()
 	if host, ok := r.hosts[name]; ok {
 		host.UpdateStatus(reachable)
-		host.State = state
+		host.LEDState = state
 	}
 }
 
@@ -110,7 +110,7 @@ type Host struct {
 	LastUpdated time.Time
 	Name        string
 	Failures    int
-	State       bool
+	LEDState    bool
 }
 
 const maxFailures = 5
