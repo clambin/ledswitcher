@@ -26,7 +26,7 @@ func TestRegistry_HostState(t *testing.T) {
 	assert.True(t, found)
 	assert.False(t, up)
 
-	r.Hosts()[0].State = true
+	r.Hosts()[0].LEDState = true
 	up, found = r.HostState("foo")
 	assert.True(t, found)
 	assert.True(t, up)
@@ -89,34 +89,34 @@ func TestRegistry_ReRegister(t *testing.T) {
 func TestRegistry_UpdateStatus(t *testing.T) {
 	type args struct {
 		host      string
-		state     bool
+		ledState  bool
 		reachable bool
 	}
 	tests := []struct {
-		name        string
-		args        args
-		wantState   bool
-		wantIsAlive bool
+		name          string
+		args          args
+		wantLedState  assert.BoolAssertionFunc
+		wantReachable assert.BoolAssertionFunc
 	}{
 		{
 			name: "on",
 			args: args{
 				host:      "localhost",
-				state:     true,
+				ledState:  true,
 				reachable: true,
 			},
-			wantState:   true,
-			wantIsAlive: true,
+			wantLedState:  assert.True,
+			wantReachable: assert.True,
 		},
 		{
 			name: "off",
 			args: args{
 				host:      "localhost",
-				state:     false,
+				ledState:  false,
 				reachable: true,
 			},
-			wantState:   false,
-			wantIsAlive: true,
+			wantLedState:  assert.False,
+			wantReachable: assert.True,
 		},
 		{
 			name: "down",
@@ -124,7 +124,8 @@ func TestRegistry_UpdateStatus(t *testing.T) {
 				host:      "localhost",
 				reachable: false,
 			},
-			wantIsAlive: true,
+			wantLedState:  assert.False,
+			wantReachable: assert.True,
 		},
 	}
 	for _, tt := range tests {
@@ -132,11 +133,11 @@ func TestRegistry_UpdateStatus(t *testing.T) {
 			t.Parallel()
 			r := &Registry{Logger: slog.Default()}
 			r.Register(tt.args.host)
-			r.UpdateHostState(tt.args.host, tt.args.state, tt.args.reachable)
+			r.UpdateHostState(tt.args.host, tt.args.ledState, tt.args.reachable)
 			hosts := r.Hosts()
 			require.Len(t, hosts, 1)
-			assert.Equal(t, tt.wantState, hosts[0].State)
-			assert.Equal(t, tt.wantIsAlive, hosts[0].IsAlive())
+			tt.wantLedState(t, hosts[0].LEDState)
+			tt.wantReachable(t, hosts[0].IsAlive())
 		})
 	}
 }
@@ -177,7 +178,7 @@ func TestRegistry_Cleanup(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			r := &Registry{hosts: []*Host{&tt.host}, Logger: slog.Default()}
+			r := &Registry{hosts: map[string]*Host{tt.host.Name: &tt.host}, Logger: slog.Default()}
 			r.Cleanup()
 			assert.Len(t, r.Hosts(), tt.want)
 		})
