@@ -176,8 +176,7 @@ func TestLED_SetActiveMode(t *testing.T) {
 
 func initFS(t *testing.T, modes string) string {
 	t.Helper()
-	tmpDir, err := os.MkdirTemp("", "")
-	require.NoError(t, err)
+	tmpDir := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "max_brightness"), []byte("1\n"), 0644))
 	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "brightness"), []byte("0\n"), 0644))
 	if modes != "" {
