@@ -59,6 +59,7 @@ var statusConfig = map[bool]struct {
 func (d *driver) setLED(targetURL string, state bool) error {
 	cfg := statusConfig[state]
 	req, _ := http.NewRequest(cfg.method, targetURL+"/endpoint/led", nil)
+	req.Header.Set("Accept-Encoding", "identity")
 	resp, err := d.client.Do(req)
 	if err == nil {
 		_ = resp.Body.Close()

@@ -38,6 +38,8 @@ func (r *registrant) register(ctx context.Context) {
 		return
 	}
 	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, r.leaderURL+"/leader/register", &body)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept-Encoding", "identity")
 	resp, err := r.httpClient.Do(req)
 	if err != nil {
 		r.logger.Error("failed to send registration request", "err", err, "target", r.leaderURL)
