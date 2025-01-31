@@ -12,10 +12,10 @@ import (
 
 // LED controls a LED on a Raspberry Pi.
 type LED struct {
+	modes          map[string]struct{}
 	brightnessPath string
 	triggerPath    string
 	maxBrightness  int
-	modes          map[string]struct{}
 }
 
 // New returns an LED at the provided path (e.g. /sys/class/led/PWR).

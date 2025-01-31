@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/clambin/ledswitcher/internal/client/scheduler"
 	"github.com/clambin/ledswitcher/internal/registry"
+	"io"
 	"log/slog"
 	"net/http"
 	"sync"
@@ -62,6 +63,8 @@ func (d *driver) setLED(targetURL string, state bool) error {
 	req.Header.Set("Accept-Encoding", "identity")
 	resp, err := d.client.Do(req)
 	if err == nil {
+		// resp.Body should be empty
+		_, _ = io.ReadAll(resp.Body)
 		_ = resp.Body.Close()
 		if resp.StatusCode != cfg.expectedStatusCode {
 			err = fmt.Errorf("setLED(%v): %d", state, resp.StatusCode)
