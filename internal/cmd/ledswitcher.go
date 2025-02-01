@@ -182,7 +182,7 @@ func runElection(ctx context.Context, cfg configuration.Configuration, ch chan<-
 		RetryPeriod:     5 * time.Second,
 		Callbacks: leaderelection.LeaderCallbacks{
 			OnStartedLeading: func(ctx context.Context) {
-				logger.Info("OnStartLeading called")
+				logger.Debug("OnStartLeading called")
 			},
 			OnStoppedLeading: func() {
 				logger.Info("leader lost")
