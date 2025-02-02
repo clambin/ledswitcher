@@ -3,7 +3,7 @@ on:
   push:
     branches:
       - master
-      - perf
+      - refactor
 permissions:
   contents: read
   packages: write
