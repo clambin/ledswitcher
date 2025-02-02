@@ -26,7 +26,7 @@ func (d *driver) advance(_ context.Context) {
 		go func(target *registry.Host, state bool) {
 			defer wg.Done()
 			if err := d.setLED(target, state); err != nil {
-				d.logger.Warn("unable to send state change request", "target", target, "state", state, "err", err)
+				d.logger.Warn("unable to send state change request", "target", target.Name, "state", state, "err", err)
 			}
 		}(action.Host, action.State)
 	}
