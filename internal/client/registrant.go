@@ -20,8 +20,8 @@ type registrant struct {
 	isRegistered atomic.Bool
 }
 
-func (r *registrant) setLeader(host string) {
-	r.leaderURL = "http://" + r.cfg.MustURLFromHost(host)
+func (r *registrant) setLeaderURL(host string) {
+	r.leaderURL = "http://" + r.cfg.MustURLFromHost(host) + "/leader/register"
 }
 
 func (r *registrant) register(ctx context.Context) {
@@ -30,14 +30,13 @@ func (r *registrant) register(ctx context.Context) {
 		r.logger.Warn("no leader yet. skipping registration request")
 		return
 	}
-
 	regReq := server.RegistrationRequest{URL: r.clientURL}
 	var body bytes.Buffer
 	if err := json.NewEncoder(&body).Encode(regReq); err != nil {
 		r.logger.Error("failed to encode registration request", "err", err)
 		return
 	}
-	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, r.leaderURL+"/leader/register", &body)
+	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, r.leaderURL, &body)
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := r.httpClient.Do(req)
 	if err != nil {

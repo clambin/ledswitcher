@@ -7,7 +7,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
-	"time"
+	"sync/atomic"
 )
 
 var _ prometheus.Collector = &Registry{}
@@ -35,14 +35,17 @@ func (r *Registry) Register(name string) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 	if host, ok := r.hosts[name]; ok {
-		host.UpdateStatus(true)
+		host.SetStatus(true)
 		return
 	}
 	r.Logger.Info("registering new client", "url", name)
 	if r.hosts == nil {
 		r.hosts = make(map[string]*Host)
 	}
-	r.hosts[name] = &Host{Name: name, LEDState: false, LastUpdated: time.Now()}
+	r.hosts[name] = &Host{
+		Name:   name,
+		LEDUrl: name + "/endpoint/led",
+	}
 }
 
 func (r *Registry) Hosts() []*Host {
@@ -64,17 +67,17 @@ func (r *Registry) HostState(name string) (bool, bool) {
 	r.lock.RLock()
 	defer r.lock.RUnlock()
 	if host, ok := r.hosts[name]; ok {
-		return host.LEDState, true
+		return host.LEDState(), true
 	}
 	return false, false
 }
 
 func (r *Registry) UpdateHostState(name string, state bool, reachable bool) {
-	r.lock.Lock()
-	defer r.lock.Unlock()
+	r.lock.RLock()
+	defer r.lock.RUnlock()
 	if host, ok := r.hosts[name]; ok {
-		host.UpdateStatus(reachable)
-		host.LEDState = state
+		host.SetStatus(reachable)
+		host.SetLEDState(state)
 	}
 }
 
@@ -107,10 +110,10 @@ func (r *Registry) Collect(ch chan<- prometheus.Metric) {
 
 // Host holds the state of a registered host
 type Host struct {
-	LastUpdated time.Time
-	Name        string
-	Failures    int
-	LEDState    bool
+	Name     string
+	LEDUrl   string
+	failures atomic.Int32
+	ledState atomic.Bool
 }
 
 const maxFailures = 5
@@ -118,15 +121,22 @@ const maxFailures = 5
 // IsAlive reports if the host is up or down.  If the host has been unavailable 5 times in a row, it's considered "down".
 // One successful request marks it as "up" again
 func (h *Host) IsAlive() bool {
-	return h.Failures < maxFailures
+	return h.failures.Load() < maxFailures
 }
 
-// UpdateStatus updates the status of the host
-func (h *Host) UpdateStatus(reachable bool) {
+// SetStatus updates the status of the host
+func (h *Host) SetStatus(reachable bool) {
 	if !reachable {
-		h.Failures++
+		h.failures.Add(1)
 	} else {
-		h.Failures = 0
+		h.failures.Store(0)
 	}
-	h.LastUpdated = time.Now()
+}
+
+func (h *Host) LEDState() bool {
+	return h.ledState.Load()
+}
+
+func (h *Host) SetLEDState(on bool) {
+	h.ledState.Store(on)
 }

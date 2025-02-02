@@ -87,6 +87,6 @@ func (c *Client) Run(ctx context.Context) error {
 func (c *Client) setLeader(leader string, hostname string) {
 	leading := leader == hostname || leader == "localhost" // localhost is for testing only
 	c.logger.Debug("setting leader", "leader", leader, "leading", leading)
-	c.registrant.setLeader(leader)
+	c.registrant.setLeaderURL(leader)
 	c.registry.Leading(leading)
 }
