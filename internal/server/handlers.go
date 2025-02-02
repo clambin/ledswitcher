@@ -42,6 +42,10 @@ func healthHandler(registrar Registrant) http.Handler {
 	})
 }
 
+type RegistrationRequest struct {
+	URL string `json:"url"`
+}
+
 func registryHandler(registry Registry, logger *slog.Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req RegistrationRequest

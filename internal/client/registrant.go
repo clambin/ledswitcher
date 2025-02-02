@@ -40,12 +40,12 @@ func (r *registrant) register(ctx context.Context) {
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := r.httpClient.Do(req)
 	if err != nil {
-		r.logger.Error("failed to send registration request", "err", err, "target", r.leaderURL)
+		r.logger.Error("failed to send registration request", "err", err)
 		return
 	}
-	defer func() { _ = resp.Body.Close() }()
+	_ = resp.Body.Close()
 	if resp.StatusCode != http.StatusCreated {
-		r.logger.Error("registration request rejected", "status", resp.Status, "target", r.leaderURL)
+		r.logger.Error("registration request rejected", "target", r.leaderURL, "status", resp.Status)
 		return
 	}
 	r.isRegistered.Store(true)
