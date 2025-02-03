@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"log/slog"
 	"testing"
-	"time"
 )
 
 func TestRegistry_Leading(t *testing.T) {
@@ -26,7 +25,7 @@ func TestRegistry_HostState(t *testing.T) {
 	assert.True(t, found)
 	assert.False(t, up)
 
-	r.Hosts()[0].LEDState = true
+	r.Hosts()[0].SetLEDState(true)
 	up, found = r.HostState("foo")
 	assert.True(t, found)
 	assert.True(t, up)
@@ -136,7 +135,7 @@ func TestRegistry_UpdateStatus(t *testing.T) {
 			r.UpdateHostState(tt.args.host, tt.args.ledState, tt.args.reachable)
 			hosts := r.Hosts()
 			require.Len(t, hosts, 1)
-			tt.wantLedState(t, hosts[0].LEDState)
+			tt.wantLedState(t, hosts[0].LEDState())
 			tt.wantReachable(t, hosts[0].IsAlive())
 		})
 	}
@@ -155,30 +154,32 @@ func TestRegistry_Dead(t *testing.T) {
 
 func TestRegistry_Cleanup(t *testing.T) {
 	var tests = []struct {
-		name string
-		host Host
-		want int
+		name     string
+		failures int32
+		want     int
 	}{
 		{
-			name: "up",
-			host: Host{Name: "host1", Failures: 0, LastUpdated: time.Now()},
-			want: 1,
+			name:     "up",
+			failures: 0,
+			want:     1,
 		},
 		{
-			name: "down, not yet exceeded threshold",
-			host: Host{Name: "host1", Failures: maxFailures - 1},
-			want: 1,
+			name:     "down, not yet exceeded threshold",
+			failures: maxFailures - 1,
+			want:     1,
 		},
 		{
-			name: "down, exceeded threshold",
-			host: Host{Name: "host1", Failures: maxFailures},
-			want: 0,
+			name:     "down, exceeded threshold",
+			failures: maxFailures,
+			want:     0,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			r := &Registry{hosts: map[string]*Host{tt.host.Name: &tt.host}, Logger: slog.Default()}
+			h := Host{Name: "host1"}
+			h.failures.Store(tt.failures)
+			r := &Registry{hosts: map[string]*Host{h.Name: &h}, Logger: slog.Default()}
 			r.Cleanup()
 			assert.Len(t, r.Hosts(), tt.want)
 		})
@@ -195,7 +196,7 @@ func TestRegistry_Collect(t *testing.T) {
 ledswitcher_registry_node_count 1
 `)))
 
-	r.Hosts()[0].Failures = 10
+	r.Hosts()[0].failures.Store(10)
 	assert.NoError(t, testutil.CollectAndCompare(&r, bytes.NewBufferString(`
 # HELP ledswitcher_registry_node_count Number of registered nodes
 # TYPE ledswitcher_registry_node_count gauge

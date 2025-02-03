@@ -20,8 +20,8 @@ type registrant struct {
 	isRegistered atomic.Bool
 }
 
-func (r *registrant) setLeader(host string) {
-	r.leaderURL = "http://" + r.cfg.MustURLFromHost(host)
+func (r *registrant) setLeaderURL(host string) {
+	r.leaderURL = "http://" + r.cfg.MustURLFromHost(host) + "/leader/register"
 }
 
 func (r *registrant) register(ctx context.Context) {
@@ -30,23 +30,22 @@ func (r *registrant) register(ctx context.Context) {
 		r.logger.Warn("no leader yet. skipping registration request")
 		return
 	}
-
 	regReq := server.RegistrationRequest{URL: r.clientURL}
 	var body bytes.Buffer
 	if err := json.NewEncoder(&body).Encode(regReq); err != nil {
 		r.logger.Error("failed to encode registration request", "err", err)
 		return
 	}
-	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, r.leaderURL+"/leader/register", &body)
+	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, r.leaderURL, &body)
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := r.httpClient.Do(req)
 	if err != nil {
-		r.logger.Error("failed to send registration request", "err", err, "target", r.leaderURL)
+		r.logger.Error("failed to send registration request", "err", err)
 		return
 	}
-	defer func() { _ = resp.Body.Close() }()
+	_ = resp.Body.Close()
 	if resp.StatusCode != http.StatusCreated {
-		r.logger.Error("registration request rejected", "status", resp.Status, "target", r.leaderURL)
+		r.logger.Error("registration request rejected", "target", r.leaderURL, "status", resp.Status)
 		return
 	}
 	r.isRegistered.Store(true)

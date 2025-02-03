@@ -37,7 +37,7 @@ func (s *Scheduler) Next() Actions {
 	for index, state := range s.schedule.Next(count) {
 		host := hosts[index]
 		actions = append(actions, Action{
-			Host:  host.Name,
+			Host:  host,
 			State: state,
 		})
 	}
@@ -46,7 +46,7 @@ func (s *Scheduler) Next() Actions {
 
 // Action represents a state change for a host
 type Action struct {
-	Host  string
+	Host  *registry.Host
 	State bool
 }
 

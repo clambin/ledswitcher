@@ -23,10 +23,10 @@ func (d *driver) advance(_ context.Context) {
 	var wg sync.WaitGroup
 	wg.Add(len(next))
 	for _, action := range next {
-		go func(target string, state bool) {
+		go func(target *registry.Host, state bool) {
 			defer wg.Done()
 			if err := d.setLED(target, state); err != nil {
-				d.logger.Warn("unable to send state change request", "target", target, "state", state, "err", err)
+				d.logger.Warn("unable to send state change request", "target", target.Name, "state", state, "err", err)
 			}
 		}(action.Host, action.State)
 	}
@@ -34,8 +34,8 @@ func (d *driver) advance(_ context.Context) {
 	d.logger.Debug("advanced scheduler", "next", next)
 }
 
-func (d *driver) setLED(target string, state bool) error {
-	current, found := d.registry.HostState(target)
+func (d *driver) setLED(target *registry.Host, state bool) error {
+	current, found := d.registry.HostState(target.Name)
 	if !found {
 		return errors.New("unable to find host state")
 	}
@@ -44,7 +44,7 @@ func (d *driver) setLED(target string, state bool) error {
 		return nil
 	}
 	err := d.sendLEDRequest(target, state)
-	d.registry.UpdateHostState(target, state, err == nil)
+	d.registry.UpdateHostState(target.Name, state, err == nil)
 	return err
 }
 
@@ -57,9 +57,9 @@ var statusConfig = map[bool]struct {
 }
 
 // sendLEDRequest performs an HTTP request to switch the LED at the specified host on or off
-func (d *driver) sendLEDRequest(targetURL string, state bool) error {
+func (d *driver) sendLEDRequest(target *registry.Host, state bool) error {
 	cfg := statusConfig[state]
-	req, _ := http.NewRequest(cfg.method, targetURL+"/endpoint/led", nil)
+	req, _ := http.NewRequest(cfg.method, target.LEDUrl, nil)
 	resp, err := d.client.Do(req)
 	if err == nil {
 		if resp.StatusCode != cfg.expectedStatusCode {
