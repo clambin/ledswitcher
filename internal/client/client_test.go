@@ -1,7 +1,6 @@
 package client
 
 import (
-	"context"
 	"encoding/json"
 	"github.com/clambin/ledswitcher/internal/configuration"
 	"github.com/clambin/ledswitcher/internal/registry"
@@ -41,11 +40,8 @@ func TestClient(t *testing.T) {
 	c, err := New(cfg, "localhost", &r, l)
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	errCh := make(chan error)
 	go func() {
-		errCh <- c.Run(ctx)
+		_ = c.Run(t.Context())
 	}()
 
 	c.Leader <- "localhost"

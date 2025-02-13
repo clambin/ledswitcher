@@ -11,8 +11,6 @@ import (
 
 func TestLED_Get_Set(t *testing.T) {
 	tmpDir := initFS(t, "none")
-	t.Cleanup(func() { _ = os.RemoveAll(tmpDir) })
-
 	l, err := New(tmpDir)
 	require.NoError(t, err)
 
@@ -58,8 +56,6 @@ func TestLED_GetModes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tmpDir := initFS(t, tt.modes)
-			t.Cleanup(func() { _ = os.RemoveAll(tmpDir) })
-
 			l, err := New(tmpDir)
 			tt.wantErr(t, err)
 
@@ -112,8 +108,6 @@ func TestLED_GetActiveMode(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tmpDir := initFS(t, tt.modes)
-			t.Cleanup(func() { _ = os.RemoveAll(tmpDir) })
-
 			l, err := New(tmpDir)
 			tt.wantErr(t, err)
 
@@ -156,8 +150,6 @@ func TestLED_SetActiveMode(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tmpDir := initFS(t, tt.modes)
-			t.Cleanup(func() { _ = os.RemoveAll(tmpDir) })
-
 			l, err := New(tmpDir)
 			if err != nil {
 				return

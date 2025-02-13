@@ -97,13 +97,11 @@ func TestServer(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			l := slog.Default()
-			var led fakeLEDSetter
+			l := slog.New(slog.DiscardHandler)
 			r := registry.Registry{Logger: l}
 			r.Leading(tt.leading)
 			r.Register("http://localhost:8080")
-			s := New(&led, &fakeRegistrant{}, &r, l)
+			s := New(&fakeLEDSetter{}, &fakeRegistrant{}, &r, l)
 
 			req, _ := http.NewRequest(tt.method, tt.target, bytes.NewBufferString(tt.body))
 			resp := httptest.NewRecorder()

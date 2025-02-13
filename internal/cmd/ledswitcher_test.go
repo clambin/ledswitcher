@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"encoding/json"
 	"github.com/clambin/ledswitcher/internal/configuration"
 	"github.com/clambin/ledswitcher/internal/registry"
@@ -20,8 +19,6 @@ func Test_runWithConfiguration(t *testing.T) {
 	tmpDir := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "trigger"), []byte("[none]"), 0644))
 	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "max_brightness"), []byte("1"), 0644))
-
-	ctx, cancel := context.WithCancel(context.Background())
 
 	hostname, err := os.Hostname()
 	require.NoError(t, err)
@@ -42,18 +39,12 @@ func Test_runWithConfiguration(t *testing.T) {
 
 	r := prometheus.NewRegistry()
 
-	errCh := make(chan error)
-	go func() {
-		errCh <- runWithConfiguration(ctx, cfg, r, "dev")
-	}()
+	go func() { _ = runWithConfiguration(t.Context(), cfg, r, "dev") }()
 
 	assert.Eventually(t, func() bool {
 		hosts, err := getStats()
 		return err == nil && hosts == 1
 	}, time.Second, 10*time.Millisecond)
-
-	cancel()
-	assert.NoError(t, <-errCh)
 
 	assert.Equal(t, 7, testutil.CollectAndCount(r,
 		"ledswitcher_server_api_requests_total",

@@ -9,6 +9,8 @@ import (
 	"testing"
 )
 
+var discardLogger = slog.New(slog.DiscardHandler)
+
 func TestRegistry_Leading(t *testing.T) {
 	var r Registry
 	for _, leading := range []bool{true, false} {
@@ -18,7 +20,7 @@ func TestRegistry_Leading(t *testing.T) {
 }
 
 func TestRegistry_HostState(t *testing.T) {
-	r := Registry{Logger: slog.Default()}
+	r := Registry{Logger: discardLogger}
 	r.Register("foo")
 
 	up, found := r.HostState("foo")
@@ -60,7 +62,7 @@ func TestRegistry_GetHosts(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			r := &Registry{Logger: slog.Default()}
+			r := &Registry{Logger: discardLogger}
 			for _, host := range tt.hosts {
 				r.Register(host)
 			}
@@ -74,7 +76,7 @@ func TestRegistry_GetHosts(t *testing.T) {
 }
 
 func TestRegistry_ReRegister(t *testing.T) {
-	r := &Registry{Logger: slog.Default()}
+	r := &Registry{Logger: discardLogger}
 	r.Register("localhost")
 	for range maxFailures {
 		r.UpdateHostState("localhost", false, false)
@@ -130,7 +132,7 @@ func TestRegistry_UpdateStatus(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			r := &Registry{Logger: slog.Default()}
+			r := &Registry{Logger: discardLogger}
 			r.Register(tt.args.host)
 			r.UpdateHostState(tt.args.host, tt.args.ledState, tt.args.reachable)
 			hosts := r.Hosts()
@@ -142,7 +144,7 @@ func TestRegistry_UpdateStatus(t *testing.T) {
 }
 
 func TestRegistry_Dead(t *testing.T) {
-	r := &Registry{Logger: slog.Default()}
+	r := &Registry{Logger: discardLogger}
 	r.Register("localhost")
 	r.UpdateHostState("localhost", false, true)
 	assert.True(t, r.Hosts()[0].IsAlive())
@@ -179,7 +181,7 @@ func TestRegistry_Cleanup(t *testing.T) {
 			t.Parallel()
 			h := Host{Name: "host1"}
 			h.failures.Store(tt.failures)
-			r := &Registry{hosts: map[string]*Host{h.Name: &h}, Logger: slog.Default()}
+			r := &Registry{hosts: map[string]*Host{h.Name: &h}, Logger: discardLogger}
 			r.Cleanup()
 			assert.Len(t, r.Hosts(), tt.want)
 		})
@@ -187,7 +189,7 @@ func TestRegistry_Cleanup(t *testing.T) {
 }
 
 func TestRegistry_Collect(t *testing.T) {
-	r := Registry{Logger: slog.Default()}
+	r := Registry{Logger: discardLogger}
 	r.Register("localhost")
 
 	assert.NoError(t, testutil.CollectAndCompare(&r, bytes.NewBufferString(`
