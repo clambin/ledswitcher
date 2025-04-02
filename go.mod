@@ -2,10 +2,8 @@ module github.com/clambin/ledswitcher
 
 go 1.24
 
-toolchain go1.24.0
-
 require (
-	github.com/clambin/go-common/httputils v0.2.0
+	github.com/clambin/go-common/httputils v0.3.0
 	github.com/prometheus/client_golang v1.21.1
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/sync v0.12.0
