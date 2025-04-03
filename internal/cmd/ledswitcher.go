@@ -1,9 +1,9 @@
 package cmd
 
 import (
+	"codeberg.org/clambin/go-common/httputils"
 	"context"
 	"fmt"
-	"github.com/clambin/go-common/httputils"
 	"github.com/clambin/ledswitcher/internal/client"
 	"github.com/clambin/ledswitcher/internal/configuration"
 	"github.com/clambin/ledswitcher/internal/registry"
