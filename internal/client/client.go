@@ -25,7 +25,7 @@ func New(cfg configuration.Configuration, hostname string, registry *registry.Re
 }
 
 func NewWithHTTPClient(cfg configuration.Configuration, hostname string, registry *registry.Registry, httpClient *http.Client, l *slog.Logger) (*Client, error) {
-	s, err := scheduler.New(cfg.Scheduler, registry)
+	s, err := scheduler.New(cfg.LeaderConfiguration.Scheduler, registry)
 	if err != nil {
 		return nil, fmt.Errorf("invalid scheduler configuration: %w", err)
 	}
@@ -44,7 +44,7 @@ func NewWithHTTPClient(cfg configuration.Configuration, hostname string, registr
 			logger:     l.With(slog.String("component", "registerer")),
 		},
 		Leader:      make(chan string),
-		ledInterval: cfg.Rotation,
+		ledInterval: cfg.LeaderConfiguration.Rotation,
 		logger:      l,
 	}
 	return &c, nil
@@ -87,6 +87,6 @@ func (c *Client) Run(ctx context.Context) error {
 func (c *Client) setLeader(leader string, hostname string) {
 	leading := leader == hostname || leader == "localhost" // localhost is for testing only
 	c.logger.Debug("setting leader", "leader", leader, "leading", leading)
-	c.registrant.setLeaderURL(leader)
+	c.setLeaderURL(leader)
 	c.registry.Leading(leading)
 }

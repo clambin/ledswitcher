@@ -9,13 +9,13 @@ import (
 )
 
 type Configuration struct {
-	K8SConfiguration
-	Addr           string
-	PrometheusAddr string
-	PProfAddr      string
-	LedPath        string
-	LeaderConfiguration
-	Debug bool
+	K8SConfiguration    K8SConfiguration
+	Addr                string
+	PrometheusAddr      string
+	PProfAddr           string
+	LedPath             string
+	LeaderConfiguration LeaderConfiguration
+	Debug               bool
 }
 
 type LeaderConfiguration struct {
@@ -65,7 +65,7 @@ func GetConfiguration() Configuration {
 	flag.StringVar(&cfg.LedPath, "led-path", "/sys/class/leds/led1", "path name to the sysfs directory for the LED")
 	flag.StringVar(&cfg.K8SConfiguration.LockName, "lock-name", "ledswitcher", "name of the k8s leader election lock")
 	flag.StringVar(&cfg.K8SConfiguration.Namespace, "lock-namespace", "default", "namespace of the k8s leader election lock")
-	flag.StringVar(&cfg.Leader, "leader", "", "leader node name (if empty, k8s leader election will be used")
+	flag.StringVar(&cfg.LeaderConfiguration.Leader, "leader", "", "leader node name (if empty, k8s leader election will be used")
 
 	flag.Parse()
 	return cfg
