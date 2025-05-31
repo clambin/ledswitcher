@@ -1,18 +1,19 @@
-package cmd
+package main
 
 import (
 	"encoding/json"
+	"net/http"
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
+
 	"github.com/clambin/ledswitcher/internal/configuration"
 	"github.com/clambin/ledswitcher/internal/registry"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"net/http"
-	"os"
-	"path/filepath"
-	"testing"
-	"time"
 )
 
 func Test_runWithConfiguration(t *testing.T) {
@@ -39,7 +40,7 @@ func Test_runWithConfiguration(t *testing.T) {
 
 	r := prometheus.NewRegistry()
 
-	go func() { _ = runWithConfiguration(t.Context(), cfg, r, "dev") }()
+	go func() { _ = run(t.Context(), cfg, r, "dev") }()
 
 	assert.Eventually(t, func() bool {
 		hosts, err := getStats()
