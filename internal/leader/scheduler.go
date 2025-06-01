@@ -1,10 +1,11 @@
-package scheduler
+package leader
 
 import (
-	"github.com/clambin/ledswitcher/internal/client/scheduler/schedule"
-	"github.com/clambin/ledswitcher/internal/configuration"
-	"github.com/clambin/ledswitcher/internal/registry"
 	"log/slog"
+
+	"github.com/clambin/ledswitcher/internal/configuration"
+	"github.com/clambin/ledswitcher/internal/leader/schedule"
+	"github.com/clambin/ledswitcher/internal/registry"
 )
 
 // Scheduler determines the LED state for each active host(s)
@@ -13,8 +14,8 @@ type Scheduler struct {
 	registry *registry.Registry
 }
 
-// New creates a Scheduler based on the provided pattern name
-func New(cfg configuration.SchedulerConfiguration, registry *registry.Registry) (*Scheduler, error) {
+// newScheduler creates a Scheduler based on the provided pattern name
+func newScheduler(cfg configuration.SchedulerConfiguration, registry *registry.Registry) (*Scheduler, error) {
 	s, err := schedule.New(cfg.Mode)
 	scheduler := Scheduler{
 		schedule: s,

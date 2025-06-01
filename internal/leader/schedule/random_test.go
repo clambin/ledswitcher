@@ -1,9 +1,10 @@
 package schedule_test
 
 import (
-	"github.com/clambin/ledswitcher/internal/client/scheduler/schedule"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/clambin/ledswitcher/internal/leader/schedule"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestRandomScheduler_Schedule(t *testing.T) {

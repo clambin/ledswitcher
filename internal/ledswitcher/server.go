@@ -1,0 +1,80 @@
+package ledswitcher
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"net/http"
+	"os"
+
+	"codeberg.org/clambin/go-common/httputils"
+	"github.com/clambin/ledswitcher/internal/configuration"
+	"github.com/clambin/ledswitcher/internal/endpoint"
+	"github.com/clambin/ledswitcher/internal/leader"
+	"github.com/clambin/ledswitcher/internal/registry"
+	"github.com/prometheus/client_golang/prometheus"
+	"golang.org/x/sync/errgroup"
+)
+
+type LEDSwitcher struct {
+	http.Handler
+	registry *registry.Registry
+	leader   *leader.Leader
+	endpoint *endpoint.Endpoint
+	logger   *slog.Logger
+	cfg      configuration.Configuration
+}
+
+func New(cfg configuration.Configuration, getHostname func() (string, error), r prometheus.Registerer, logger *slog.Logger) (s *LEDSwitcher, err error) {
+	if getHostname == nil {
+		getHostname = os.Hostname
+	}
+	hostname, err := getHostname()
+	if err != nil {
+		return nil, err
+	}
+
+	m := newMetrics()
+	if r != nil {
+		r.MustRegister(m)
+	}
+
+	s = &LEDSwitcher{
+		registry: registry.New(hostname, logger.With("component", "registry")),
+		cfg:      cfg,
+		logger:   logger,
+	}
+	httpClient := http.Client{
+		Transport: m.ClientMiddleware(http.DefaultTransport),
+	}
+
+	if s.leader, err = leader.New(cfg.LeaderConfiguration, s.registry, &httpClient, logger.With("component", "leader")); err != nil {
+		return nil, fmt.Errorf("leader: %w", err)
+	}
+	if s.endpoint, err = endpoint.New(cfg, s.registry, &httpClient, getHostname, logger.With("component", "endpoint")); err != nil {
+		return nil, fmt.Errorf("endpoint: %w", err)
+	}
+
+	h := http.NewServeMux()
+	routes(h, s.leader, s.endpoint, s.registry)
+	s.Handler = m.ServerMiddleware(h)
+
+	return s, nil
+}
+
+func (s *LEDSwitcher) Run(ctx context.Context) error {
+	var g errgroup.Group
+	g.Go(func() error {
+		s.logger.Debug("starting http server")
+		defer s.logger.Debug("http server stopped")
+		server := http.Server{Addr: s.cfg.Addr, Handler: s.Handler}
+		return httputils.RunServer(ctx, &server)
+	})
+	g.Go(func() error { return s.endpoint.Run(ctx) })
+	g.Go(func() error { return s.leader.Run(ctx) })
+	return g.Wait()
+}
+
+func (s *LEDSwitcher) SetLeader(leader string) {
+	s.registry.SetLeader(leader)
+}

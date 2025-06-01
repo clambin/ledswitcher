@@ -1,4 +1,4 @@
-package metrics
+package ledswitcher
 
 import (
 	"net/http"
@@ -11,17 +11,17 @@ var (
 	buckets = []float64{.0001, .0005, .001, .005, .01, .05}
 )
 
-var _ prometheus.Collector = Metrics{}
+var _ prometheus.Collector = metrics{}
 
-type Metrics struct {
+type metrics struct {
 	serverCounter  *prometheus.CounterVec
 	serverDuration *prometheus.HistogramVec
 	clientCounter  *prometheus.CounterVec
 	clientDuration *prometheus.HistogramVec
 }
 
-func New() *Metrics {
-	return &Metrics{
+func newMetrics() *metrics {
+	return &metrics{
 		serverCounter: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
 				Name: "ledswitcher_server_api_requests_total",
@@ -58,21 +58,21 @@ func New() *Metrics {
 	}
 }
 
-func (m Metrics) Describe(ch chan<- *prometheus.Desc) {
+func (m metrics) Describe(ch chan<- *prometheus.Desc) {
 	m.serverCounter.Describe(ch)
 	m.serverDuration.Describe(ch)
 	m.clientCounter.Describe(ch)
 	m.clientDuration.Describe(ch)
 }
 
-func (m Metrics) Collect(ch chan<- prometheus.Metric) {
+func (m metrics) Collect(ch chan<- prometheus.Metric) {
 	m.serverCounter.Collect(ch)
 	m.serverDuration.Collect(ch)
 	m.clientCounter.Collect(ch)
 	m.clientDuration.Collect(ch)
 }
 
-func (m Metrics) ClientMiddleware(next http.RoundTripper) http.RoundTripper {
+func (m metrics) ClientMiddleware(next http.RoundTripper) http.RoundTripper {
 	return promhttp.InstrumentRoundTripperCounter(m.clientCounter,
 		promhttp.InstrumentRoundTripperDuration(m.clientDuration,
 			next,
@@ -80,7 +80,7 @@ func (m Metrics) ClientMiddleware(next http.RoundTripper) http.RoundTripper {
 	)
 }
 
-func (m Metrics) ServerMiddleware(next http.Handler) http.Handler {
+func (m metrics) ServerMiddleware(next http.Handler) http.Handler {
 	return promhttp.InstrumentHandlerCounter(m.serverCounter,
 		promhttp.InstrumentHandlerDuration(m.serverDuration,
 			next,
