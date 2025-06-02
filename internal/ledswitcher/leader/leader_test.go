@@ -4,7 +4,6 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -22,8 +21,9 @@ func TestLeader_Advance(t *testing.T) {
 		Scheduler: configuration.SchedulerConfiguration{Mode: "binary"},
 		Rotation:  100 * time.Millisecond,
 	}
-	r := registry.New("localhost", slog.New(slog.DiscardHandler))
-	l, err := New(cfg, r, nil, slog.New(slog.NewTextHandler(os.Stderr, nil))) //slog.DiscardHandler))
+	logger := slog.New(slog.DiscardHandler) // slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	r := registry.New("localhost", logger)
+	l, err := New(cfg, r, nil, logger)
 	require.NoError(t, err)
 
 	var led1, led2 ledServer

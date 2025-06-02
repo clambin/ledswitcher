@@ -95,10 +95,12 @@ func (e *Endpoint) register(ctx context.Context) error {
 	}
 
 	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, "http://"+e.cfg.MustURLFromHost(leader)+api.RegistrationEndpoint, bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
 	resp, err := e.httpClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("http: %w", err)
 	}
+	_ = resp.Body.Close()
 	if resp.StatusCode != http.StatusCreated {
 		return fmt.Errorf("http: %s", resp.Status)
 	}

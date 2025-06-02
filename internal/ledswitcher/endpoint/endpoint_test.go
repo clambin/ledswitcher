@@ -6,7 +6,6 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -20,7 +19,7 @@ import (
 )
 
 func TestEndpoint_Run(t *testing.T) {
-	l := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	l := slog.New(slog.DiscardHandler) // slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
 
 	leader := fakeLeader{logger: l.With(slog.String("component", "leader"))}
 	ts := httptest.NewServer(&leader)
@@ -93,6 +92,10 @@ type fakeLeader struct {
 }
 
 func (f *fakeLeader) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if contentType := r.Header.Get("Content-Type"); contentType != "application/json" {
+		http.Error(w, "invalid content type: "+contentType, http.StatusBadRequest)
+		return
+	}
 	var req api.RegistrationRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		f.logger.Error("failed to parse request", "err", err)

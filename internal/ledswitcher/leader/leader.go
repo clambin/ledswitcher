@@ -85,11 +85,10 @@ func (l *Leader) setLED(ctx context.Context, target *registry.Host, state bool) 
 		statusCode = http.StatusCreated
 	}
 	req, _ := http.NewRequestWithContext(ctx, method, target.URL, nil)
-	req.Header.Set("Content-Type", "application/json")
 	resp, err := l.httpClient.Do(req)
 	if err == nil {
 		if resp.StatusCode != statusCode {
-			err = fmt.Errorf("setLED(%v): %d", state, resp.StatusCode)
+			err = fmt.Errorf("setLED(%v): %s", state, http.StatusText(resp.StatusCode))
 		}
 	}
 	l.registry.UpdateHostState(target.Name, state, err == nil)
