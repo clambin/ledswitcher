@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"sync/atomic"
 	"time"
 
 	"github.com/clambin/ledswitcher/internal/configuration"
@@ -18,12 +19,13 @@ import (
 )
 
 type Endpoint struct {
-	ledSetter  ledSetter
-	registry   *registry.Registry
-	httpClient *http.Client
-	logger     *slog.Logger
-	hostname   string
-	cfg        configuration.Configuration
+	ledSetter        ledSetter
+	registry         *registry.Registry
+	httpClient       *http.Client
+	logger           *slog.Logger
+	hostname         string
+	cfg              configuration.Configuration
+	registrationTime atomic.Value
 }
 
 type ledSetter interface {
@@ -113,6 +115,9 @@ func (e *Endpoint) register(ctx context.Context) error {
 		return fmt.Errorf("http: %s", resp.Status)
 	}
 
+	// mark when we last registered
+	e.registrationTime.Store(time.Now())
+
 	e.logger.Debug("registered with leader", "request", request)
 	return nil
 }
@@ -124,4 +129,9 @@ func (e *Endpoint) SetLED(state bool) error {
 		e.logger.Error("failed to set LED state", "err", err)
 	}
 	return err
+}
+
+func (e *Endpoint) IsRegistered() bool {
+	lastRegistration := e.registrationTime.Load()
+	return lastRegistration != nil && lastRegistration.(time.Time).Add(2*registrationInterval).After(time.Now())
 }

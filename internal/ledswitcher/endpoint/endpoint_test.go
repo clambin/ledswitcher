@@ -65,6 +65,17 @@ func TestEndpoint_SetLED(t *testing.T) {
 	assert.False(t, ep.ledSetter.(*fakeLED).state.Load())
 }
 
+func TestEndpoint_IsRegistered(t *testing.T) {
+	var ep Endpoint
+	assert.False(t, ep.IsRegistered())
+	ep.registrationTime.Store(time.Now().Add(-2 * registrationInterval))
+	assert.False(t, ep.IsRegistered())
+	ep.registrationTime.Store(time.Now().Add(-registrationInterval))
+	assert.True(t, ep.IsRegistered())
+	ep.registrationTime.Store(time.Now())
+	assert.True(t, ep.IsRegistered())
+}
+
 var _ ledSetter = &fakeLED{}
 
 type fakeLED struct {

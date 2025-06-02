@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"testing"
 	"time"
@@ -37,6 +38,8 @@ func Test_runWithConfiguration(t *testing.T) {
 		hosts, err := getStats()
 		return err == nil && hosts == 1
 	}, 5*time.Second, 10*time.Millisecond)
+
+	assert.NoError(t, getHealth())
 }
 
 func getStats() (int, error) {
@@ -50,4 +53,16 @@ func getStats() (int, error) {
 		return -1, err
 	}
 	return len(hosts), nil
+}
+
+func getHealth() error {
+	resp, err := http.Get("http://localhost:8081/healthz")
+	if err != nil {
+		return err
+	}
+	_ = resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+	}
+	return nil
 }

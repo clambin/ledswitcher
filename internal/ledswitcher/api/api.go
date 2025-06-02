@@ -4,6 +4,7 @@ const (
 	RegistrationEndpoint = "/leader/register"
 	LeaderStatsEndpoint  = "/leader/stats"
 	LEDEndpoint          = "/endpoint/led"
+	HealthEndpoint       = "/healthz"
 )
 
 type RegistrationRequest struct {

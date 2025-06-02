@@ -21,6 +21,7 @@ func routes(
 	mux.Handle("DELETE "+api.LEDEndpoint, h)
 	mux.Handle("POST "+api.RegistrationEndpoint, handleRegistration(l))
 	mux.Handle("GET "+api.LeaderStatsEndpoint, handleLeaderStats(r))
+	mux.Handle("GET "+api.HealthEndpoint, handleHealth(ep))
 }
 
 func handleLED(endpoint *endpoint.Endpoint) http.Handler {
@@ -64,6 +65,16 @@ func handleLeaderStats(registry *registry.Registry) http.Handler {
 		if err := json.NewEncoder(w).Encode(hosts); err != nil {
 			http.Error(w, "failed to encode stats: "+err.Error(), http.StatusInternalServerError)
 			return
+		}
+	})
+}
+
+func handleHealth(endpoint *endpoint.Endpoint) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if endpoint.IsRegistered() {
+			w.WriteHeader(http.StatusOK)
+		} else {
+			w.WriteHeader(http.StatusServiceUnavailable)
 		}
 	})
 }
