@@ -34,10 +34,14 @@ func New(hostname string, logger *slog.Logger) *Registry {
 func (r *Registry) Register(name string, url string) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
-	if _, ok := r.hosts[name]; !ok {
+	host, ok := r.hosts[name]
+	if !ok {
 		r.logger.Info("registering new client", "name", name)
+		r.hosts[name] = &Host{Name: name, URL: url}
+	} else {
+		host.URL = url
+		host.SetStatus(true)
 	}
-	r.hosts[name] = &Host{Name: name, URL: url}
 }
 
 func (r *Registry) Hosts() []*Host {
@@ -56,6 +60,7 @@ func (r *Registry) Hosts() []*Host {
 }
 
 func (r *Registry) HostState(name string) (bool, bool) {
+	// TODO: not needed anymore
 	r.lock.RLock()
 	defer r.lock.RUnlock()
 	if host, ok := r.hosts[name]; ok {
@@ -65,6 +70,7 @@ func (r *Registry) HostState(name string) (bool, bool) {
 }
 
 func (r *Registry) UpdateHostState(name string, state bool, reachable bool) {
+	// TODO: not needed anymore
 	r.lock.RLock()
 	defer r.lock.RUnlock()
 	if host, ok := r.hosts[name]; ok {

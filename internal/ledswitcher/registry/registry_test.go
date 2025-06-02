@@ -13,13 +13,17 @@ import (
 func TestRegistry_Register(t *testing.T) {
 	r := New("localhost", slog.New(slog.DiscardHandler))
 	r.Register("localhost", "http://localhost:8080")
+	r.Hosts()[0].SetLEDState(true)
 	for range maxFailures {
-		r.UpdateHostState("localhost", false, false)
+		r.UpdateHostState("localhost", true, false)
 	}
+
 	assert.Empty(t, r.Hosts())
 	r.Register("localhost", "http://localhost:8080")
 	require.Len(t, r.Hosts(), 1)
 	assert.Equal(t, "localhost", r.Hosts()[0].Name)
+	// re-registering should not affect the recorded LED state
+	assert.True(t, r.Hosts()[0].LEDState())
 }
 
 func TestRegistry_HostState(t *testing.T) {

@@ -53,7 +53,10 @@ func run(ctx context.Context, cfg configuration.Configuration, r prometheus.Regi
 		}()
 	}
 	go func() {
-		_ = http.ListenAndServe(cfg.PrometheusAddr, promhttp.Handler())
+		logger.Debug("starting prometheus server", "addr", cfg.PrometheusAddr)
+		if err := http.ListenAndServe(cfg.PrometheusAddr, promhttp.Handler()); !errors.Is(err, http.ErrServerClosed) {
+			logger.Error("failed to start prometheus server", "err", err)
+		}
 	}()
 
 	if getHostname == nil {

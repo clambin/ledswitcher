@@ -64,15 +64,20 @@ func (l *Leader) advance(ctx context.Context) {
 	l.logger.Debug("setting next state", "next", next)
 	var wg sync.WaitGroup
 	for _, action := range next {
-		if action.Host.LEDState() != action.State {
-			wg.Add(1)
-			go func(target *registry.Host, state bool) {
-				defer wg.Done()
-				if err := l.setLED(ctx, target, state); err != nil {
-					l.logger.Warn("unable to send state change request", "target", target.Name, "state", state, "err", err)
-				}
-			}(action.Host, action.State)
+		if action.Host.LEDState() == action.State {
+			l.logger.Debug("skipping state change", "target", action.Host.Name, "state", action.State)
+			continue
 		}
+		wg.Add(1)
+		go func(target *registry.Host, state bool) {
+			defer wg.Done()
+			err := l.setLED(ctx, target, state)
+			if err != nil {
+				l.logger.Warn("unable to send state change request", "target", target.Name, "state", state, "err", err)
+			}
+			action.Host.SetLEDState(state)
+			action.Host.SetStatus(err == nil)
+		}(action.Host, action.State)
 	}
 	wg.Wait()
 }
@@ -91,7 +96,6 @@ func (l *Leader) setLED(ctx context.Context, target *registry.Host, state bool) 
 			err = fmt.Errorf("setLED(%v): %s", state, http.StatusText(resp.StatusCode))
 		}
 	}
-	l.registry.UpdateHostState(target.Name, state, err == nil)
 	return err
 }
 
