@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/clambin/ledswitcher/internal/api"
-	"github.com/clambin/ledswitcher/internal/endpoint"
-	"github.com/clambin/ledswitcher/internal/leader"
-	"github.com/clambin/ledswitcher/internal/registry"
+	"github.com/clambin/ledswitcher/internal/ledswitcher/api"
+	"github.com/clambin/ledswitcher/internal/ledswitcher/endpoint"
+	"github.com/clambin/ledswitcher/internal/ledswitcher/leader"
+	"github.com/clambin/ledswitcher/internal/ledswitcher/registry"
 )
 
 func routes(

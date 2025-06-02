@@ -3,7 +3,7 @@ package leader
 import (
 	"testing"
 
-	"github.com/clambin/ledswitcher/internal/registry"
+	"github.com/clambin/ledswitcher/internal/ledswitcher/registry"
 	"github.com/stretchr/testify/assert"
 )
 

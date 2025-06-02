@@ -9,9 +9,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/clambin/ledswitcher/internal/api"
 	"github.com/clambin/ledswitcher/internal/configuration"
-	"github.com/clambin/ledswitcher/internal/registry"
+	"github.com/clambin/ledswitcher/internal/ledswitcher/api"
+	"github.com/clambin/ledswitcher/internal/ledswitcher/registry"
 )
 
 type Leader struct {

@@ -9,9 +9,9 @@ import (
 
 	"codeberg.org/clambin/go-common/httputils"
 	"github.com/clambin/ledswitcher/internal/configuration"
-	"github.com/clambin/ledswitcher/internal/endpoint"
-	"github.com/clambin/ledswitcher/internal/leader"
-	"github.com/clambin/ledswitcher/internal/registry"
+	"github.com/clambin/ledswitcher/internal/ledswitcher/endpoint"
+	"github.com/clambin/ledswitcher/internal/ledswitcher/leader"
+	"github.com/clambin/ledswitcher/internal/ledswitcher/registry"
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/sync/errgroup"
 )

@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/clambin/ledswitcher/internal/api"
 	"github.com/clambin/ledswitcher/internal/configuration"
-	"github.com/clambin/ledswitcher/internal/registry"
+	"github.com/clambin/ledswitcher/internal/ledswitcher/api"
+	"github.com/clambin/ledswitcher/internal/ledswitcher/registry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
