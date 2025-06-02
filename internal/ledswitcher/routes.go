@@ -29,14 +29,11 @@ func handleLED(endpoint *endpoint.Endpoint) http.Handler {
 		var statusCode int
 		switch r.Method {
 		case http.MethodPost:
-			err = endpoint.SetLED(true)
 			statusCode = http.StatusCreated
+			err = endpoint.SetLED(true)
 		case http.MethodDelete:
-			err = endpoint.SetLED(false)
 			statusCode = http.StatusNoContent
-		default:
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
+			err = endpoint.SetLED(false)
 		}
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)

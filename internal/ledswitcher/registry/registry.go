@@ -11,6 +11,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+var hostCountMetric = prometheus.NewDesc("ledswitcher_registry_node_count", "Number of registered nodes", nil, nil)
+
 var _ prometheus.Collector = &Registry{}
 
 type Registry struct {
@@ -107,15 +109,13 @@ func (r *Registry) IsLeading() bool {
 	return r.hostname == r.leader
 }
 
-var registryGauge = prometheus.NewDesc("ledswitcher_registry_node_count", "Number of registered nodes", nil, nil)
-
 func (r *Registry) Describe(ch chan<- *prometheus.Desc) {
-	ch <- registryGauge
+	ch <- hostCountMetric
 }
 
 func (r *Registry) Collect(ch chan<- prometheus.Metric) {
 	hosts := r.Hosts()
-	ch <- prometheus.MustNewConstMetric(registryGauge, prometheus.GaugeValue, float64(len(hosts)))
+	ch <- prometheus.MustNewConstMetric(hostCountMetric, prometheus.GaugeValue, float64(len(hosts)))
 }
 
 // Host holds the state of a registered host

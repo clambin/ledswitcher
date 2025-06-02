@@ -34,20 +34,16 @@ func New(cfg configuration.Configuration, getHostname func() (string, error), r 
 		return nil, err
 	}
 
-	m := newMetrics()
-	if r != nil {
-		r.MustRegister(m)
-	}
-
 	s = &LEDSwitcher{
 		registry: registry.New(hostname, logger.With("component", "registry")),
 		cfg:      cfg,
 		logger:   logger,
 	}
+
+	m := newMetrics()
 	httpClient := http.Client{
 		Transport: m.ClientMiddleware(http.DefaultTransport),
 	}
-
 	if s.leader, err = leader.New(cfg.LeaderConfiguration, s.registry, &httpClient, logger.With("component", "leader")); err != nil {
 		return nil, fmt.Errorf("leader: %w", err)
 	}
@@ -58,6 +54,10 @@ func New(cfg configuration.Configuration, getHostname func() (string, error), r 
 	h := http.NewServeMux()
 	routes(h, s.leader, s.endpoint, s.registry)
 	s.Handler = m.ServerMiddleware(h)
+
+	if r != nil {
+		r.MustRegister(m, s.registry)
+	}
 
 	return s, nil
 }

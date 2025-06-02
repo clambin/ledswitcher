@@ -58,6 +58,7 @@ func TestServer_Run(t *testing.T) {
 	metricNameWant := []string{
 		"ledswitcher_client_api_request_duration_seconds",
 		"ledswitcher_client_api_requests_total",
+		"ledswitcher_registry_node_count",
 		"ledswitcher_server_api_request_duration_seconds",
 		"ledswitcher_server_api_requests_total",
 	}
