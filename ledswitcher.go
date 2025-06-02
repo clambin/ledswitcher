@@ -2,12 +2,13 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
-	_ "runtime/pprof"
 	"syscall"
 	"time"
 
@@ -44,7 +45,12 @@ func run(ctx context.Context, cfg configuration.Configuration, r prometheus.Regi
 	defer logger.Info("shutting down ledswitcher")
 
 	if cfg.PProfAddr != "" {
-		go func() { _ = http.ListenAndServe(cfg.PProfAddr, nil) }()
+		go func() {
+			logger.Debug("starting pprof server", "addr", cfg.PProfAddr)
+			if err := http.ListenAndServe(cfg.PProfAddr, nil); !errors.Is(err, http.ErrServerClosed) {
+				logger.Error("failed to start pprof server", "err", err)
+			}
+		}()
 	}
 	go func() {
 		_ = http.ListenAndServe(cfg.PrometheusAddr, promhttp.Handler())
