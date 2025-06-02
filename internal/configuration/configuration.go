@@ -13,8 +13,8 @@ type Configuration struct {
 	Addr                  string
 	PrometheusAddr        string
 	PProfAddr             string
-	LeaderConfiguration   LeaderConfiguration
 	EndpointConfiguration EndpointConfiguration
+	LeaderConfiguration   LeaderConfiguration
 	Debug                 bool
 }
 
@@ -37,6 +37,23 @@ type K8SConfiguration struct {
 	Namespace string
 }
 
+func GetConfiguration() Configuration {
+	var cfg Configuration
+	flag.DurationVar(&cfg.LeaderConfiguration.Rotation, "rotation", time.Second, "delay of LED switching to the next state")
+	flag.StringVar(&cfg.LeaderConfiguration.Scheduler.Mode, "mode", "linear", "LED pattern mode")
+	flag.StringVar(&cfg.LeaderConfiguration.Leader, "leader", "", "leader node name (if empty, k8s leader election will be used")
+	flag.StringVar(&cfg.EndpointConfiguration.LEDPath, "led-path", "/sys/class/leds/led1", "path name to the sysfs directory for the LED")
+	flag.StringVar(&cfg.K8SConfiguration.LockName, "lock-name", "ledswitcher", "name of the k8s leader election lock")
+	flag.StringVar(&cfg.K8SConfiguration.Namespace, "lock-namespace", "default", "namespace of the k8s leader election lock")
+	flag.StringVar(&cfg.Addr, "addr", ":8080", "controller address")
+	flag.StringVar(&cfg.PrometheusAddr, "prometheus", ":9090", "prometheus metrics address")
+	flag.StringVar(&cfg.PProfAddr, "pprof", "", "pprof listener address (default: don't run pprof")
+	flag.BoolVar(&cfg.Debug, "debug", false, "log debug messages")
+
+	flag.Parse()
+	return cfg
+}
+
 // URLFromHost converts a host to a URL, using Addr to determine the latter.  If host is blank, the system's hostname is used.
 // No scheme (eg http://) is added.
 func (c Configuration) URLFromHost(host string) (string, error) {
@@ -56,21 +73,4 @@ func (c Configuration) MustURLFromHost(host string) string {
 		panic(err)
 	}
 	return url
-}
-
-func GetConfiguration() Configuration {
-	var cfg Configuration
-	flag.DurationVar(&cfg.LeaderConfiguration.Rotation, "rotation", time.Second, "delay of LED switching to the next state")
-	flag.StringVar(&cfg.LeaderConfiguration.Scheduler.Mode, "mode", "linear", "LED pattern mode")
-	flag.StringVar(&cfg.LeaderConfiguration.Leader, "leader", "", "leader node name (if empty, k8s leader election will be used")
-	flag.StringVar(&cfg.EndpointConfiguration.LEDPath, "led-path", "/sys/class/leds/led1", "path name to the sysfs directory for the LED")
-	flag.StringVar(&cfg.K8SConfiguration.LockName, "lock-name", "ledswitcher", "name of the k8s leader election lock")
-	flag.StringVar(&cfg.K8SConfiguration.Namespace, "lock-namespace", "default", "namespace of the k8s leader election lock")
-	flag.StringVar(&cfg.Addr, "addr", ":8080", "controller address")
-	flag.StringVar(&cfg.PrometheusAddr, "prometheus", ":9090", "prometheus metrics address")
-	flag.StringVar(&cfg.PProfAddr, "pprof", "", "pprof listener address (default: don't run pprof")
-	flag.BoolVar(&cfg.Debug, "debug", false, "log debug messages")
-
-	flag.Parse()
-	return cfg
 }

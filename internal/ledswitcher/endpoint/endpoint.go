@@ -19,12 +19,12 @@ import (
 
 type Endpoint struct {
 	led              LEDSetter
+	registrationTime atomic.Value
 	registry         *registry.Registry
 	httpClient       *http.Client
 	logger           *slog.Logger
 	hostname         string
 	cfg              configuration.Configuration
-	registrationTime atomic.Value
 }
 
 type LEDSetter interface {

@@ -34,11 +34,9 @@ func New(hostname string, logger *slog.Logger) *Registry {
 func (r *Registry) Register(name string, url string) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
-	if host, ok := r.hosts[name]; ok {
-		host.SetStatus(true)
-		return
+	if _, ok := r.hosts[name]; !ok {
+		r.logger.Info("registering new client", "name", name)
 	}
-	r.logger.Info("registering new client", "name", name)
 	r.hosts[name] = &Host{Name: name, URL: url}
 }
 
