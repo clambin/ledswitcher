@@ -15,11 +15,10 @@ import (
 	"github.com/clambin/ledswitcher/internal/configuration"
 	"github.com/clambin/ledswitcher/internal/ledswitcher/api"
 	"github.com/clambin/ledswitcher/internal/ledswitcher/registry"
-	"github.com/clambin/ledswitcher/ledberry"
 )
 
 type Endpoint struct {
-	ledSetter        ledSetter
+	led              LEDSetter
 	registry         *registry.Registry
 	httpClient       *http.Client
 	logger           *slog.Logger
@@ -28,7 +27,7 @@ type Endpoint struct {
 	registrationTime atomic.Value
 }
 
-type ledSetter interface {
+type LEDSetter interface {
 	Set(bool) error
 }
 
@@ -37,19 +36,19 @@ const registrationInterval = 10 * time.Second
 func New(
 	cfg configuration.Configuration,
 	registry *registry.Registry,
+	led LEDSetter,
 	httpClient *http.Client,
 	getHostname func() (string, error),
 	logger *slog.Logger,
 ) (ep *Endpoint, err error) {
 	ep = &Endpoint{
 		cfg:        cfg,
+		led:        led,
 		registry:   registry,
 		httpClient: cmp.Or(httpClient, http.DefaultClient),
 		logger:     logger,
 	}
-	if ep.ledSetter, err = initLED(cfg); err != nil {
-		return nil, fmt.Errorf("failed to access led: %w", err)
-	}
+
 	if getHostname == nil {
 		getHostname = os.Hostname
 	}
@@ -57,17 +56,6 @@ func New(
 		return nil, fmt.Errorf("failed to determine hostname: %w", err)
 	}
 	return ep, nil
-}
-
-func initLED(cfg configuration.Configuration) (*ledberry.LED, error) {
-	led, err := ledberry.New(cfg.LedPath)
-	if err == nil {
-		err = led.SetActiveMode("none")
-	}
-	if err != nil {
-		return nil, fmt.Errorf("failed to access led: %w", err)
-	}
-	return led, nil
 }
 
 func (e *Endpoint) Run(ctx context.Context) error {
@@ -124,7 +112,7 @@ func (e *Endpoint) register(ctx context.Context) error {
 
 func (e *Endpoint) SetLED(state bool) error {
 	e.logger.Debug("received request", "state", state)
-	err := e.ledSetter.Set(state)
+	err := e.led.Set(state)
 	if err != nil {
 		e.logger.Error("failed to set LED state", "err", err)
 	}

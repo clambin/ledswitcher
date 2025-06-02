@@ -31,19 +31,17 @@ func TestEndpoint_Run(t *testing.T) {
 
 	r := registry.New("localhost", l.With(slog.String("component", "registry")))
 	r.SetLeader("localhost")
-	ep := Endpoint{
-		cfg: configuration.Configuration{
-			LeaderConfiguration: configuration.LeaderConfiguration{
-				Leader: "localhost",
-			},
-			Addr: ":" + port,
+
+	cfg := configuration.Configuration{
+		LeaderConfiguration: configuration.LeaderConfiguration{
+			Leader: "localhost",
 		},
-		ledSetter:  &fakeLED{},
-		registry:   r,
-		hostname:   "localhost",
-		httpClient: http.DefaultClient,
-		logger:     l.With(slog.String("component", "endpoint")),
+		Addr: ":" + port,
 	}
+
+	var led fakeLED
+	ep, err := New(cfg, r, &led, nil, func() (string, error) { return "localhost", nil }, l.With(slog.String("component", "endpoint")))
+	require.NoError(t, err)
 
 	go func() { assert.NoError(t, ep.Run(t.Context())) }()
 
@@ -54,15 +52,15 @@ func TestEndpoint_Run(t *testing.T) {
 
 func TestEndpoint_SetLED(t *testing.T) {
 	ep := Endpoint{
-		ledSetter: &fakeLED{},
-		logger:    slog.New(slog.DiscardHandler),
+		led:    &fakeLED{},
+		logger: slog.New(slog.DiscardHandler),
 	}
 
 	require.NoError(t, ep.SetLED(true))
-	assert.True(t, ep.ledSetter.(*fakeLED).state.Load())
+	assert.True(t, ep.led.(*fakeLED).state.Load())
 
 	require.NoError(t, ep.SetLED(false))
-	assert.False(t, ep.ledSetter.(*fakeLED).state.Load())
+	assert.False(t, ep.led.(*fakeLED).state.Load())
 }
 
 func TestEndpoint_IsRegistered(t *testing.T) {
@@ -76,7 +74,7 @@ func TestEndpoint_IsRegistered(t *testing.T) {
 	assert.True(t, ep.IsRegistered())
 }
 
-var _ ledSetter = &fakeLED{}
+var _ LEDSetter = &fakeLED{}
 
 type fakeLED struct {
 	state atomic.Bool

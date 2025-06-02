@@ -22,13 +22,15 @@ func Test_runWithConfiguration(t *testing.T) {
 		Debug:          true,
 		Addr:           ":8081",
 		PrometheusAddr: ":9090",
-		LedPath:        ledPath,
 		LeaderConfiguration: configuration.LeaderConfiguration{
 			Leader:   "localhost",
 			Rotation: time.Second,
 			Scheduler: configuration.SchedulerConfiguration{
 				Mode: "linear",
 			},
+		},
+		EndpointConfiguration: configuration.EndpointConfiguration{
+			LEDPath: ledPath,
 		},
 	}
 

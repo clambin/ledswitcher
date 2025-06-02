@@ -1,8 +1,9 @@
 package configuration
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestConfiguration_MustURLFromHost(t *testing.T) {
@@ -57,13 +58,15 @@ func TestGetConfiguration(t *testing.T) {
 		Debug:          false,
 		Addr:           ":8080",
 		PrometheusAddr: ":9090",
-		LedPath:        "/sys/class/leds/led1",
 		LeaderConfiguration: LeaderConfiguration{
 			Leader:   "",
 			Rotation: 1000000000,
 			Scheduler: SchedulerConfiguration{
 				Mode: "linear",
 			},
+		},
+		EndpointConfiguration: EndpointConfiguration{
+			LEDPath: "/sys/class/leds/led1",
 		},
 		K8SConfiguration: K8SConfiguration{
 			LockName:  "ledswitcher",

@@ -22,19 +22,17 @@ func TestServer_Run(t *testing.T) {
 		_ = os.RemoveAll(tmpDir)
 	})
 	cfg := configuration.Configuration{
-		Addr: ":8080",
-		//PrometheusAddr:      "",
-		//PProfAddr:           "",
-		LedPath: tmpDir,
 		LeaderConfiguration: configuration.LeaderConfiguration{
 			Leader:    "localhost",
 			Scheduler: configuration.SchedulerConfiguration{Mode: "binary"},
 			Rotation:  100 * time.Millisecond,
 		},
-		Debug: true,
+		EndpointConfiguration: configuration.EndpointConfiguration{LEDPath: tmpDir},
+		Addr:                  ":8080",
+		Debug:                 true,
 	}
 
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	logger := slog.New(slog.DiscardHandler) //slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	r := prometheus.NewPedanticRegistry()
 
 	server, err := New(cfg, func() (string, error) { return "localhost", nil }, r, logger)

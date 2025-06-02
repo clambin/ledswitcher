@@ -12,6 +12,7 @@ import (
 	"github.com/clambin/ledswitcher/internal/ledswitcher/endpoint"
 	"github.com/clambin/ledswitcher/internal/ledswitcher/leader"
 	"github.com/clambin/ledswitcher/internal/ledswitcher/registry"
+	"github.com/clambin/ledswitcher/ledberry"
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/sync/errgroup"
 )
@@ -40,6 +41,14 @@ func New(cfg configuration.Configuration, getHostname func() (string, error), r 
 		logger:   logger,
 	}
 
+	led, err := ledberry.New(cfg.EndpointConfiguration.LEDPath)
+	if err == nil {
+		err = led.SetActiveMode("none")
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to access led: %w", err)
+	}
+
 	m := newMetrics()
 	httpClient := http.Client{
 		Transport: m.ClientMiddleware(http.DefaultTransport),
@@ -47,7 +56,7 @@ func New(cfg configuration.Configuration, getHostname func() (string, error), r 
 	if s.leader, err = leader.New(cfg.LeaderConfiguration, s.registry, &httpClient, logger.With("component", "leader")); err != nil {
 		return nil, fmt.Errorf("leader: %w", err)
 	}
-	if s.endpoint, err = endpoint.New(cfg, s.registry, &httpClient, getHostname, logger.With("component", "endpoint")); err != nil {
+	if s.endpoint, err = endpoint.New(cfg, s.registry, led, &httpClient, getHostname, logger.With("component", "endpoint")); err != nil {
 		return nil, fmt.Errorf("endpoint: %w", err)
 	}
 
