@@ -48,11 +48,11 @@ func (l *Leader) Run(ctx context.Context) error {
 	defer rotationInterval.Stop()
 
 	for {
+		if l.registry.IsLeading() {
+			l.advance(ctx)
+		}
 		select {
 		case <-rotationInterval.C:
-			if l.registry.IsLeading() {
-				l.advance(ctx)
-			}
 		case <-ctx.Done():
 			return nil
 		}
@@ -91,10 +91,8 @@ func (l *Leader) setLED(ctx context.Context, target *registry.Host, state bool) 
 	}
 	req, _ := http.NewRequestWithContext(ctx, method, target.URL, nil)
 	resp, err := l.httpClient.Do(req)
-	if err == nil {
-		if resp.StatusCode != statusCode {
-			err = fmt.Errorf("setLED(%v): %s", state, http.StatusText(resp.StatusCode))
-		}
+	if err == nil && resp.StatusCode != statusCode {
+		err = fmt.Errorf("setLED(%v): %s", state, http.StatusText(resp.StatusCode))
 	}
 	return err
 }
