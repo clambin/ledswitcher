@@ -29,7 +29,6 @@ func TestEndpoint_Run(t *testing.T) {
 	require.NoError(t, err)
 
 	r := registry.New("localhost", l.With(slog.String("component", "registry")))
-	r.SetLeader("localhost")
 
 	cfg := configuration.Configuration{
 		LeaderConfiguration: configuration.LeaderConfiguration{
@@ -42,7 +41,12 @@ func TestEndpoint_Run(t *testing.T) {
 	ep, err := New(cfg, r, &led, nil, func() (string, error) { return "localhost", nil }, l.With(slog.String("component", "endpoint")))
 	require.NoError(t, err)
 
-	go func() { assert.NoError(t, ep.Run(t.Context())) }()
+	// register without a leader doesn't produce an error
+	ctx := t.Context()
+	assert.NoError(t, ep.register(ctx))
+
+	r.SetLeader("localhost")
+	go func() { assert.NoError(t, ep.Run(ctx)) }()
 
 	require.Eventually(t, func() bool { return leader.lastRequest.Load() != nil }, 5*time.Second, time.Millisecond)
 	assert.Equal(t, "localhost", leader.lastRequest.Load().(api.RegistrationRequest).Name)
