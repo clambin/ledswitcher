@@ -15,15 +15,42 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestLeader_Advance(t *testing.T) {
+func TestLeader_Run(t *testing.T) {
 	cfg := configuration.LeaderConfiguration{
 		Leader:    "localhost",
 		Scheduler: configuration.SchedulerConfiguration{Mode: "binary"},
 		Rotation:  100 * time.Millisecond,
 	}
+	logger := slog.New(slog.DiscardHandler) //slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	r := registry.New("localhost", logger.With(slog.String("component", "registry")))
+	r.SetLeader("localhost")
+	leader, err := New(cfg, r, nil, logger.With(slog.String("component", "leader")))
+	require.NoError(t, err)
+
+	go func() {
+		assert.NoError(t, leader.Run(t.Context()))
+	}()
+
+	ep := ledServer{}
+	ts := httptest.NewServer(&ep)
+
+	assert.True(t, leader.Register(api.RegistrationRequest{Name: "host1", URL: ts.URL + api.LEDEndpoint}))
+	assert.Eventually(t, func() bool { return ep.ledCalled.Load() > 0 }, 5*time.Second, time.Millisecond)
+	assert.Len(t, r.Hosts(), 1)
+
+	ts.Close()
+
+	assert.Eventually(t, func() bool { return len(r.Hosts()) == 0 }, 5*time.Second, time.Millisecond)
+}
+
+func TestLeader_Advance(t *testing.T) {
+	cfg := configuration.LeaderConfiguration{
+		Leader:    "localhost",
+		Scheduler: configuration.SchedulerConfiguration{Mode: "binary"},
+	}
 	logger := slog.New(slog.DiscardHandler) // slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	r := registry.New("localhost", logger)
-	l, err := New(cfg, r, nil, logger)
+	leader, err := New(cfg, r, nil, logger)
 	require.NoError(t, err)
 
 	var led1, led2 ledServer
@@ -36,20 +63,20 @@ func TestLeader_Advance(t *testing.T) {
 
 	// 00 -> 01
 	ctx := t.Context()
-	l.advance(ctx)
+	leader.advance(ctx)
 	assert.Equal(t, "01", ledStates(&led1, &led2))
-	assert.Equal(t, int32(0), led1.ledCalled.Load())
-	assert.Equal(t, int32(1), led2.ledCalled.Load())
+	assert.Equal(t, int32(0), led1.ledCalled.Load()) // no change
+	assert.Equal(t, int32(1), led2.ledCalled.Load()) // change
 
-	l.advance(ctx)
+	leader.advance(ctx)
 	assert.Equal(t, "10", ledStates(&led1, &led2))
-	assert.Equal(t, int32(1), led1.ledCalled.Load())
-	assert.Equal(t, int32(2), led2.ledCalled.Load())
+	assert.Equal(t, int32(1), led1.ledCalled.Load()) // change
+	assert.Equal(t, int32(2), led2.ledCalled.Load()) // change
 
-	l.advance(ctx)
+	leader.advance(ctx)
 	assert.Equal(t, "11", ledStates(&led1, &led2))
-	assert.Equal(t, int32(1), led1.ledCalled.Load())
-	assert.Equal(t, int32(3), led2.ledCalled.Load())
+	assert.Equal(t, int32(1), led1.ledCalled.Load()) // no change
+	assert.Equal(t, int32(3), led2.ledCalled.Load()) // change
 }
 
 var _ http.Handler = &ledServer{}
@@ -74,6 +101,8 @@ func (l *ledServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		default:
 			w.WriteHeader(http.StatusMethodNotAllowed)
 		}
+	default:
+		http.NotFound(w, r)
 	}
 }
 
@@ -93,14 +122,14 @@ func TestLeader_Register(t *testing.T) {
 		Rotation:  100 * time.Millisecond,
 	}
 	r := registry.New("localhost", slog.New(slog.DiscardHandler))
-	l, err := New(cfg, r, nil, slog.New(slog.DiscardHandler))
+	leader, err := New(cfg, r, nil, slog.New(slog.DiscardHandler))
 	require.NoError(t, err)
 
 	req := api.RegistrationRequest{Name: "host1", URL: "http://host1" + api.LEDEndpoint}
-	assert.False(t, l.Register(req))
+	assert.False(t, leader.Register(req))
 
 	r.SetLeader("localhost")
-	assert.True(t, l.Register(req))
+	assert.True(t, leader.Register(req))
 	require.Len(t, r.Hosts(), 1)
 	assert.Equal(t, "host1", r.Hosts()[0].Name)
 	assert.Equal(t, "http://host1"+api.LEDEndpoint, r.Hosts()[0].URL)

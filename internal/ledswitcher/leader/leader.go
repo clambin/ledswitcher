@@ -44,15 +44,20 @@ func (l *Leader) Run(ctx context.Context) error {
 	l.logger.Debug("leader started")
 	defer l.logger.Debug("leader stopped")
 
-	rotationInterval := time.NewTicker(l.cfg.Rotation)
-	defer rotationInterval.Stop()
+	rotationTicker := time.NewTicker(l.cfg.Rotation)
+	defer rotationTicker.Stop()
+
+	cleanupTicker := time.NewTicker(time.Minute)
+	defer cleanupTicker.Stop()
 
 	for {
-		if l.registry.IsLeading() {
-			l.advance(ctx)
-		}
 		select {
-		case <-rotationInterval.C:
+		case <-rotationTicker.C:
+			if l.registry.IsLeading() {
+				l.advance(ctx)
+			}
+		case <-cleanupTicker.C:
+			l.registry.Cleanup()
 		case <-ctx.Done():
 			return nil
 		}

@@ -15,7 +15,7 @@ func TestRegistry_Register(t *testing.T) {
 	r.Register("localhost", "http://localhost:8080")
 	r.Hosts()[0].SetLEDState(true)
 	for range maxFailures {
-		r.UpdateHostState("localhost", true, false)
+		r.updateHostState("localhost", true, false)
 	}
 
 	assert.Empty(t, r.Hosts())
@@ -29,16 +29,16 @@ func TestRegistry_Register(t *testing.T) {
 func TestRegistry_HostState(t *testing.T) {
 	r := New("localhost", slog.New(slog.DiscardHandler))
 	r.Register("foo", "http://localhost:8080")
-	up, found := r.HostState("foo")
+	up, found := r.hostState("foo")
 	require.True(t, found)
 	assert.False(t, up)
 
 	r.Hosts()[0].SetLEDState(true)
-	up, found = r.HostState("foo")
+	up, found = r.hostState("foo")
 	require.True(t, found)
 	assert.True(t, up)
 
-	_, found = r.HostState("bar")
+	_, found = r.hostState("bar")
 	assert.False(t, found)
 }
 
@@ -128,7 +128,7 @@ func TestRegistry_UpdateHostState(t *testing.T) {
 			t.Parallel()
 			r := New("localhost", slog.New(slog.DiscardHandler))
 			r.Register(tt.args.host, "http://"+tt.args.host+":8080")
-			r.UpdateHostState(tt.args.host, tt.args.ledState, tt.args.reachable)
+			r.updateHostState(tt.args.host, tt.args.ledState, tt.args.reachable)
 			hosts := r.Hosts()
 			require.Len(t, hosts, 1)
 			tt.wantLedState(t, hosts[0].LEDState())

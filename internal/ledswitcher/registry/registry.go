@@ -59,8 +59,7 @@ func (r *Registry) Hosts() []*Host {
 	return hosts
 }
 
-func (r *Registry) HostState(name string) (bool, bool) {
-	// TODO: not needed anymore
+func (r *Registry) hostState(name string) (bool, bool) {
 	r.lock.RLock()
 	defer r.lock.RUnlock()
 	if host, ok := r.hosts[name]; ok {
@@ -69,8 +68,7 @@ func (r *Registry) HostState(name string) (bool, bool) {
 	return false, false
 }
 
-func (r *Registry) UpdateHostState(name string, state bool, reachable bool) {
-	// TODO: not needed anymore
+func (r *Registry) updateHostState(name string, state bool, reachable bool) {
 	r.lock.RLock()
 	defer r.lock.RUnlock()
 	if host, ok := r.hosts[name]; ok {
