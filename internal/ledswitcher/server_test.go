@@ -77,6 +77,9 @@ func TestServer_Run(t *testing.T) {
 func TestServer_Health(t *testing.T) {
 	tmpDir := t.TempDir()
 	require.NoError(t, prepLEDFS(tmpDir))
+	t.Cleanup(func() {
+		_ = os.RemoveAll(tmpDir)
+	})
 	cfg := configuration.Configuration{
 		LeaderConfiguration: configuration.LeaderConfiguration{
 			Leader:    "localhost",
