@@ -68,7 +68,7 @@ func TestServer_Run(t *testing.T) {
 	// validate stats
 	req, _ := http.NewRequest(http.MethodGet, api.LeaderStatsEndpoint, nil)
 	resp := httptest.NewRecorder()
-	server.Handler.ServeHTTP(resp, req)
+	server.ServeHTTP(resp, req)
 	require.Equal(t, http.StatusOK, resp.Code)
 	assert.Equal(t, `[{"Name":"localhost","URL":"http://localhost:8080/endpoint/led"}]
 `, resp.Body.String())
@@ -97,7 +97,7 @@ func TestServer_Health(t *testing.T) {
 	// endpoint is not registered: service not available
 	req, _ := http.NewRequest(http.MethodGet, api.HealthEndpoint, nil)
 	resp := httptest.NewRecorder()
-	server.Handler.ServeHTTP(resp, req)
+	server.ServeHTTP(resp, req)
 	require.Equal(t, http.StatusServiceUnavailable, resp.Code)
 
 	// set the leader and wait for the endpoint to be registered
@@ -107,7 +107,7 @@ func TestServer_Health(t *testing.T) {
 	// registered: service is now available
 	req, _ = http.NewRequest(http.MethodGet, api.HealthEndpoint, nil)
 	resp = httptest.NewRecorder()
-	server.Handler.ServeHTTP(resp, req)
+	server.ServeHTTP(resp, req)
 	require.Equal(t, http.StatusOK, resp.Code)
 }
 
