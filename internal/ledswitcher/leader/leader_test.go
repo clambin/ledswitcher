@@ -61,7 +61,6 @@ func TestLeader_Advance(t *testing.T) {
 	t.Cleanup(ts2.Close)
 	r.Register("led2", ts2.URL+api.LEDEndpoint)
 
-	// 00 -> 01
 	ctx := t.Context()
 	leader.advance(ctx)
 	assert.Equal(t, "01", ledStates(&led1, &led2))
@@ -77,6 +76,11 @@ func TestLeader_Advance(t *testing.T) {
 	assert.Equal(t, "11", ledStates(&led1, &led2))
 	assert.Equal(t, int32(1), led1.ledCalled.Load()) // no change
 	assert.Equal(t, int32(3), led2.ledCalled.Load()) // change
+
+	leader.advance(ctx)
+	assert.Equal(t, "00", ledStates(&led1, &led2))
+	assert.Equal(t, int32(2), led1.ledCalled.Load()) // change
+	assert.Equal(t, int32(4), led2.ledCalled.Load()) // change
 }
 
 var _ http.Handler = &ledServer{}
