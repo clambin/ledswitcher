@@ -3,6 +3,8 @@ package ledswitcher
 import (
 	"log/slog"
 	"maps"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"slices"
@@ -10,6 +12,7 @@ import (
 	"time"
 
 	"github.com/clambin/ledswitcher/internal/configuration"
+	"github.com/clambin/ledswitcher/internal/ledswitcher/api"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -38,19 +41,19 @@ func TestServer_Run(t *testing.T) {
 	server, err := New(cfg, "localhost", r, logger)
 	require.NoError(t, err)
 	server.SetLeader("localhost")
-
 	go func() {
 		require.NoError(t, server.Run(t.Context()))
 	}()
 
-	assert.Eventually(t, func() bool {
-		return len(server.registry.Hosts()) == 1
-	}, 5*time.Second, 100*time.Millisecond)
+	// wait for the endpoint to be registered
+	assert.Eventually(t, server.endpoint.IsRegistered, 5*time.Second, 100*time.Millisecond)
+	// eait for the endpoint to be called (led switched on)
 	assert.Eventually(t, func() bool {
 		hosts := server.registry.Hosts()
 		return len(hosts) == 1 && hosts[0].LEDState() == true
 	}, 5*time.Second, 100*time.Millisecond)
 
+	// validate metrics
 	metricNamesFound, err := getMetricNames(r)
 	require.NoError(t, err)
 	metricNameWant := []string{
@@ -61,6 +64,51 @@ func TestServer_Run(t *testing.T) {
 		"ledswitcher_server_api_requests_total",
 	}
 	assert.Equal(t, metricNameWant, metricNamesFound)
+
+	// validate stats
+	req, _ := http.NewRequest(http.MethodGet, api.LeaderStatsEndpoint, nil)
+	resp := httptest.NewRecorder()
+	server.Handler.ServeHTTP(resp, req)
+	require.Equal(t, http.StatusOK, resp.Code)
+	assert.Equal(t, `[{"Name":"localhost","URL":"http://localhost:8080/endpoint/led"}]
+`, resp.Body.String())
+}
+
+func TestServer_Health(t *testing.T) {
+	tmpDir := t.TempDir()
+	require.NoError(t, prepLEDFS(tmpDir))
+	cfg := configuration.Configuration{
+		LeaderConfiguration: configuration.LeaderConfiguration{
+			Leader:    "localhost",
+			Scheduler: configuration.SchedulerConfiguration{Mode: "binary"},
+			Rotation:  100 * time.Millisecond,
+		},
+		EndpointConfiguration: configuration.EndpointConfiguration{LEDPath: tmpDir},
+		Addr:                  ":8080",
+		Debug:                 true,
+	}
+	logger := slog.New(slog.DiscardHandler)
+	server, err := New(cfg, "localhost", nil, logger)
+	require.NoError(t, err)
+	go func() {
+		require.NoError(t, server.Run(t.Context()))
+	}()
+
+	// endpoint is not registered: service not available
+	req, _ := http.NewRequest(http.MethodGet, api.HealthEndpoint, nil)
+	resp := httptest.NewRecorder()
+	server.Handler.ServeHTTP(resp, req)
+	require.Equal(t, http.StatusServiceUnavailable, resp.Code)
+
+	// set the leader and wait for the endpoint to be registered
+	server.registry.SetLeader("localhost")
+	assert.Eventually(t, server.endpoint.IsRegistered, 5*time.Second, 100*time.Millisecond)
+
+	// registered: service is now available
+	req, _ = http.NewRequest(http.MethodGet, api.HealthEndpoint, nil)
+	resp = httptest.NewRecorder()
+	server.Handler.ServeHTTP(resp, req)
+	require.Equal(t, http.StatusOK, resp.Code)
 }
 
 func prepLEDFS(path string) error {
