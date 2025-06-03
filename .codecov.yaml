@@ -1,3 +1,0 @@
-ignore:
-  - "**/mocks/*.go"
-  - "cmd/ledswitcher/ledswitcher.go"

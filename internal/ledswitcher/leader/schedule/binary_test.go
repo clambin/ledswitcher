@@ -2,9 +2,10 @@ package schedule_test
 
 import (
 	"fmt"
-	"github.com/clambin/ledswitcher/internal/client/scheduler/schedule"
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	"github.com/clambin/ledswitcher/internal/ledswitcher/leader/schedule"
+	"github.com/stretchr/testify/require"
 )
 
 func TestBinaryScheduler_Schedule(t *testing.T) {

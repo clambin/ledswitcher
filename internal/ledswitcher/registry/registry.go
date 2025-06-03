@@ -2,49 +2,45 @@ package registry
 
 import (
 	"cmp"
-	"github.com/prometheus/client_golang/prometheus"
 	"log/slog"
 	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
+
+	"github.com/prometheus/client_golang/prometheus"
 )
+
+var hostCountMetric = prometheus.NewDesc("ledswitcher_registry_node_count", "Number of registered nodes", nil, nil)
 
 var _ prometheus.Collector = &Registry{}
 
 type Registry struct {
-	Logger  *slog.Logger
-	hosts   map[string]*Host
-	lock    sync.RWMutex
-	leading bool
+	logger   *slog.Logger
+	hosts    map[string]*Host
+	hostname string
+	leader   string
+	lock     sync.RWMutex
 }
 
-func (r *Registry) Leading(leading bool) {
+func New(hostname string, logger *slog.Logger) *Registry {
+	return &Registry{
+		hostname: hostname,
+		hosts:    make(map[string]*Host),
+		logger:   logger,
+	}
+}
+
+func (r *Registry) Register(name string, url string) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
-	r.leading = leading
-}
-
-func (r *Registry) IsLeading() bool {
-	r.lock.RLock()
-	defer r.lock.RUnlock()
-	return r.leading
-}
-
-func (r *Registry) Register(name string) {
-	r.lock.Lock()
-	defer r.lock.Unlock()
-	if host, ok := r.hosts[name]; ok {
+	host, ok := r.hosts[name]
+	if !ok {
+		r.logger.Info("registering new client", "name", name)
+		r.hosts[name] = &Host{Name: name, URL: url}
+	} else {
+		host.URL = url
 		host.SetStatus(true)
-		return
-	}
-	r.Logger.Info("registering new client", "url", name)
-	if r.hosts == nil {
-		r.hosts = make(map[string]*Host)
-	}
-	r.hosts[name] = &Host{
-		Name:   name,
-		LEDUrl: name + "/endpoint/led",
 	}
 }
 
@@ -63,7 +59,7 @@ func (r *Registry) Hosts() []*Host {
 	return hosts
 }
 
-func (r *Registry) HostState(name string) (bool, bool) {
+func (r *Registry) hostState(name string) (bool, bool) {
 	r.lock.RLock()
 	defer r.lock.RUnlock()
 	if host, ok := r.hosts[name]; ok {
@@ -72,7 +68,7 @@ func (r *Registry) HostState(name string) (bool, bool) {
 	return false, false
 }
 
-func (r *Registry) UpdateHostState(name string, state bool, reachable bool) {
+func (r *Registry) updateHostState(name string, state bool, reachable bool) {
 	r.lock.RLock()
 	defer r.lock.RUnlock()
 	if host, ok := r.hosts[name]; ok {
@@ -93,25 +89,41 @@ func (r *Registry) Cleanup() {
 	}
 	if len(dead) != 0 {
 		slices.Sort(dead)
-		r.Logger.Warn("dropping dead hosts", "dropped", strings.Join(dead, ","))
+		r.logger.Warn("dropping dead hosts", "dropped", strings.Join(dead, ","))
 	}
 }
 
-var registryGauge = prometheus.NewDesc("ledswitcher_registry_node_count", "Number of registered nodes", nil, nil)
+func (r *Registry) Leader() string {
+	r.lock.RLock()
+	defer r.lock.RUnlock()
+	return r.leader
+}
+
+func (r *Registry) SetLeader(hostname string) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+	r.leader = hostname
+}
+
+func (r *Registry) IsLeading() bool {
+	r.lock.RLock()
+	defer r.lock.RUnlock()
+	return r.hostname == r.leader
+}
 
 func (r *Registry) Describe(ch chan<- *prometheus.Desc) {
-	ch <- registryGauge
+	ch <- hostCountMetric
 }
 
 func (r *Registry) Collect(ch chan<- prometheus.Metric) {
 	hosts := r.Hosts()
-	ch <- prometheus.MustNewConstMetric(registryGauge, prometheus.GaugeValue, float64(len(hosts)))
+	ch <- prometheus.MustNewConstMetric(hostCountMetric, prometheus.GaugeValue, float64(len(hosts)))
 }
 
 // Host holds the state of a registered host
 type Host struct {
 	Name     string
-	LEDUrl   string
+	URL      string
 	failures atomic.Int32
 	ledState atomic.Bool
 }

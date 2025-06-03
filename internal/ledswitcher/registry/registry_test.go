@@ -2,41 +2,47 @@ package registry
 
 import (
 	"bytes"
+	"log/slog"
+	"testing"
+
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"log/slog"
-	"testing"
 )
 
-var discardLogger = slog.New(slog.DiscardHandler)
-
-func TestRegistry_Leading(t *testing.T) {
-	var r Registry
-	for _, leading := range []bool{true, false} {
-		r.Leading(leading)
-		assert.Equal(t, leading, r.IsLeading())
+func TestRegistry_Register(t *testing.T) {
+	r := New("localhost", slog.New(slog.DiscardHandler))
+	r.Register("localhost", "http://localhost:8080")
+	r.Hosts()[0].SetLEDState(true)
+	for range maxFailures {
+		r.updateHostState("localhost", true, false)
 	}
+
+	assert.Empty(t, r.Hosts())
+	r.Register("localhost", "http://localhost:8080")
+	require.Len(t, r.Hosts(), 1)
+	assert.Equal(t, "localhost", r.Hosts()[0].Name)
+	// re-registering should not affect the recorded LED state
+	assert.True(t, r.Hosts()[0].LEDState())
 }
 
 func TestRegistry_HostState(t *testing.T) {
-	r := Registry{Logger: discardLogger}
-	r.Register("foo")
-
-	up, found := r.HostState("foo")
-	assert.True(t, found)
+	r := New("localhost", slog.New(slog.DiscardHandler))
+	r.Register("foo", "http://localhost:8080")
+	up, found := r.hostState("foo")
+	require.True(t, found)
 	assert.False(t, up)
 
 	r.Hosts()[0].SetLEDState(true)
-	up, found = r.HostState("foo")
-	assert.True(t, found)
+	up, found = r.hostState("foo")
+	require.True(t, found)
 	assert.True(t, up)
 
-	_, found = r.HostState("bar")
+	_, found = r.hostState("bar")
 	assert.False(t, found)
 }
 
-func TestRegistry_GetHosts(t *testing.T) {
+func TestRegistry_Hosts(t *testing.T) {
 	tests := []struct {
 		name  string
 		hosts []string
@@ -62,9 +68,9 @@ func TestRegistry_GetHosts(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			r := &Registry{Logger: discardLogger}
+			r := New("localhost", slog.New(slog.DiscardHandler))
 			for _, host := range tt.hosts {
-				r.Register(host)
+				r.Register(host, "http://"+host+":8080")
 			}
 			registeredHosts := make([]string, 0, len(tt.hosts))
 			for _, host := range r.Hosts() {
@@ -75,19 +81,7 @@ func TestRegistry_GetHosts(t *testing.T) {
 	}
 }
 
-func TestRegistry_ReRegister(t *testing.T) {
-	r := &Registry{Logger: discardLogger}
-	r.Register("localhost")
-	for range maxFailures {
-		r.UpdateHostState("localhost", false, false)
-	}
-	assert.Empty(t, r.Hosts())
-	r.Register("localhost")
-	require.Len(t, r.Hosts(), 1)
-	assert.Equal(t, "localhost", r.Hosts()[0].Name)
-}
-
-func TestRegistry_UpdateStatus(t *testing.T) {
+func TestRegistry_UpdateHostState(t *testing.T) {
 	type args struct {
 		host      string
 		ledState  bool
@@ -132,26 +126,15 @@ func TestRegistry_UpdateStatus(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			r := &Registry{Logger: discardLogger}
-			r.Register(tt.args.host)
-			r.UpdateHostState(tt.args.host, tt.args.ledState, tt.args.reachable)
+			r := New("localhost", slog.New(slog.DiscardHandler))
+			r.Register(tt.args.host, "http://"+tt.args.host+":8080")
+			r.updateHostState(tt.args.host, tt.args.ledState, tt.args.reachable)
 			hosts := r.Hosts()
 			require.Len(t, hosts, 1)
 			tt.wantLedState(t, hosts[0].LEDState())
 			tt.wantReachable(t, hosts[0].IsAlive())
 		})
 	}
-}
-
-func TestRegistry_Dead(t *testing.T) {
-	r := &Registry{Logger: discardLogger}
-	r.Register("localhost")
-	r.UpdateHostState("localhost", false, true)
-	assert.True(t, r.Hosts()[0].IsAlive())
-	for range maxFailures {
-		r.UpdateHostState("localhost", false, false)
-	}
-	assert.Empty(t, r.Hosts())
 }
 
 func TestRegistry_Cleanup(t *testing.T) {
@@ -181,25 +164,34 @@ func TestRegistry_Cleanup(t *testing.T) {
 			t.Parallel()
 			h := Host{Name: "host1"}
 			h.failures.Store(tt.failures)
-			r := &Registry{hosts: map[string]*Host{h.Name: &h}, Logger: discardLogger}
+			r := New("localhost", slog.New(slog.DiscardHandler))
+			r.hosts = map[string]*Host{h.Name: &h}
 			r.Cleanup()
 			assert.Len(t, r.Hosts(), tt.want)
 		})
 	}
 }
 
-func TestRegistry_Collect(t *testing.T) {
-	r := Registry{Logger: discardLogger}
-	r.Register("localhost")
+func TestRegistry_Leader(t *testing.T) {
+	r := New("localhost", slog.New(slog.DiscardHandler))
+	for _, leader := range []string{"localhost", "other"} {
+		r.SetLeader(leader)
+		assert.Equal(t, leader == r.hostname, r.IsLeading())
+	}
+}
 
-	assert.NoError(t, testutil.CollectAndCompare(&r, bytes.NewBufferString(`
+func TestRegistry_Collect(t *testing.T) {
+	r := New("localhost", slog.New(slog.DiscardHandler))
+	r.Register("localhost", "http://localhost:8080")
+
+	assert.NoError(t, testutil.CollectAndCompare(r, bytes.NewBufferString(`
 # HELP ledswitcher_registry_node_count Number of registered nodes
 # TYPE ledswitcher_registry_node_count gauge
 ledswitcher_registry_node_count 1
 `)))
 
 	r.Hosts()[0].failures.Store(10)
-	assert.NoError(t, testutil.CollectAndCompare(&r, bytes.NewBufferString(`
+	assert.NoError(t, testutil.CollectAndCompare(r, bytes.NewBufferString(`
 # HELP ledswitcher_registry_node_count Number of registered nodes
 # TYPE ledswitcher_registry_node_count gauge
 ledswitcher_registry_node_count 0
