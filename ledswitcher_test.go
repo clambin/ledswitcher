@@ -34,7 +34,7 @@ func Test_runWithConfiguration(t *testing.T) {
 		},
 	}
 
-	go func() { _ = run(t.Context(), cfg, nil, "dev", func() (string, error) { return "localhost", nil }) }()
+	go func() { _ = run(t.Context(), cfg, nil, "dev", "localhost") }()
 
 	assert.Eventually(t, func() bool {
 		hosts, err := getStats()

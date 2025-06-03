@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"os"
 	"sync/atomic"
 	"time"
 
@@ -38,24 +37,17 @@ func New(
 	registry *registry.Registry,
 	led LEDSetter,
 	httpClient *http.Client,
-	getHostname func() (string, error),
+	hostname string,
 	logger *slog.Logger,
-) (ep *Endpoint, err error) {
-	ep = &Endpoint{
+) *Endpoint {
+	return &Endpoint{
 		cfg:        cfg,
 		led:        led,
 		registry:   registry,
 		httpClient: cmp.Or(httpClient, http.DefaultClient),
+		hostname:   hostname,
 		logger:     logger,
 	}
-
-	if getHostname == nil {
-		getHostname = os.Hostname
-	}
-	if ep.hostname, err = getHostname(); err != nil {
-		return nil, fmt.Errorf("failed to determine hostname: %w", err)
-	}
-	return ep, nil
 }
 
 func (e *Endpoint) Run(ctx context.Context) error {

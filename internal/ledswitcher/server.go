@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"os"
 
 	"codeberg.org/clambin/go-common/httputils"
 	"github.com/clambin/ledswitcher/internal/configuration"
@@ -26,15 +25,7 @@ type LEDSwitcher struct {
 	cfg      configuration.Configuration
 }
 
-func New(cfg configuration.Configuration, getHostname func() (string, error), r prometheus.Registerer, logger *slog.Logger) (s *LEDSwitcher, err error) {
-	if getHostname == nil {
-		getHostname = os.Hostname
-	}
-	hostname, err := getHostname()
-	if err != nil {
-		return nil, err
-	}
-
+func New(cfg configuration.Configuration, hostname string, r prometheus.Registerer, logger *slog.Logger) (s *LEDSwitcher, err error) {
 	s = &LEDSwitcher{
 		registry: registry.New(hostname, logger.With("component", "registry")),
 		cfg:      cfg,
@@ -53,11 +44,9 @@ func New(cfg configuration.Configuration, getHostname func() (string, error), r 
 	httpClient := http.Client{
 		Transport: m.ClientMiddleware(http.DefaultTransport),
 	}
+	s.endpoint = endpoint.New(cfg, s.registry, led, &httpClient, hostname, logger.With("component", "endpoint"))
 	if s.leader, err = leader.New(cfg.LeaderConfiguration, s.registry, &httpClient, logger.With("component", "leader")); err != nil {
 		return nil, fmt.Errorf("leader: %w", err)
-	}
-	if s.endpoint, err = endpoint.New(cfg, s.registry, led, &httpClient, getHostname, logger.With("component", "endpoint")); err != nil {
-		return nil, fmt.Errorf("endpoint: %w", err)
 	}
 
 	h := http.NewServeMux()

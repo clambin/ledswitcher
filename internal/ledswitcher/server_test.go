@@ -35,7 +35,7 @@ func TestServer_Run(t *testing.T) {
 	logger := slog.New(slog.DiscardHandler) //slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	r := prometheus.NewPedanticRegistry()
 
-	server, err := New(cfg, func() (string, error) { return "localhost", nil }, r, logger)
+	server, err := New(cfg, "localhost", r, logger)
 	require.NoError(t, err)
 	server.SetLeader("localhost")
 

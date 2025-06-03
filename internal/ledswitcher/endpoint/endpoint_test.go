@@ -38,8 +38,7 @@ func TestEndpoint_Run(t *testing.T) {
 	}
 
 	var led fakeLED
-	ep, err := New(cfg, r, &led, nil, func() (string, error) { return "localhost", nil }, l.With(slog.String("component", "endpoint")))
-	require.NoError(t, err)
+	ep := New(cfg, r, &led, nil, "localhost", l.With(slog.String("component", "endpoint")))
 
 	// register without a leader doesn't produce an error
 	ctx := t.Context()
