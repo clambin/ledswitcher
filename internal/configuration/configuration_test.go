@@ -73,5 +73,7 @@ func TestGetConfiguration(t *testing.T) {
 			Namespace: "default",
 		},
 	}
-	assert.Equal(t, want, GetConfiguration())
+	got := GetConfiguration()
+	got.NodeName = ""
+	assert.Equal(t, want, got)
 }

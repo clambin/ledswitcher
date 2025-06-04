@@ -33,17 +33,13 @@ type ledSwitcher interface {
 func main() {
 	ctx, done := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer done()
-	hostname, err := os.Hostname()
-	if err != nil {
-		panic(err)
-	}
-	if err = run(ctx, configuration.GetConfiguration(), prometheus.DefaultRegisterer, version, hostname); err != nil {
+	if err := run(ctx, configuration.GetConfiguration(), prometheus.DefaultRegisterer, version); err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "failed to start: %s\n", err.Error())
 		os.Exit(1)
 	}
 }
 
-func run(ctx context.Context, cfg configuration.Configuration, r prometheus.Registerer, version string, hostname string) error {
+func run(ctx context.Context, cfg configuration.Configuration, r prometheus.Registerer, version string) error {
 	var opt slog.HandlerOptions
 	if cfg.Debug {
 		opt.Level = slog.LevelDebug
@@ -71,9 +67,9 @@ func run(ctx context.Context, cfg configuration.Configuration, r prometheus.Regi
 	var server ledSwitcher
 	var err error
 	if cfg.RedisConfiguration.Addr != "" {
-		server, err = redisServer(cfg, hostname, logger)
+		server, err = redisServer(cfg, cfg.NodeName, logger)
 	} else {
-		server, err = ledswitcher.New(cfg, hostname, r, logger)
+		server, err = ledswitcher.New(cfg, cfg.NodeName, r, logger)
 	}
 	if err != nil {
 		return err
@@ -88,7 +84,7 @@ func run(ctx context.Context, cfg configuration.Configuration, r prometheus.Regi
 			ctx,
 			cfg.K8SConfiguration.Namespace,
 			cfg.K8SConfiguration.LockName,
-			hostname,
+			cfg.NodeName,
 			func(identity string) { server.SetLeader(identity) },
 			logger.With(slog.String("component", "k8s")),
 		)

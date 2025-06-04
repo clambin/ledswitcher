@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"net"
+	"os"
 	"time"
 )
 
@@ -13,6 +14,7 @@ type Configuration struct {
 	Addr                  string
 	PrometheusAddr        string
 	PProfAddr             string
+	NodeName              string
 	EndpointConfiguration EndpointConfiguration
 	LeaderConfiguration   LeaderConfiguration
 	RedisConfiguration    RedisConfiguration
@@ -46,6 +48,10 @@ type RedisConfiguration struct {
 }
 
 func GetConfiguration() Configuration {
+	hostname, err := os.Hostname()
+	if err != nil {
+		panic(err)
+	}
 	var cfg Configuration
 	flag.DurationVar(&cfg.LeaderConfiguration.Rotation, "rotation", time.Second, "delay of LED switching to the next state")
 	flag.StringVar(&cfg.LeaderConfiguration.Scheduler.Mode, "mode", "linear", "LED pattern mode")
@@ -61,6 +67,7 @@ func GetConfiguration() Configuration {
 	flag.StringVar(&cfg.RedisConfiguration.Username, "redis.username", "", "redis node username")
 	flag.StringVar(&cfg.RedisConfiguration.Password, "redis.password", "", "redis node password")
 	flag.IntVar(&cfg.RedisConfiguration.DB, "redis.db", 0, "redis node db")
+	flag.StringVar(&cfg.NodeName, "node-name", hostname, "node name")
 
 	flag.Parse()
 	return cfg

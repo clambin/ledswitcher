@@ -22,6 +22,7 @@ func Test_runWithConfiguration(t *testing.T) {
 		Debug:          true,
 		Addr:           ":8081",
 		PrometheusAddr: ":9090",
+		NodeName:       "localhost",
 		LeaderConfiguration: configuration.LeaderConfiguration{
 			Leader:   "localhost",
 			Rotation: time.Second,
@@ -34,7 +35,7 @@ func Test_runWithConfiguration(t *testing.T) {
 		},
 	}
 
-	go func() { _ = run(t.Context(), cfg, nil, "dev", "localhost") }()
+	go func() { _ = run(t.Context(), cfg, nil, "dev") }()
 
 	assert.Eventually(t, func() bool {
 		hosts, err := getStats()
