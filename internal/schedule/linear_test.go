@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/clambin/ledswitcher/internal/ledswitcher/leader/schedule"
+	"github.com/clambin/ledswitcher/internal/schedule"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestAlternatingScheduler_Schedule(t *testing.T) {
-	s := schedule.AlternatingSchedule{}
+func TestLinearScheduler_Schedule(t *testing.T) {
+	s := schedule.LinearSchedule{}
 
 	testCases := []struct {
 		count int
@@ -18,9 +18,7 @@ func TestAlternatingScheduler_Schedule(t *testing.T) {
 		{count: 4, next: "0100"},
 		{count: 4, next: "0010"},
 		{count: 4, next: "0001"},
-		{count: 4, next: "0010"},
-		{count: 3, next: "010"},
-		{count: 3, next: "100"},
+		{count: 4, next: "1000"},
 		{count: 4, next: "0100"},
 		{count: 3, next: "001"},
 		{count: 4, next: "0001"},
@@ -31,15 +29,4 @@ func TestAlternatingScheduler_Schedule(t *testing.T) {
 		next := s.Next(testCase.count)
 		assert.Equal(t, testCase.next, boolToString(next), fmt.Sprintf("testcase: %d", index+1))
 	}
-}
-
-func boolToString(input []bool) (output string) {
-	for _, i := range input {
-		if i {
-			output += "1"
-		} else {
-			output += "0"
-		}
-	}
-	return
 }

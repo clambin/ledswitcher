@@ -4,8 +4,8 @@ import (
 	"log/slog"
 
 	"github.com/clambin/ledswitcher/internal/configuration"
-	"github.com/clambin/ledswitcher/internal/ledswitcher/leader/schedule"
 	"github.com/clambin/ledswitcher/internal/ledswitcher/registry"
+	"github.com/clambin/ledswitcher/internal/schedule"
 )
 
 // Scheduler determines the LED state for each active host(s)

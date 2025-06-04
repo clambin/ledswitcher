@@ -1,0 +1,54 @@
+package redis
+
+import (
+	"context"
+	"log/slog"
+	"os"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestRegistry(t *testing.T) {
+	ctx := t.Context()
+
+	container, client, err := startRedis(ctx)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = container.Terminate(context.Background()) })
+
+	evh := redisEventHandler{Client: client}
+	r := Registry{
+		eventHandler:   &evh,
+		nodeExpiration: 500 * time.Millisecond,
+		logger:         slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug})),
+	}
+
+	go func() {
+		require.NoError(t, r.Run(ctx))
+	}()
+
+	assert.Empty(t, r.Nodes())
+
+	registrant := Registrant{
+		nodeName:     "localhost",
+		eventHandler: &evh,
+		interval:     time.Second,
+		logger:       r.logger,
+	}
+	go func() {
+		require.NoError(t, registrant.Run(ctx))
+	}()
+
+	var nodes []string
+	require.Eventually(t, func() bool {
+		nodes = r.Nodes()
+		return len(nodes) > 0
+	}, 5*time.Second, 10*time.Millisecond)
+
+	require.Len(t, nodes, 1)
+	assert.Equal(t, registrant.nodeName, nodes[0])
+
+	assert.Eventually(t, func() bool { return len(r.Nodes()) == 0 }, 2*r.nodeExpiration, 500*time.Millisecond)
+}

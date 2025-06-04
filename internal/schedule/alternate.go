@@ -1,7 +1,7 @@
 package schedule
 
 // AlternatingSchedule moves the LED from beginning to the end then moves from end to beginning again
-// (i.e. the Knight Rider pattern :-))
+// (i.e., the Knight Rider pattern :-))
 type AlternatingSchedule struct {
 	index     int
 	direction int
