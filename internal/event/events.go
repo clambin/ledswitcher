@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"iter"
 	"log/slog"
+	"maps"
+	"slices"
+	"sort"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -17,7 +20,22 @@ const (
 	eventNode = "node"
 )
 
+var _ slog.LogValuer = ledStates{}
+
+type ledStates map[string]boo
 type ledStates map[string]bool
+
+func (l ledStates) LogValue() slog.Value {
+	boolChar := map[bool]string{true: "1", false: "0"}
+	keys := slices.Collect(maps.Keys(l))
+	sort.Strings(keys)
+	var output string
+	for _, key := range keys {
+		output += boolChar[l[key]]
+	}
+	return slog.StringValue(output)
+}
+
 type nodeInfo string
 
 type eventHandler interface {

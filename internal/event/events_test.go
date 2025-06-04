@@ -85,3 +85,12 @@ func TestRedisEventHandler_LEDStates(t *testing.T) {
 	wg.Wait()
 	assert.Equal(t, want, received)
 }
+
+func TestLedStates_LogValue(t *testing.T) {
+	l := ledStates{
+		"node1": true,
+		"node2": false,
+		"node3": true,
+	}
+	assert.Equal(t, "101", l.LogValue().String())
+}
