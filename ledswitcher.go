@@ -10,15 +10,25 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/clambin/ledswitcher/elect"
 	"github.com/clambin/ledswitcher/internal/configuration"
+	"github.com/clambin/ledswitcher/internal/event"
 	"github.com/clambin/ledswitcher/internal/ledswitcher"
+	"github.com/clambin/ledswitcher/internal/schedule"
+	"github.com/clambin/ledswitcher/ledberry"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/redis/go-redis/v9"
 )
 
 var version = "change-me"
+
+type ledSwitcher interface {
+	Run(context.Context) error
+	SetLeader(string)
+}
 
 func main() {
 	ctx, done := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -58,12 +68,19 @@ func run(ctx context.Context, cfg configuration.Configuration, r prometheus.Regi
 		}
 	}()
 
-	server, err := ledswitcher.New(cfg, hostname, r, logger)
+	var server ledSwitcher
+	var err error
+	if cfg.RedisConfiguration.Addr != "" {
+		server, err = redisServer(cfg, hostname, logger)
+	} else {
+		server, err = ledswitcher.New(cfg, hostname, r, logger)
+	}
 	if err != nil {
 		return err
 	}
 
 	if cfg.LeaderConfiguration.Leader != "" {
+		//goland:noinspection GoMaybeNil
 		server.SetLeader(cfg.LeaderConfiguration.Leader)
 	} else {
 		logger.Info("no leader specified. using k8s leader election")
@@ -78,4 +95,32 @@ func run(ctx context.Context, cfg configuration.Configuration, r prometheus.Regi
 	}
 
 	return server.Run(ctx)
+}
+
+func redisServer(cfg configuration.Configuration, hostname string, logger *slog.Logger) (*event.Server, error) {
+	s, err := schedule.New(cfg.LeaderConfiguration.Scheduler.Mode)
+	if err != nil {
+		return nil, fmt.Errorf("schedule: %w", err)
+	}
+	led, err := ledberry.New(cfg.EndpointConfiguration.LEDPath)
+	if err != nil {
+		return nil, fmt.Errorf("led: %w", err)
+	}
+
+	server := event.NewServer(
+		hostname,
+		s,
+		redis.NewClient(&redis.Options{
+			Addr:     cfg.RedisConfiguration.Addr,
+			Username: cfg.RedisConfiguration.Username,
+			Password: cfg.RedisConfiguration.Password,
+			DB:       cfg.RedisConfiguration.DB,
+		}),
+		led,
+		cfg.LeaderConfiguration.Rotation,
+		10*time.Second,
+		time.Minute,
+		logger,
+	)
+	return server, nil
 }

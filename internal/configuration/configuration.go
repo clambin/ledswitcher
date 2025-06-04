@@ -15,6 +15,7 @@ type Configuration struct {
 	PProfAddr             string
 	EndpointConfiguration EndpointConfiguration
 	LeaderConfiguration   LeaderConfiguration
+	RedisConfiguration    RedisConfiguration
 	Debug                 bool
 }
 
@@ -37,6 +38,13 @@ type K8SConfiguration struct {
 	Namespace string
 }
 
+type RedisConfiguration struct {
+	Addr     string
+	Username string
+	Password string
+	DB       int
+}
+
 func GetConfiguration() Configuration {
 	var cfg Configuration
 	flag.DurationVar(&cfg.LeaderConfiguration.Rotation, "rotation", time.Second, "delay of LED switching to the next state")
@@ -49,6 +57,10 @@ func GetConfiguration() Configuration {
 	flag.StringVar(&cfg.PrometheusAddr, "prometheus", ":9090", "prometheus metrics address")
 	flag.StringVar(&cfg.PProfAddr, "pprof", "", "pprof listener address (default: don't run pprof")
 	flag.BoolVar(&cfg.Debug, "debug", false, "log debug messages")
+	flag.StringVar(&cfg.RedisConfiguration.Addr, "redis.addr", "", "redis node address")
+	flag.StringVar(&cfg.RedisConfiguration.Username, "redis.username", "", "redis node username")
+	flag.StringVar(&cfg.RedisConfiguration.Password, "redis.password", "", "redis node password")
+	flag.IntVar(&cfg.RedisConfiguration.DB, "redis.db", 0, "redis node db")
 
 	flag.Parse()
 	return cfg

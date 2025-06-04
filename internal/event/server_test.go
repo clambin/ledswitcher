@@ -1,4 +1,4 @@
-package redis
+package event
 
 import (
 	"context"
@@ -69,6 +69,7 @@ func startRedis(ctx context.Context) (testcontainers.Container, *redis.Client, e
 	if err != nil {
 		return nil, nil, err
 	}
+	//goland:noinspection GoMaybeNil
 	endpoint, err := c.Endpoint(ctx, "")
 	if err != nil {
 		_ = c.Terminate(ctx)
