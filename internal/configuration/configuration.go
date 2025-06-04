@@ -48,9 +48,12 @@ type RedisConfiguration struct {
 }
 
 func GetConfiguration() Configuration {
-	hostname, err := os.Hostname()
-	if err != nil {
-		panic(err)
+	hostname := os.Getenv("NODE_NAME")
+	if hostname == "" {
+		var err error
+		if hostname, err = os.Hostname(); err != nil {
+			panic(err)
+		}
 	}
 	var cfg Configuration
 	flag.DurationVar(&cfg.LeaderConfiguration.Rotation, "rotation", time.Second, "delay of LED switching to the next state")
