@@ -22,7 +22,6 @@ const (
 
 var _ slog.LogValuer = ledStates{}
 
-type ledStates map[string]boo
 type ledStates map[string]bool
 
 func (l ledStates) LogValue() slog.Value {
