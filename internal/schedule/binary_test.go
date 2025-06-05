@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/clambin/ledswitcher/internal/ledswitcher/leader/schedule"
+	"github.com/clambin/ledswitcher/internal/schedule"
 	"github.com/stretchr/testify/require"
 )
 
