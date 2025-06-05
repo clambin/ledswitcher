@@ -11,10 +11,10 @@ import (
 // A Registry performs two functions. Firstly, it maintains the list of active nodes. Secondly, it registers the local node with the active registry.
 type Registry struct {
 	eventHandler   *eventHandler
-	nodeExpiration time.Duration
-	lock           sync.RWMutex
 	logger         *slog.Logger
 	nodes          map[string]time.Time
+	nodeExpiration time.Duration
+	lock           sync.RWMutex
 }
 
 // Run listens for incoming 'node' events and registers them. Old nodes are removed regularly.
@@ -78,10 +78,10 @@ func (r *Registry) Nodes() []string {
 }
 
 type Registrant struct {
-	nodeName     string
 	eventHandler *eventHandler
-	interval     time.Duration
 	logger       *slog.Logger
+	nodeName     string
+	interval     time.Duration
 }
 
 func (r *Registrant) Run(ctx context.Context) error {

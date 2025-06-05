@@ -22,7 +22,7 @@ func Test_runWithConfiguration(t *testing.T) {
 	cfg := configuration.Configuration{
 		Debug:          true,
 		Addr:           ":8081",
-		PrometheusAddr: ":9090",
+		Addr: ":9090",
 		NodeName:       "localhost",
 		LeaderConfiguration: configuration.LeaderConfiguration{
 			Leader:   "localhost",

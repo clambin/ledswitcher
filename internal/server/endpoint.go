@@ -9,8 +9,8 @@ import (
 type Endpoint struct {
 	LED
 	eventHandler *eventHandler
-	nodeName     string
 	logger       *slog.Logger
+	nodeName     string
 	currentState atomic.Bool
 }
 

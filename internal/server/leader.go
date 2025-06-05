@@ -9,13 +9,13 @@ import (
 )
 
 type Leader struct {
-	eventHandler *eventHandler
-	nodeName     string
 	leaderName   atomic.Value
+	schedule     Schedule
+	eventHandler *eventHandler
 	logger       *slog.Logger
 	registry     *Registry
+	nodeName     string
 	ledInterval  time.Duration
-	schedule     Schedule
 }
 
 type Schedule interface {

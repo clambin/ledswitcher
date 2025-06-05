@@ -7,13 +7,13 @@ import (
 )
 
 type Configuration struct {
+	RedisConfiguration    RedisConfiguration
 	K8SConfiguration      K8SConfiguration
-	PrometheusAddr        string
+	Addr                  string
 	PProfAddr             string
 	NodeName              string
 	EndpointConfiguration EndpointConfiguration
 	LeaderConfiguration   LeaderConfiguration
-	RedisConfiguration    RedisConfiguration
 	Debug                 bool
 }
 
@@ -57,7 +57,7 @@ func GetConfiguration() Configuration {
 	flag.StringVar(&cfg.EndpointConfiguration.LEDPath, "led-path", "/sys/class/leds/led1", "path name to the sysfs directory for the LED")
 	flag.StringVar(&cfg.K8SConfiguration.LockName, "lock-name", "ledswitcher", "name of the k8s leader election lock")
 	flag.StringVar(&cfg.K8SConfiguration.Namespace, "lock-namespace", "default", "namespace of the k8s leader election lock")
-	flag.StringVar(&cfg.PrometheusAddr, "prometheus", ":9090", "prometheus metrics address")
+	flag.StringVar(&cfg.Addr, "addr", ":9090", "prometheus & health address")
 	flag.StringVar(&cfg.PProfAddr, "pprof", "", "pprof listener address (default: don't run pprof")
 	flag.BoolVar(&cfg.Debug, "debug", false, "log debug messages")
 	flag.StringVar(&cfg.RedisConfiguration.Addr, "redis.addr", "", "redis node address")

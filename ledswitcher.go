@@ -51,13 +51,6 @@ func run(ctx context.Context, cfg configuration.Configuration, r prometheus.Regi
 			}
 		}()
 	}
-	go func() {
-		logger.Debug("starting prometheus server", "addr", cfg.PrometheusAddr)
-		if err := http.ListenAndServe(cfg.PrometheusAddr, promhttp.Handler()); !errors.Is(err, http.ErrServerClosed) {
-			logger.Error("failed to start prometheus server", "err", err)
-		}
-	}()
-
 	s, err := schedule.New(cfg.LeaderConfiguration.Scheduler.Mode)
 	if err != nil {
 		return fmt.Errorf("schedule: %w", err)
@@ -96,6 +89,16 @@ func run(ctx context.Context, cfg configuration.Configuration, r prometheus.Regi
 			logger.With(slog.String("component", "k8s")),
 		)
 	}
+
+	go func() {
+		mux := http.NewServeMux()
+		mux.Handle("/metrics", promhttp.Handler())
+		mux.Handle("/healthz", server.HealthHandler(srv))
+		logger.Debug("starting prometheus & health server", "addr", cfg.Addr)
+		if err := http.ListenAndServe(cfg.Addr, mux); !errors.Is(err, http.ErrServerClosed) {
+			logger.Error("failed to start prometheus server", "err", err)
+		}
+	}()
 
 	return srv.Run(ctx)
 }

@@ -8,8 +8,8 @@ import (
 
 func TestGetConfiguration(t *testing.T) {
 	want := Configuration{
-		Debug:          false,
-		PrometheusAddr: ":9090",
+		Debug: false,
+		Addr:  ":9090",
 		LeaderConfiguration: LeaderConfiguration{
 			Leader:   "",
 			Rotation: 1000000000,
