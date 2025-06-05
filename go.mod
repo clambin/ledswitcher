@@ -5,13 +5,12 @@ go 1.24.0
 toolchain go1.24.3
 
 require (
-	codeberg.org/clambin/go-common/httputils v0.3.1
 	github.com/prometheus/client_golang v1.22.0
 	github.com/redis/go-redis/v9 v9.9.0
 	github.com/stretchr/testify v1.10.0
 	github.com/testcontainers/testcontainers-go v0.37.0
 	github.com/testcontainers/testcontainers-go/modules/redis v0.37.0
-	golang.org/x/sync v0.14.0
+	golang.org/x/sync v0.15.0
 	k8s.io/apimachinery v0.33.1
 	k8s.io/client-go v0.33.1
 )
