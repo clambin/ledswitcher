@@ -1,3 +1,4 @@
+---
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -12,21 +13,53 @@ spec:
     metadata:
       labels:
         app: ledswitcher
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
     spec:
       automountServiceAccountToken: true
       serviceAccountName: ledswitcher
-      hostNetwork: true
+      nodeSelector:
+        kubernetes.io/arch: arm64
       volumes:
-        - name: hostsys
-          hostPath:
-            path: /sys
+      - name: hostsys
+        hostPath:
+          path: /sys
       containers:
-        - name: ledswitcher
-          image: clambin/ledswitcher
-          args:
-            - '--port=8088'
-            - '--led-path=/host/sys/class/leds/PWR'
-          volumeMounts:
-            - name: hostsys
-              mountPath: /host/sys
+      - name: ledswitcher
+        image: ghcr.io/clambin/ledswitcher
+        env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        envFrom:
+        - secretRef:
+            name: ledswitcher
+        args:
+        #- '-debug'
+        - '-pprof=:6000'
+        - '-led-path=/host/sys/class/leds/PWR'
+        - '-mode=reverse-binary'
+        - '-rotation=1s'
+        - '-lock-namespace=infra'
+        - '-redis.addr=redis.databases.svc:6379'
+        - '-redis.password=$(REDIS_PASSWORD)'
+        - '-node-name=$(NODE_NAME)'
+        volumeMounts:
+        - name: hostsys
+          mountPath: /host/sys
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 9090
+          initialDelaySeconds: 10
+          timeoutSeconds: 10
+        ports:
+        - name: metrics
+          containerPort: 9090
+        resources:
+          requests:
+            cpu: 5m
+            memory: 16Mi
 ---
