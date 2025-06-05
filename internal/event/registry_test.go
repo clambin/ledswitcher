@@ -3,7 +3,6 @@ package event
 import (
 	"context"
 	"log/slog"
-	"os"
 	"testing"
 	"time"
 
@@ -18,11 +17,11 @@ func TestRegistry(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = container.Terminate(context.Background()) })
 
-	evh := redisEventHandler{Client: client}
+	evh := eventHandler{Client: client}
 	r := Registry{
 		eventHandler:   &evh,
-		nodeExpiration: 500 * time.Millisecond,
-		logger:         slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug})),
+		nodeExpiration: 250 * time.Millisecond,
+		logger:         slog.New(slog.DiscardHandler), // slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug})),
 	}
 
 	go func() {
@@ -50,5 +49,5 @@ func TestRegistry(t *testing.T) {
 	require.Len(t, nodes, 1)
 	assert.Equal(t, registrant.nodeName, nodes[0])
 
-	assert.Eventually(t, func() bool { return len(r.Nodes()) == 0 }, 2*r.nodeExpiration, 500*time.Millisecond)
+	assert.Eventually(t, func() bool { return len(r.Nodes()) == 0 }, 2*r.nodeExpiration, 10*time.Millisecond)
 }

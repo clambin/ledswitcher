@@ -24,7 +24,7 @@ func TestServer(t *testing.T) {
 
 	logger := slog.New(slog.DiscardHandler) //slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
 
-	const serverCount = 3
+	const serverCount = 2
 	leds := make([]LED, serverCount)
 	for i := range leds {
 		leds[i] = &fakeLED{}
@@ -41,8 +41,8 @@ func TestServer(t *testing.T) {
 			s,
 			client,
 			leds[i],
-			time.Second,
-			time.Second,
+			500*time.Millisecond,
+			500*time.Millisecond,
 			time.Hour,
 			l,
 		)

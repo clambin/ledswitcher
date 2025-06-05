@@ -8,7 +8,7 @@ import (
 
 type Endpoint struct {
 	LED
-	eventHandler
+	eventHandler *eventHandler
 	nodeName     string
 	logger       *slog.Logger
 	currentState atomic.Bool
@@ -22,19 +22,28 @@ func (e *Endpoint) Run(ctx context.Context) error {
 	e.logger.Debug("endpoint started")
 	defer e.logger.Debug("endpoint stopped")
 
-	for states := range e.LEDStates(ctx, e.logger) {
-		e.logger.Debug("event received", "states", states, "state", e.currentState.Load())
-		desiredState := states[e.nodeName]
-		if e.currentState.Load() == desiredState {
-			//e.logger.Debug("led already in desired state", "state", desiredState)
-			continue
+	ch := e.eventHandler.ledStates(ctx, e.logger)
+	for {
+		select {
+		case states, ok := <-ch:
+			if !ok {
+				e.logger.Warn("redis subscription closed")
+				return nil
+			}
+			e.logger.Debug("event received", "states", states, "state", e.currentState.Load())
+			desiredState := states[e.nodeName]
+			if e.currentState.Load() == desiredState {
+				//e.logger.Debug("led already in desired state", "state", desiredState)
+				continue
+			}
+			//e.logger.Debug("state changed", "state", desiredState)
+			if err := e.Set(desiredState); err != nil {
+				e.logger.Error("failed to set LED state", "err", err)
+				continue
+			}
+			e.currentState.Store(desiredState)
+		case <-ctx.Done():
+			return nil
 		}
-		//e.logger.Debug("state changed", "state", desiredState)
-		if err := e.Set(desiredState); err != nil {
-			e.logger.Error("failed to set LED state", "err", err)
-			continue
-		}
-		e.currentState.Store(desiredState)
 	}
-	return nil
 }

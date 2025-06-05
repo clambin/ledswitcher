@@ -27,7 +27,7 @@ func NewServer(
 	nodeExpiration time.Duration,
 	logger *slog.Logger,
 ) *Server {
-	evh := redisEventHandler{Client: client}
+	evh := eventHandler{Client: client}
 	server := Server{
 		Registry: Registry{
 			eventHandler:   &evh,

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
-	"os"
 	"testing"
 	"time"
 
@@ -16,9 +15,9 @@ func TestEndpoint_Run(t *testing.T) {
 	container, client, err := startRedis(t.Context())
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = container.Terminate(context.Background()) })
-	evh := redisEventHandler{Client: client}
+	evh := eventHandler{Client: client}
 
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	logger := slog.New(slog.DiscardHandler) //slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	var led fakeLED
 	ep := Endpoint{
 		nodeName:     "localhost",
@@ -36,12 +35,12 @@ func TestEndpoint_Run(t *testing.T) {
 	require.NoError(t, err)
 	require.Eventually(t, func() bool {
 		// err == nil is not enough: need to check we've actually delivered the message (val > 0)
-		val, err := evh.Publish(t.Context(), eventLED, string(body)).Result()
+		val, err := evh.Publish(t.Context(), channelLED, string(body)).Result()
 		return err == nil && val == 1
 	}, time.Second, 50*time.Millisecond)
 	assert.Eventually(t, led.get, time.Second, 10*time.Millisecond)
 
 	states["localhost"] = false
-	require.NoError(t, ep.PublishLEDStates(t.Context(), states))
+	require.NoError(t, ep.eventHandler.publishLEDStates(t.Context(), states))
 	assert.Eventually(t, func() bool { return !led.get() }, time.Second, 10*time.Millisecond)
 }

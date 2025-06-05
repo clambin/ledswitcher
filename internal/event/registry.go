@@ -10,7 +10,7 @@ import (
 
 // A Registry performs two functions. Firstly, it maintains the list of active nodes. Secondly, it registers the local node with the active registry.
 type Registry struct {
-	eventHandler
+	eventHandler   *eventHandler
 	nodeExpiration time.Duration
 	lock           sync.RWMutex
 	logger         *slog.Logger
@@ -22,18 +22,12 @@ func (r *Registry) Run(ctx context.Context) error {
 	r.logger.Debug("registry started")
 	defer r.logger.Debug("registry stopped")
 
-	ch := make(chan nodeInfo)
-	go func() {
-		for msg := range r.eventHandler.Nodes(ctx, r.logger) {
-			ch <- msg
-		}
-		close(ch)
-	}()
+	ch := r.eventHandler.nodes(ctx, r.logger)
 	for {
 		select {
 		case info, ok := <-ch:
 			if !ok {
-				r.logger.Warn("redis node disappeared")
+				r.logger.Warn("redis subscription closed")
 				return nil
 			}
 			if err := r.registerNode(info); err != nil {
@@ -85,7 +79,7 @@ func (r *Registry) Nodes() []string {
 
 type Registrant struct {
 	nodeName     string
-	eventHandler *redisEventHandler
+	eventHandler *eventHandler
 	interval     time.Duration
 	logger       *slog.Logger
 }
@@ -100,7 +94,7 @@ func (r *Registrant) Run(ctx context.Context) error {
 	for {
 		select {
 		case <-registrationTicker.C:
-			if err := r.eventHandler.PublishNode(ctx, r.nodeName); err != nil {
+			if err := r.eventHandler.publishNode(ctx, r.nodeName); err != nil {
 				r.logger.Error("failed to register node", "err", err)
 			}
 		case <-ctx.Done():
