@@ -6,6 +6,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/sync/errgroup"
 )
@@ -25,9 +26,13 @@ func NewServer(
 	ledInterval time.Duration,
 	registrationInterval time.Duration,
 	nodeExpiration time.Duration,
+	r prometheus.Registerer,
 	logger *slog.Logger,
 ) *Server {
 	evh := eventHandler{Client: client}
+	if r != nil {
+		r.MustRegister(publishedEventsMetric, receivedEventsMetrics)
+	}
 	server := Server{
 		Registry: Registry{
 			eventHandler:   &evh,

@@ -9,14 +9,31 @@ import (
 	"slices"
 	"sort"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/redis/go-redis/v9"
 )
-
-// TODO: instrumentation
 
 const (
 	channelLED  = "ledswitcher.led"
 	channelNode = "ledswitcher.node"
+)
+
+var (
+	publishedEventsMetric = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace:   "ledswitcher",
+		Subsystem:   "events",
+		Name:        "published_total",
+		Help:        "Number of events published",
+		ConstLabels: nil,
+	}, []string{"channel"})
+
+	receivedEventsMetrics = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace:   "ledswitcher",
+		Subsystem:   "events",
+		Name:        "received_total",
+		Help:        "Number of events received",
+		ConstLabels: nil,
+	}, []string{"channel"})
 )
 
 var _ slog.LogValuer = ledStates{}
@@ -61,7 +78,11 @@ func (r *eventHandler) publish(ctx context.Context, channel string, msg any) err
 	if err != nil {
 		return fmt.Errorf("json marshal: %w", err)
 	}
-	return r.Publish(ctx, channel, payload).Err()
+	if err = r.Client.Publish(ctx, channel, payload).Err(); err == nil {
+		//goland:noinspection GoMaybeNil
+		publishedEventsMetric.WithLabelValues(channel).Inc()
+	}
+	return err
 }
 
 func subscribe[T any](ctx context.Context, c *redis.Client, channel string, logger *slog.Logger) <-chan T {
@@ -73,8 +94,10 @@ func subscribe[T any](ctx context.Context, c *redis.Client, channel string, logg
 			var t T
 			if err := json.Unmarshal([]byte(msg.Payload), &t); err != nil {
 				logger.Warn("json unmarshal", "channel", channel, "err", err)
+				continue
 			}
 			out <- t
+			receivedEventsMetrics.WithLabelValues(channel).Inc()
 		}
 		close(out)
 	}()

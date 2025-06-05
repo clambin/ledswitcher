@@ -67,7 +67,7 @@ func run(ctx context.Context, cfg configuration.Configuration, r prometheus.Regi
 	var server ledSwitcher
 	var err error
 	if cfg.RedisConfiguration.Addr != "" {
-		server, err = redisServer(cfg, cfg.NodeName, logger)
+		server, err = redisServer(cfg, cfg.NodeName, r, logger)
 	} else {
 		server, err = ledswitcher.New(cfg, cfg.NodeName, r, logger)
 	}
@@ -93,7 +93,7 @@ func run(ctx context.Context, cfg configuration.Configuration, r prometheus.Regi
 	return server.Run(ctx)
 }
 
-func redisServer(cfg configuration.Configuration, hostname string, logger *slog.Logger) (*event.Server, error) {
+func redisServer(cfg configuration.Configuration, hostname string, r prometheus.Registerer, logger *slog.Logger) (*event.Server, error) {
 	s, err := schedule.New(cfg.LeaderConfiguration.Scheduler.Mode)
 	if err != nil {
 		return nil, fmt.Errorf("schedule: %w", err)
@@ -116,6 +116,7 @@ func redisServer(cfg configuration.Configuration, hostname string, logger *slog.
 		cfg.LeaderConfiguration.Rotation,
 		10*time.Second,
 		time.Minute,
+		r,
 		logger,
 	)
 	return server, nil

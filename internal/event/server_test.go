@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/clambin/ledswitcher/internal/schedule"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -30,12 +32,14 @@ func TestServer(t *testing.T) {
 		leds[i] = &fakeLED{}
 	}
 
+	registries := make([]*prometheus.Registry, serverCount)
 	servers := make([]*Server, serverCount)
 	for i := range serverCount {
 		nodeName := fmt.Sprintf("node%d", i+1)
 		l := logger.With("node", nodeName)
 		s, err := schedule.New("binary")
 		require.NoError(t, err)
+		registries[i] = prometheus.NewPedanticRegistry()
 		servers[i] = NewServer(
 			nodeName,
 			s,
@@ -44,6 +48,7 @@ func TestServer(t *testing.T) {
 			500*time.Millisecond,
 			500*time.Millisecond,
 			time.Hour,
+			registries[i],
 			l,
 		)
 	}
@@ -62,6 +67,10 @@ func TestServer(t *testing.T) {
 		}
 		return true
 	}, 10*time.Second, time.Second)
+
+	count, err := testutil.GatherAndCount(registries[0])
+	require.NoError(t, err)
+	assert.Equal(t, 4, count)
 }
 
 func startRedis(ctx context.Context) (testcontainers.Container, *redis.Client, error) {
