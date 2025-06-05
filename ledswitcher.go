@@ -14,9 +14,8 @@ import (
 
 	"github.com/clambin/ledswitcher/elect"
 	"github.com/clambin/ledswitcher/internal/configuration"
-	"github.com/clambin/ledswitcher/internal/event"
-	"github.com/clambin/ledswitcher/internal/ledswitcher"
 	"github.com/clambin/ledswitcher/internal/schedule"
+	"github.com/clambin/ledswitcher/internal/server"
 	"github.com/clambin/ledswitcher/ledberry"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -24,11 +23,6 @@ import (
 )
 
 var version = "change-me"
-
-type ledSwitcher interface {
-	Run(context.Context) error
-	SetLeader(string)
-}
 
 func main() {
 	ctx, done := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -64,53 +58,22 @@ func run(ctx context.Context, cfg configuration.Configuration, r prometheus.Regi
 		}
 	}()
 
-	var server ledSwitcher
-	var err error
-	if cfg.RedisConfiguration.Addr != "" {
-		server, err = redisServer(cfg, cfg.NodeName, r, logger)
-	} else {
-		server, err = ledswitcher.New(cfg, cfg.NodeName, r, logger)
-	}
-	if err != nil {
-		return err
-	}
-
-	if cfg.LeaderConfiguration.Leader != "" {
-		//goland:noinspection GoMaybeNil
-		server.SetLeader(cfg.LeaderConfiguration.Leader)
-	} else {
-		logger.Info("no leader specified. using k8s leader election")
-		go elect.RunOrDie(
-			ctx,
-			cfg.K8SConfiguration.Namespace,
-			cfg.K8SConfiguration.LockName,
-			cfg.NodeName,
-			func(identity string) { server.SetLeader(identity) },
-			logger.With(slog.String("component", "k8s")),
-		)
-	}
-
-	return server.Run(ctx)
-}
-
-func redisServer(cfg configuration.Configuration, hostname string, r prometheus.Registerer, logger *slog.Logger) (*event.Server, error) {
 	s, err := schedule.New(cfg.LeaderConfiguration.Scheduler.Mode)
 	if err != nil {
-		return nil, fmt.Errorf("schedule: %w", err)
+		return fmt.Errorf("schedule: %w", err)
 	}
 	led, err := ledberry.New(cfg.EndpointConfiguration.LEDPath)
 	if err != nil {
-		return nil, fmt.Errorf("led: %w", err)
+		return fmt.Errorf("led: %w", err)
 	}
 
-	server := event.NewServer(
-		hostname,
+	srv := server.NewServer(
+		cfg.NodeName,
 		s,
 		redis.NewClient(&redis.Options{
 			Addr:     cfg.RedisConfiguration.Addr,
 			Username: cfg.RedisConfiguration.Username,
 			Password: cfg.RedisConfiguration.Password,
-			DB:       cfg.RedisConfiguration.DB,
 		}),
 		led,
 		cfg.LeaderConfiguration.Rotation,
@@ -119,5 +82,20 @@ func redisServer(cfg configuration.Configuration, hostname string, r prometheus.
 		r,
 		logger,
 	)
-	return server, nil
+
+	if cfg.LeaderConfiguration.Leader != "" {
+		srv.SetLeader(cfg.LeaderConfiguration.Leader)
+	} else {
+		logger.Info("no leader specified. using k8s leader election")
+		go elect.RunOrDie(
+			ctx,
+			cfg.K8SConfiguration.Namespace,
+			cfg.K8SConfiguration.LockName,
+			cfg.NodeName,
+			func(identity string) { srv.SetLeader(identity) },
+			logger.With(slog.String("component", "k8s")),
+		)
+	}
+
+	return srv.Run(ctx)
 }

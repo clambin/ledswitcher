@@ -1,5 +1,6 @@
 package main
 
+/*
 import (
 	"encoding/json"
 	"fmt"
@@ -69,3 +70,4 @@ func getHealth() error {
 	}
 	return nil
 }
+*/
