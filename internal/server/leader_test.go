@@ -6,13 +6,14 @@ import (
 	"time"
 
 	"github.com/clambin/ledswitcher/internal/schedule"
+	"github.com/clambin/ledswitcher/internal/testutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestLeader(t *testing.T) {
 	ctx := t.Context()
-	container, client, err := startRedis(ctx)
+	container, client, err := testutils.StartRedis(t.Context())
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = container.Terminate(ctx) })
 	evh := eventHandler{Client: client}

@@ -1,15 +1,13 @@
 package main
 
-/*
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"testing"
 	"time"
 
 	"github.com/clambin/ledswitcher/internal/configuration"
-	"github.com/clambin/ledswitcher/internal/ledswitcher/registry"
+	servertest "github.com/clambin/ledswitcher/internal/testutils"
 	"github.com/clambin/ledswitcher/ledberry/testutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -19,11 +17,15 @@ func Test_runWithConfiguration(t *testing.T) {
 	ledPath := t.TempDir()
 	require.NoError(t, testutils.InitLED(ledPath))
 
+	container, _, err := servertest.StartRedis(t.Context())
+	require.NoError(t, err)
+	addr, err := container.Endpoint(t.Context(), "")
+	require.NoError(t, err)
+
 	cfg := configuration.Configuration{
-		Debug:          true,
-		Addr:           ":8081",
-		Addr: ":9090",
-		NodeName:       "localhost",
+		Debug:    false,
+		Addr:     ":9090",
+		NodeName: "localhost",
 		LeaderConfiguration: configuration.LeaderConfiguration{
 			Leader:   "localhost",
 			Rotation: time.Second,
@@ -34,33 +36,16 @@ func Test_runWithConfiguration(t *testing.T) {
 		EndpointConfiguration: configuration.EndpointConfiguration{
 			LEDPath: ledPath,
 		},
+		RedisConfiguration: configuration.RedisConfiguration{Addr: addr},
 	}
 
 	go func() { _ = run(t.Context(), cfg, nil, "dev") }()
 
-	assert.Eventually(t, func() bool {
-		hosts, err := getStats()
-		return err == nil && hosts == 1
-	}, 5*time.Second, 10*time.Millisecond)
-
-	assert.NoError(t, getHealth())
-}
-
-func getStats() (int, error) {
-	resp, err := http.Get("http://localhost:8081/leader/stats")
-	if err != nil {
-		return 0, err
-	}
-	defer func() { _ = resp.Body.Close() }()
-	var hosts []registry.Host
-	if err = json.NewDecoder(resp.Body).Decode(&hosts); err != nil {
-		return -1, err
-	}
-	return len(hosts), nil
+	assert.Eventually(t, func() bool { return getHealth() == nil }, time.Second, 10*time.Millisecond)
 }
 
 func getHealth() error {
-	resp, err := http.Get("http://localhost:8081/healthz")
+	resp, err := http.Get("http://localhost:9090/healthz")
 	if err != nil {
 		return err
 	}
@@ -70,4 +55,3 @@ func getHealth() error {
 	}
 	return nil
 }
-*/

@@ -8,12 +8,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/clambin/ledswitcher/internal/testutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestRedisEventHandler_Nodes(t *testing.T) {
-	container, client, err := startRedis(t.Context())
+	container, client, err := testutils.StartRedis(t.Context())
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = container.Terminate(context.Background()) })
 	handler := &eventHandler{Client: client}
@@ -47,7 +48,7 @@ func TestRedisEventHandler_Nodes(t *testing.T) {
 }
 
 func TestRedisEventHandler_LEDStates(t *testing.T) {
-	container, client, err := startRedis(t.Context())
+	container, client, err := testutils.StartRedis(t.Context())
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = container.Terminate(context.Background()) })
 	handler := &eventHandler{Client: client}

@@ -9,18 +9,16 @@ import (
 	"time"
 
 	"github.com/clambin/ledswitcher/internal/schedule"
+	"github.com/clambin/ledswitcher/internal/testutils"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
-	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/testcontainers/testcontainers-go"
-	tcredis "github.com/testcontainers/testcontainers-go/modules/redis"
 )
 
 func TestServer(t *testing.T) {
 	ctx := t.Context()
-	container, client, err := startRedis(t.Context())
+	container, client, err := testutils.StartRedis(t.Context())
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = container.Terminate(context.Background()) })
 
@@ -71,20 +69,6 @@ func TestServer(t *testing.T) {
 	count, err := testutil.GatherAndCount(registries[0])
 	require.NoError(t, err)
 	assert.Equal(t, 4, count)
-}
-
-func startRedis(ctx context.Context) (testcontainers.Container, *redis.Client, error) {
-	c, err := tcredis.Run(ctx, "redis:latest")
-	if err != nil {
-		return nil, nil, err
-	}
-	//goland:noinspection GoMaybeNil
-	endpoint, err := c.Endpoint(ctx, "")
-	if err != nil {
-		_ = c.Terminate(ctx)
-		return nil, nil, err
-	}
-	return c, redis.NewClient(&redis.Options{Addr: endpoint}), nil
 }
 
 var _ LED = &fakeLED{}

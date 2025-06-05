@@ -7,12 +7,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/clambin/ledswitcher/internal/testutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestEndpoint_Run(t *testing.T) {
-	container, client, err := startRedis(t.Context())
+	container, client, err := testutils.StartRedis(t.Context())
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = container.Terminate(context.Background()) })
 	evh := eventHandler{Client: client}

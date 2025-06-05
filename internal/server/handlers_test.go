@@ -8,11 +8,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/clambin/ledswitcher/internal/testutils"
 	"github.com/stretchr/testify/require"
 )
 
 func TestHealthHandler(t *testing.T) {
-	container, client, err := startRedis(t.Context())
+	container, client, err := testutils.StartRedis(t.Context())
 	require.NoError(t, err)
 
 	srv := NewServer(
