@@ -48,7 +48,7 @@ func (r *Registry) registerNode(info nodeInfo) error {
 		r.nodes = make(map[string]time.Time)
 	}
 	if _, ok := r.nodes[string(info)]; !ok {
-		r.logger.Debug("registered node", "name", info)
+		r.logger.Info("registering new node", "name", info)
 	}
 	r.nodes[string(info)] = time.Now().Add(cmp.Or(r.nodeExpiration, 5*time.Minute))
 	return nil

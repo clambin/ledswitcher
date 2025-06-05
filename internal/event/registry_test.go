@@ -51,3 +51,13 @@ func TestRegistry(t *testing.T) {
 
 	assert.Eventually(t, func() bool { return len(r.Nodes()) == 0 }, 2*r.nodeExpiration, 10*time.Millisecond)
 }
+
+func TestRegistry_cleanup(t *testing.T) {
+	r := Registry{
+		nodes:  map[string]time.Time{"localhost": {}},
+		logger: slog.New(slog.DiscardHandler),
+	}
+	assert.Empty(t, r.Nodes())
+	r.cleanup()
+	assert.Empty(t, r.nodes)
+}
