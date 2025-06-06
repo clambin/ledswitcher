@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -17,6 +18,37 @@ import (
 )
 
 func TestServer(t *testing.T) {
+	s, err := schedule.New("binary")
+	require.NoError(t, err)
+	var evh fakeEventHandler
+	var led fakeLED
+	r := prometheus.NewPedanticRegistry()
+	logger := slog.New(slog.DiscardHandler) //slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	server := NewServer(
+		"localhost",
+		s,
+		nil,
+		&led,
+		10*time.Millisecond,
+		10*time.Millisecond,
+		time.Hour,
+		r,
+		logger,
+	)
+	server.Endpoint.eventHandler = &evh
+	server.Registry.eventHandler = &evh
+	server.Registrant.eventHandler = &evh
+	server.Leader.eventHandler = &evh
+
+	go func() {
+		require.NoError(t, server.Run(t.Context()))
+	}()
+	server.SetLeader("localhost")
+	assert.Eventually(t, func() bool { return led.written() > 2 }, time.Second, 10*time.Millisecond)
+}
+
+func TestServer_Slow(t *testing.T) {
+	t.Skip()
 	ctx := t.Context()
 	container, client, err := testutils.StartRedis(t.Context())
 	require.NoError(t, err)
@@ -90,4 +122,78 @@ func (f *fakeLED) get() bool {
 
 func (f *fakeLED) written() int64 {
 	return f.writes.Load()
+}
+
+var _ eventHandler = &fakeEventHandler{}
+
+type fakeEventHandler struct {
+	lock               sync.Mutex
+	publishedLEDStates queue[ledStates]
+	publishedNodes     queue[nodeInfo]
+	pingErr            error
+}
+
+func (f *fakeEventHandler) publishLEDStates(_ context.Context, states ledStates) error {
+	f.lock.Lock()
+	defer f.lock.Unlock()
+	f.publishedLEDStates.Queue(states)
+	return nil
+}
+
+func (f *fakeEventHandler) ledStates(ctx context.Context, _ *slog.Logger) <-chan ledStates {
+	return drainQueue(ctx, f.publishedLEDStates.Dequeue)
+}
+
+func (f *fakeEventHandler) publishNode(_ context.Context, info string) error {
+	f.lock.Lock()
+	defer f.lock.Unlock()
+	f.publishedNodes.Queue(nodeInfo(info))
+	return nil
+}
+
+func (f *fakeEventHandler) nodes(ctx context.Context, _ *slog.Logger) <-chan nodeInfo {
+	return drainQueue(ctx, f.publishedNodes.Dequeue)
+}
+
+func (f *fakeEventHandler) ping(_ context.Context) error {
+	return f.pingErr
+}
+
+func drainQueue[T any](ctx context.Context, dequeue func() (T, bool)) <-chan T {
+	ch := make(chan T)
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(10 * time.Millisecond):
+				if value, ok := dequeue(); ok {
+					ch <- value
+				}
+			}
+		}
+	}()
+	return ch
+}
+
+type queue[T any] struct {
+	lock  sync.Mutex
+	items []T
+}
+
+func (q *queue[T]) Queue(value T) {
+	q.lock.Lock()
+	defer q.lock.Unlock()
+	q.items = append(q.items, value)
+}
+
+func (q *queue[T]) Dequeue() (value T, ok bool) {
+	q.lock.Lock()
+	defer q.lock.Unlock()
+	ok = len(q.items) > 0
+	if ok {
+		value = q.items[0]
+		q.items = q.items[1:]
+	}
+	return value, ok
 }

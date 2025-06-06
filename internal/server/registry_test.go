@@ -1,30 +1,25 @@
 package server
 
 import (
-	"context"
 	"log/slog"
 	"testing"
 	"time"
 
-	"github.com/clambin/ledswitcher/internal/testutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestRegistry(t *testing.T) {
-	ctx := t.Context()
+	var evh fakeEventHandler
+	logger := slog.New(slog.DiscardHandler) // slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
 
-	container, client, err := testutils.StartRedis(t.Context())
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = container.Terminate(context.Background()) })
-
-	evh := eventHandler{Client: client}
 	r := Registry{
 		eventHandler:   &evh,
 		nodeExpiration: 250 * time.Millisecond,
-		logger:         slog.New(slog.DiscardHandler), // slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug})),
+		logger:         logger.With("component", "registry"),
 	}
 
+	ctx := t.Context()
 	go func() {
 		require.NoError(t, r.Run(ctx))
 	}()
@@ -34,8 +29,8 @@ func TestRegistry(t *testing.T) {
 	registrant := Registrant{
 		nodeName:     "localhost",
 		eventHandler: &evh,
-		interval:     time.Second,
-		logger:       r.logger,
+		interval:     10 * time.Millisecond,
+		logger:       logger.With("component", "registrant"),
 	}
 	go func() {
 		require.NoError(t, registrant.Run(ctx))
@@ -49,8 +44,6 @@ func TestRegistry(t *testing.T) {
 
 	require.Len(t, nodes, 1)
 	assert.Equal(t, registrant.nodeName, nodes[0])
-
-	assert.Eventually(t, func() bool { return len(r.Nodes()) == 0 }, 2*r.nodeExpiration, 10*time.Millisecond)
 }
 
 func TestRegistry_cleanup(t *testing.T) {

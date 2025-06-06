@@ -9,13 +9,13 @@ import (
 )
 
 type Leader struct {
-	leaderName   atomic.Value
-	schedule     Schedule
-	eventHandler *eventHandler
-	logger       *slog.Logger
-	registry     *Registry
-	nodeName     string
-	ledInterval  time.Duration
+	leaderName atomic.Value
+	schedule   Schedule
+	eventHandler
+	logger      *slog.Logger
+	registry    *Registry
+	nodeName    string
+	ledInterval time.Duration
 }
 
 type Schedule interface {
@@ -57,16 +57,18 @@ func (l *Leader) advance(ctx context.Context) error {
 	}
 
 	nodes := l.registry.Nodes()
-	if len(nodes) == 0 {
+	nodeCount := len(nodes)
+	if nodeCount == 0 {
 		return nil
 	}
 
+	nextStates := l.schedule.Next(nodeCount)
+	nodeStates := make(map[string]bool, nodeCount)
+
 	slices.Sort(nodes)
-	nextStates := l.schedule.Next(len(nodes))
-	nodeStates := make(map[string]bool)
 	for i, state := range nextStates {
 		nodeStates[nodes[i]] = state
 	}
 
-	return l.eventHandler.publishLEDStates(ctx, nodeStates)
+	return l.publishLEDStates(ctx, nodeStates)
 }

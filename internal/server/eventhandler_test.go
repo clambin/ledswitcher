@@ -17,7 +17,7 @@ func TestRedisEventHandler_Nodes(t *testing.T) {
 	container, client, err := testutils.StartRedis(t.Context())
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = container.Terminate(context.Background()) })
-	handler := &eventHandler{Client: client}
+	handler := &redisEventHandler{Client: client}
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	want := []nodeInfo{"node1", "node2", "node3", "node4"}
@@ -51,7 +51,7 @@ func TestRedisEventHandler_LEDStates(t *testing.T) {
 	container, client, err := testutils.StartRedis(t.Context())
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = container.Terminate(context.Background()) })
-	handler := &eventHandler{Client: client}
+	handler := &redisEventHandler{Client: client}
 
 	logger := slog.New(slog.DiscardHandler) //slog.NewTextHandler(os.Stdout, nil))
 	want := []ledStates{

@@ -8,7 +8,7 @@ import (
 
 type Endpoint struct {
 	LED
-	eventHandler *eventHandler
+	eventHandler
 	logger       *slog.Logger
 	nodeName     string
 	currentState atomic.Bool
@@ -22,7 +22,7 @@ func (e *Endpoint) Run(ctx context.Context) error {
 	e.logger.Debug("endpoint started")
 	defer e.logger.Debug("endpoint stopped")
 
-	ch := e.eventHandler.ledStates(ctx, e.logger)
+	ch := e.ledStates(ctx, e.logger)
 	for {
 		select {
 		case states, ok := <-ch:

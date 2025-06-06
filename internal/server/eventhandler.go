@@ -36,6 +36,14 @@ var (
 	}, []string{"channel"})
 )
 
+type eventHandler interface {
+	publishLEDStates(ctx context.Context, states ledStates) error
+	ledStates(ctx context.Context, logger *slog.Logger) <-chan ledStates
+	publishNode(ctx context.Context, info string) error
+	nodes(ctx context.Context, logger *slog.Logger) <-chan nodeInfo
+	ping(ctx context.Context) error
+}
+
 var _ slog.LogValuer = ledStates{}
 
 type ledStates map[string]bool
@@ -53,27 +61,29 @@ func (l ledStates) LogValue() slog.Value {
 
 type nodeInfo string
 
-type eventHandler struct {
+var _ eventHandler = &redisEventHandler{}
+
+type redisEventHandler struct {
 	*redis.Client
 }
 
-func (r *eventHandler) publishLEDStates(ctx context.Context, states ledStates) error {
+func (r *redisEventHandler) publishLEDStates(ctx context.Context, states ledStates) error {
 	return r.publish(ctx, channelLED, states)
 }
 
-func (r *eventHandler) ledStates(ctx context.Context, logger *slog.Logger) <-chan ledStates {
+func (r *redisEventHandler) ledStates(ctx context.Context, logger *slog.Logger) <-chan ledStates {
 	return subscribe[ledStates](ctx, r.Client, channelLED, logger)
 }
 
-func (r *eventHandler) publishNode(ctx context.Context, info string) error {
+func (r *redisEventHandler) publishNode(ctx context.Context, info string) error {
 	return r.publish(ctx, channelNode, info)
 }
 
-func (r *eventHandler) nodes(ctx context.Context, logger *slog.Logger) <-chan nodeInfo {
+func (r *redisEventHandler) nodes(ctx context.Context, logger *slog.Logger) <-chan nodeInfo {
 	return subscribe[nodeInfo](ctx, r.Client, channelNode, logger)
 }
 
-func (r *eventHandler) publish(ctx context.Context, channel string, msg any) error {
+func (r *redisEventHandler) publish(ctx context.Context, channel string, msg any) error {
 	payload, err := json.Marshal(msg)
 	if err != nil {
 		return fmt.Errorf("json marshal: %w", err)
@@ -83,6 +93,10 @@ func (r *eventHandler) publish(ctx context.Context, channel string, msg any) err
 		publishedEventsMetric.WithLabelValues(channel).Inc()
 	}
 	return err
+}
+
+func (r *redisEventHandler) ping(ctx context.Context) error {
+	return r.Client.Ping(ctx).Err()
 }
 
 func subscribe[T any](ctx context.Context, c *redis.Client, channel string, logger *slog.Logger) <-chan T {

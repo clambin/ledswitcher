@@ -10,7 +10,7 @@ import (
 
 // A Registry performs two functions. Firstly, it maintains the list of active nodes. Secondly, it registers the local node with the active registry.
 type Registry struct {
-	eventHandler   *eventHandler
+	eventHandler
 	logger         *slog.Logger
 	nodes          map[string]time.Time
 	nodeExpiration time.Duration
@@ -78,10 +78,10 @@ func (r *Registry) Nodes() []string {
 }
 
 type Registrant struct {
-	eventHandler *eventHandler
-	logger       *slog.Logger
-	nodeName     string
-	interval     time.Duration
+	eventHandler
+	logger   *slog.Logger
+	nodeName string
+	interval time.Duration
 }
 
 func (r *Registrant) Run(ctx context.Context) error {
@@ -94,7 +94,7 @@ func (r *Registrant) Run(ctx context.Context) error {
 	for {
 		select {
 		case <-registrationTicker.C:
-			if err := r.eventHandler.publishNode(ctx, r.nodeName); err != nil {
+			if err := r.publishNode(ctx, r.nodeName); err != nil {
 				r.logger.Error("failed to register node", "err", err)
 			}
 		case <-ctx.Done():

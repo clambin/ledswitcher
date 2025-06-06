@@ -13,9 +13,9 @@ import (
 
 type Server struct {
 	Leader
-	Registry
-	Registrant
 	Endpoint
+	Registrant
+	Registry
 }
 
 func NewServer(
@@ -29,33 +29,33 @@ func NewServer(
 	r prometheus.Registerer,
 	logger *slog.Logger,
 ) *Server {
-	evh := eventHandler{Client: client}
 	if r != nil {
 		r.MustRegister(publishedEventsMetric, receivedEventsMetrics)
 	}
+	evh := &redisEventHandler{Client: client}
 	server := Server{
 		Registry: Registry{
-			eventHandler:   &evh,
+			eventHandler:   evh,
 			nodeExpiration: nodeExpiration,
 			logger:         logger.With("component", "registry"),
 		},
 		Registrant: Registrant{
 			nodeName:     nodeName,
 			interval:     registrationInterval,
-			eventHandler: &evh,
+			eventHandler: evh,
 			logger:       logger.With("component", "registrant"),
 		},
 		Endpoint: Endpoint{
 			nodeName:     nodeName,
 			LED:          led,
-			eventHandler: &evh,
+			eventHandler: evh,
 			logger:       logger.With("component", "endpoint"),
 			currentState: atomic.Bool{},
 		},
 	}
 	server.Leader = Leader{
 		nodeName:     nodeName,
-		eventHandler: &evh,
+		eventHandler: evh,
 		logger:       logger.With("component", "leader"),
 		registry:     &server.Registry,
 		ledInterval:  ledInterval,
