@@ -6,3 +6,5 @@
 [![license](https://img.shields.io/github/license/clambin/ledswitcher?style=plastic)](LICENSE.md)
 
 "I got bored"
+
+DEPRECATED: moved to https://codeberg.org/clambin/ledswitcher
