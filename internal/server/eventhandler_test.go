@@ -20,8 +20,8 @@ func TestRedisEventHandler_Nodes(t *testing.T) {
 	handler := &redisEventHandler{Client: client}
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
-	want := []nodeInfo{"node1", "node2", "node3", "node4"}
-	received := make([]nodeInfo, 0, len(want))
+	want := []node{"node1", "node2", "node3", "node4"}
+	received := make([]node, 0, len(want))
 
 	var wg sync.WaitGroup
 	wg.Add(1)

@@ -20,7 +20,6 @@ import (
 func TestServer(t *testing.T) {
 	s, err := schedule.New("binary")
 	require.NoError(t, err)
-	var evh fakeEventHandler
 	var led fakeLED
 	r := prometheus.NewPedanticRegistry()
 	logger := slog.New(slog.DiscardHandler) //slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
@@ -35,6 +34,7 @@ func TestServer(t *testing.T) {
 		r,
 		logger,
 	)
+	var evh fakeEventHandler
 	server.Endpoint.eventHandler = &evh
 	server.Registry.eventHandler = &evh
 	server.Registrant.eventHandler = &evh
@@ -129,7 +129,7 @@ var _ eventHandler = &fakeEventHandler{}
 type fakeEventHandler struct {
 	lock               sync.Mutex
 	publishedLEDStates queue[ledStates]
-	publishedNodes     queue[nodeInfo]
+	publishedNodes     queue[node]
 	pingErr            error
 }
 
@@ -147,11 +147,11 @@ func (f *fakeEventHandler) ledStates(ctx context.Context, _ *slog.Logger) <-chan
 func (f *fakeEventHandler) publishNode(_ context.Context, info string) error {
 	f.lock.Lock()
 	defer f.lock.Unlock()
-	f.publishedNodes.Queue(nodeInfo(info))
+	f.publishedNodes.Queue(node(info))
 	return nil
 }
 
-func (f *fakeEventHandler) nodes(ctx context.Context, _ *slog.Logger) <-chan nodeInfo {
+func (f *fakeEventHandler) nodes(ctx context.Context, _ *slog.Logger) <-chan node {
 	return drainQueue(ctx, f.publishedNodes.Dequeue)
 }
 

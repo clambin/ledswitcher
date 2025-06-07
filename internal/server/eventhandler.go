@@ -40,9 +40,11 @@ type eventHandler interface {
 	publishLEDStates(ctx context.Context, states ledStates) error
 	ledStates(ctx context.Context, logger *slog.Logger) <-chan ledStates
 	publishNode(ctx context.Context, info string) error
-	nodes(ctx context.Context, logger *slog.Logger) <-chan nodeInfo
+	nodes(ctx context.Context, logger *slog.Logger) <-chan node
 	ping(ctx context.Context) error
 }
+
+type node string
 
 var _ slog.LogValuer = ledStates{}
 
@@ -58,8 +60,6 @@ func (l ledStates) LogValue() slog.Value {
 	}
 	return slog.StringValue(output)
 }
-
-type nodeInfo string
 
 var _ eventHandler = &redisEventHandler{}
 
@@ -79,8 +79,8 @@ func (r *redisEventHandler) publishNode(ctx context.Context, info string) error 
 	return r.publish(ctx, channelNode, info)
 }
 
-func (r *redisEventHandler) nodes(ctx context.Context, logger *slog.Logger) <-chan nodeInfo {
-	return subscribe[nodeInfo](ctx, r.Client, channelNode, logger)
+func (r *redisEventHandler) nodes(ctx context.Context, logger *slog.Logger) <-chan node {
+	return subscribe[node](ctx, r.Client, channelNode, logger)
 }
 
 func (r *redisEventHandler) publish(ctx context.Context, channel string, msg any) error {
@@ -104,6 +104,7 @@ func subscribe[T any](ctx context.Context, c *redis.Client, channel string, logg
 	in := sub.Channel()
 	out := make(chan T)
 	go func() {
+		defer close(out)
 		for msg := range in {
 			var t T
 			if err := json.Unmarshal([]byte(msg.Payload), &t); err != nil {
@@ -113,7 +114,6 @@ func subscribe[T any](ctx context.Context, c *redis.Client, channel string, logg
 			out <- t
 			receivedEventsMetrics.WithLabelValues(channel).Inc()
 		}
-		close(out)
 	}()
 	return out
 }

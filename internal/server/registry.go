@@ -41,7 +41,7 @@ func (r *Registry) Run(ctx context.Context) error {
 	}
 }
 
-func (r *Registry) registerNode(info nodeInfo) error {
+func (r *Registry) registerNode(info node) error {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 	if r.nodes == nil {
